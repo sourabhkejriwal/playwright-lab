@@ -1,0 +1,500 @@
+---
+chapter: 14
+title: Security and authentication
+summary: Prove that logout really ends a session, reuse signed-in state safely, test roles on the server, keep secrets out of test artifacts, and handle OAuth and MFA.
+readingMinutes: 15
+---
+
+import { url as siteUrl } from '../../lib/url';
+
+## What an auth test should prove
+
+A green login test says little about security. Aim to prove these points:
+
+- **Login:** good credentials work, bad ones fail with a generic message, and no session is created on failure.
+- **Logout:** the server has ended the session, not just the browser.
+- **Access:** protected pages and APIs refuse visitors who aren't signed in.
+- **Roles:** the server refuses actions a role isn't allowed to take, even if the button is hidden.
+- **Secrets:** passwords and session tokens stay out of the repo, the logs and the test artifacts.
+
+## Testing logout properly
+
+Checking for a redirect isn't enough. An app can clear the cookie in the browser while the session stays valid on the server, so anyone holding a copy of that cookie is still signed in.
+
+Start with a small helper for signing in through the form:
+
+```ts title="tests/helpers/sign-in.ts"
+import { expect, type Page } from '@playwright/test';
+import { requireEnv } from './env';
+
+export async function signIn(page: Page, email: string) {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(requireEnv('TEST_PASSWORD'));
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+}
+```
+
+The strongest check replays the old session after logout:
+
+```ts title="tests/logout.spec.ts" {17-22}
+import { test, expect } from '@playwright/test';
+import { signIn } from './helpers/sign-in';
+
+test('logging out ends the session on the server', async ({ page, context, playwright, baseURL }) => {
+  await signIn(page, 'logout-user@example.test');
+
+  const cookies = await context.cookies();
+  const session = cookies.find((cookie) => cookie.name === 'sid');
+  expect(session?.httpOnly).toBe(true);
+
+  await page.getByRole('button', { name: 'Log out' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+
+  await page.goto('/dashboard');
+  await expect(page).toHaveURL(/\/login$/);
+
+  // A separate client presents the old cookie, as an attacker would.
+  const stolen = await playwright.request.newContext({
+    baseURL,
+    extraHTTPHeaders: { cookie: `sid=${session?.value}` },
+  });
+  expect((await stolen.get('/api/me')).status()).toBe(401);
+  await stolen.dispose();
+});
+```
+
+Here is what each check reported against two versions of the same app:
+
+| Check after logout       | Real logout | Logout that only clears the cookie |
+| ------------------------ | ----------- | ---------------------------------- |
+| Redirected to `/login`   | Yes         | Yes                                |
+| Visiting `/dashboard`    | Redirected  | Redirected                         |
+| Replaying the old cookie | `401`       | `200`, still signed in             |
+
+Only the replay finds the bug.
+
+<Callout type="gotcha" title="The Back button can show a signed-out user's page">
+  Without `Cache-Control: no-store` on the protected page, pressing Back after logout showed the cached
+  dashboard in Chromium and Firefox, but not in WebKit. With the header, none of them showed it. Test this
+  with `page.goBack()` if your pages hold private data.
+</Callout>
+
+## Signing in once with a setup project
+
+Logging in through the UI before every test is slow, and a broken login page then fails the whole suite. Instead, sign in once in a **setup project**, save the session to a file, and start other tests from that file.
+
+```ts title="tests/auth.setup.ts"
+import { test as setup, expect } from '@playwright/test';
+import path from 'node:path';
+import { requireEnv } from './helpers/env';
+
+const accounts = [
+  { role: 'admin', email: 'admin@example.test' },
+  { role: 'viewer', email: 'viewer@example.test' },
+];
+
+for (const { role, email } of accounts) {
+  setup(`sign in as ${role}`, async ({ page }) => {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill(email);
+    await page.getByLabel('Password').fill(requireEnv('TEST_PASSWORD'));
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+
+    await page.context().storageState({ path: path.join(__dirname, `../.auth/${role}.json`) });
+  });
+}
+```
+
+Wait for proof of login before saving. If you save too early, the file holds a signed-out session. <ApiRef name="context.storageState()" /> creates the `.auth` folder when it's missing.
+
+```ts title="playwright.config.ts" {9,12,15}
+import { defineConfig, devices } from '@playwright/test';
+import path from 'node:path';
+
+export default defineConfig({
+  testDir: './tests',
+  use: { baseURL: 'http://localhost:3000', trace: 'on-first-retry' },
+  projects: [
+    // Traces record typed passwords, so the sign-in project never keeps one.
+    { name: 'setup', testMatch: /.*\.setup\.ts/, use: { trace: 'off' } },
+    {
+      name: 'chromium',
+      dependencies: ['setup'],
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: path.join(__dirname, '.auth/viewer.json'),
+      },
+    },
+  ],
+});
+```
+
+If setup fails, the tests that depend on it are reported as **did not run**, so one login failure doesn't appear as hundreds of separate failures.
+
+<Callout type="warn" title="A saved session is a password">
+  The state file holds live session tokens in plain text. Add `.auth/` to `.gitignore`, and never upload it as
+  a CI artifact.
+</Callout>
+
+<Callout type="gotcha" title="Relative paths start from where you run Playwright">
+  A relative `storageState` path resolves from the current working directory, not from the config file.
+  Running from another folder fails with `Error reading storage state` and `ENOENT`. Build the path with
+  `path.join(__dirname, …)`.
+</Callout>
+
+### What gets saved
+
+| Data                    | Saved by `storageState()`?      |
+| ----------------------- | ------------------------------- |
+| Cookies, `HttpOnly` too | Yes                             |
+| Local storage           | Yes                             |
+| IndexedDB               | Only with `{ indexedDB: true }` |
+| Session storage         | No                              |
+
+If your app keeps its token in session storage, copy it yourself and restore it with an init script:
+
+```ts title="tests/session-storage.spec.ts"
+// After signing in, on a page from your app:
+const saved = await page.evaluate(() => JSON.stringify(sessionStorage));
+
+// In the context that should start signed in:
+await context.addInitScript(
+  ({ origin, data }) => {
+    if (window.location.origin !== origin) return;
+    for (const [key, value] of Object.entries<string>(JSON.parse(data))) {
+      window.sessionStorage.setItem(key, value);
+    }
+  },
+  { origin: new URL(baseURL!).origin, data: saved },
+);
+```
+
+### Signing in through the API
+
+If the app has a login endpoint, setup can skip the form. It's faster, and it doesn't depend on the login page. Keep at least one test that uses the real form.
+
+```ts title="tests/api-auth.setup.ts"
+import { test as setup, expect } from '@playwright/test';
+import path from 'node:path';
+import { requireEnv } from './helpers/env';
+
+setup('sign in through the API', async ({ request }) => {
+  const response = await request.post('/api/login', {
+    data: { email: 'viewer@example.test', password: requireEnv('TEST_PASSWORD') },
+  });
+  expect(response.ok()).toBeTruthy();
+
+  await request.storageState({ path: path.join(__dirname, '../.auth/viewer.json') });
+});
+```
+
+### Starting a test signed out
+
+When the project signs everyone in, a login test has to opt out. Pass an empty state:
+
+```ts title="tests/login.spec.ts"
+import { test, expect } from '@playwright/test';
+
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test('a visitor is sent to the login page', async ({ page }) => {
+  await page.goto('/dashboard');
+  await expect(page).toHaveURL(/\/login$/);
+});
+```
+
+## Don't log out the shared user
+
+Saved state files are copies of one server session. When a test logs out with that session, the server ends it for every test using the same file, and they start landing on the login page.
+
+Give tests that end a session their own account, as the logout test above does. If tests change account data as well, give each parallel worker its own account with a worker-scoped fixture (see <a href={siteUrl('/chapters/05-fixtures')}>Chapter 5</a>):
+
+```ts title="tests/fixtures.ts"
+import { test as base, expect } from '@playwright/test';
+import path from 'node:path';
+
+export const test = base.extend<{}, { workerStorageState: string }>({
+  storageState: ({ workerStorageState }, use) => use(workerStorageState),
+
+  workerStorageState: [
+    async ({ playwright }, use, workerInfo) => {
+      const id = workerInfo.parallelIndex;
+      const file = path.join(workerInfo.project.outputDir, `.auth/user${id}.json`);
+
+      const request = await playwright.request.newContext({
+        baseURL: workerInfo.project.use.baseURL,
+      });
+      const response = await request.post('/api/login', {
+        data: { email: `user${id}@example.test`, password: process.env.TEST_PASSWORD },
+      });
+      expect(response.ok()).toBeTruthy();
+      await request.storageState({ path: file });
+      await request.dispose();
+
+      await use(file);
+    },
+    { scope: 'worker' },
+  ],
+});
+```
+
+`parallelIndex` counts from 0 up to the number of workers minus one, so create that many accounts. Specs then import `test` from this file.
+
+## Testing roles
+
+Each browser context has its own cookies and storage, so two roles can run side by side in one test.
+
+```ts title="tests/roles.spec.ts" {19-21}
+import { test, expect } from '@playwright/test';
+import path from 'node:path';
+
+const stateFor = (role: string) => path.join(__dirname, `../.auth/${role}.json`);
+
+test('only an admin can delete a report', async ({ browser }) => {
+  const adminContext = await browser.newContext({ storageState: stateFor('admin') });
+  const viewerContext = await browser.newContext({ storageState: stateFor('viewer') });
+
+  try {
+    const adminPage = await adminContext.newPage();
+    const viewerPage = await viewerContext.newPage();
+    await adminPage.goto('/dashboard');
+    await viewerPage.goto('/dashboard');
+
+    await expect(adminPage.getByRole('button', { name: 'Delete report' })).toBeVisible();
+    await expect(viewerPage.getByRole('button', { name: 'Delete report' })).toHaveCount(0);
+
+    // Hiding the button isn't access control, so ask the server directly.
+    const response = await viewerContext.request.delete('/api/reports/1');
+    expect(response.status()).toBe(403);
+  } finally {
+    await adminContext.close();
+    await viewerContext.close();
+  }
+});
+```
+
+The last request matters most. A hidden button only changes the page, and the API is what has to refuse.
+
+<Callout type="gotcha" title="browser.newContext() inherits your project's session">
+  Inside a test, a new context picks up options from `use`, including `storageState`. If the project signs everyone in,
+  a "fresh" context is signed in too. Pass `storageState: { cookies: [], origins: [] }` when you need a signed-out one.
+</Callout>
+
+To see what each role did when a test fails, turn on `trace` in the config. Contexts you create are recorded too. Calling `context.tracing.start()` yourself while `trace` is on throws `Tracing has been already started`.
+
+## Keeping secrets safe
+
+### Environment variables
+
+Read credentials from the environment, and stop with a clear message when one is missing. Otherwise the failure is a confusing `locator.fill: value: expected string, got undefined`.
+
+```ts title="tests/helpers/env.ts"
+export function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`Set ${name} before running the tests`);
+  return value;
+}
+```
+
+Call it inside a test or setup step, not at the top of a file. Top-level code also runs for `--list`, which shouldn't need secrets.
+
+For local runs, keep values in a `.env` file and load it from the config, which every worker reads. Node has this built in:
+
+```ts title="playwright.config.ts"
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+
+const envFile = path.join(__dirname, '.env');
+if (existsSync(envFile)) process.loadEnvFile(envFile);
+```
+
+The `existsSync()` check matters because `process.loadEnvFile()` throws when the file is missing, as it will be in CI.
+
+```text title=".gitignore"
+.auth/
+.env
+```
+
+<Callout type="gotcha" title="Prefix your variable names">
+  Values already in the environment win over the `.env` file. `USERNAME` is set by Windows and `USER` by macOS
+  and Linux, so a file defining them can be silently ignored. Names like `TEST_USER_EMAIL` avoid the clash.
+</Callout>
+
+In CI, store the values as secrets and pass them to the step that needs them:
+
+```yaml title=".github/workflows/e2e.yml"
+- name: Run Playwright
+  run: npx playwright test
+  env:
+    TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+```
+
+Larger teams can fetch credentials from a secrets manager such as Vault or AWS Secrets Manager before the run. Either way, use dedicated test accounts with the fewest permissions that work, and never reuse a real person's password.
+
+### Secrets leak through artifacts
+
+Keeping a password out of the code doesn't keep it out of the output. We signed in with tracing on and searched the resulting files:
+
+| Where                                 | What was exposed                          |
+| ------------------------------------- | ----------------------------------------- |
+| `trace.zip` action log                | The password passed to `fill()`           |
+| `trace.zip` network log and resources | The password in the request body          |
+| `trace.zip` network log               | The session cookie                        |
+| Error from a failed `fill()`          | The value, as `fill("…")` in the call log |
+
+So treat traces and reports like credentials:
+
+- Set `trace: 'off'` on the setup project, as in the config above. That run left no trace file.
+- Keep CI artifacts private and on a short retention period.
+- Use throwaway accounts on a test environment, so a leaked password opens nothing valuable.
+
+<Callout type="warn" title="Log masking doesn't cover artifacts">
+  CI systems hide registered secrets in their console logs, but they can't look inside a zipped trace you
+  upload.
+</Callout>
+
+## OAuth and single sign-on
+
+With OAuth or SSO, your app sends the user to an identity provider and receives a code when they return. Real providers are hard to automate, since they may add CAPTCHAs or block scripted logins. Pick the cheapest approach that proves what you need:
+
+| Approach                         | Good for                               | Trade-off                                 |
+| -------------------------------- | -------------------------------------- | ----------------------------------------- |
+| Saved state from setup           | Most tests, which just need a session  | Doesn't exercise the sign-in itself       |
+| API login or injected token      | Fast setup when the app allows it      | Needs a test-only route or token          |
+| Mocked provider redirect         | Your app's callback and error handling | Doesn't touch the real provider           |
+| Test tenant at the real provider | A few end-to-end smoke tests           | Slower, and depends on an outside service |
+
+Keep the full flow to a few smoke tests, and let everything else start from saved state.
+
+### Mocking the provider
+
+<Callout type="gotcha" title="Routes don't see redirects">
+  `page.route()` doesn't run for a request that came from a server redirect. A route on the provider's URL was
+  never called when the app sent a `302` there, in Chromium, Firefox or WebKit. Intercept your app's own start
+  URL instead.
+</Callout>
+
+WebKit also refuses to fulfil a route with a redirect status, so this helper sends the browser onward with a small page. It works in all three engines:
+
+```ts title="tests/helpers/skip-provider.ts"
+import type { Page } from '@playwright/test';
+
+export async function skipProvider(page: Page, result: Record<string, string>) {
+  await page.route('**/oauth/start', async (route) => {
+    // Let the app create its state, but stop before it leaves for the provider.
+    const response = await route.fetch({ maxRedirects: 0 });
+    const authorize = new URL(response.headers().location);
+
+    const callback = new URL(authorize.searchParams.get('redirect_uri')!);
+    callback.searchParams.set('state', authorize.searchParams.get('state')!);
+    for (const [key, value] of Object.entries(result)) callback.searchParams.set(key, value);
+
+    await route.fulfill({
+      contentType: 'text/html',
+      body: `<script>location.replace(${JSON.stringify(callback.href)})</script>`,
+    });
+  });
+}
+```
+
+```ts title="tests/oauth.spec.ts"
+import { test, expect } from '@playwright/test';
+import { skipProvider } from './helpers/skip-provider';
+
+test.use({ storageState: { cookies: [], origins: [] } });
+
+test('signs in when the provider approves', async ({ page }) => {
+  await skipProvider(page, { code: 'test-code' });
+  await page.goto('/login');
+  await page.getByRole('link', { name: 'Continue with Acme' }).click();
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+});
+
+test('explains what happened when the user refuses', async ({ page }) => {
+  await skipProvider(page, { error: 'access_denied' });
+  await page.goto('/login');
+  await page.getByRole('link', { name: 'Continue with Acme' }).click();
+  await expect(page.getByRole('alert')).toBeVisible();
+});
+```
+
+This only fakes the browser's side. Your server still has to exchange the code with the provider, so the test environment must accept `test-code` or point at a fake provider.
+
+Also test that the callback rejects a forged `state` value. That check is what stops an attacker from completing a sign-in on someone else's behalf.
+
+### Sign-in popups
+
+Some providers open in a popup. Start waiting before the click, and do the same for the popup closing, because it can close as soon as you approve:
+
+```ts title="tests/oauth-popup.spec.ts"
+const popupOpened = page.waitForEvent('popup');
+await page.getByRole('button', { name: 'Acme popup' }).click();
+const popup = await popupOpened;
+
+const popupClosed = popup.waitForEvent('close');
+await popup.getByRole('link', { name: 'Allow' }).click();
+await popupClosed;
+
+await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+```
+
+### Providers you can't script
+
+When a flow can't be automated, sign in by hand once and save the session. Codegen can do this:
+
+```bash
+npx playwright codegen --save-storage=.auth/sso.json https://app.example.test
+```
+
+Complete the sign-in in the window that opens, then close it. The file works like any other saved state until the session expires, so you'll need to repeat this from time to time.
+
+### Multi-factor codes
+
+Authenticator apps use time-based one-time passwords (TOTP), and a test can generate the same codes from the account's secret. The `otpauth` package does this, or you can use Node's crypto module:
+
+```ts title="tests/helpers/totp.ts"
+import { createHmac } from 'node:crypto';
+
+const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+function decodeBase32(secret: string): Buffer {
+  const clean = secret.replace(/[\s=]/g, '').toUpperCase();
+  const bits = [...clean].map((c) => ALPHABET.indexOf(c).toString(2).padStart(5, '0')).join('');
+  const bytes = bits.match(/.{8}/g) ?? [];
+  return Buffer.from(bytes.map((byte) => parseInt(byte, 2)));
+}
+
+export function totp(secret: string, now = Date.now()): string {
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(now / 30_000)));
+
+  const hash = createHmac('sha1', decodeBase32(secret)).update(counter).digest();
+  const offset = hash[hash.length - 1] & 0xf;
+  const code = (hash.readUInt32BE(offset) & 0x7fffffff) % 1_000_000;
+  return String(code).padStart(6, '0');
+}
+```
+
+```ts title="tests/mfa.spec.ts"
+await page.getByLabel('Authentication code').fill(totp(requireEnv('TEST_TOTP_SECRET')));
+await page.getByRole('button', { name: 'Verify' }).click();
+await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+```
+
+The TOTP secret is as sensitive as a password, so store it the same way. Codes sent by email or SMS need a test inbox service with an API, such as Mailosaur.
+
+For CAPTCHAs, don't try to solve them in tests. Turn them off in the test environment, or use the test keys your CAPTCHA provider publishes.
+
+## Interview angle
+
+- **How do you prove logout really worked?** Save the session cookie, log out, then replay it from a separate client and expect a `401`. A redirect only shows what the browser did.
+- **How do you avoid logging in before every test?** Sign in once in a setup project, save `storageState` to a file, and point `use.storageState` at it.
+- **What doesn't `storageState()` save?** Session storage, and IndexedDB unless you pass `indexedDB: true`.
+- **Why can a logout test break other tests?** Saved state shares one server session, so ending it signs out every test using that file. Use a dedicated account.
+- **How do you test role-based access?** Open one browser context per role, check the UI, then call the API as the lesser role and expect a `403`.
+- **Where can a password leak even if it's in an environment variable?** Traces record typed values and request bodies, and a failed `fill()` prints its value. Turn tracing off for setup and keep artifacts private.
+- **Why might `page.route()` miss your identity provider?** Routes don't run for requests that follow a server redirect, so intercept the first request in the chain.
+- **How do you automate TOTP?** Store the account's secret safely and generate the current code in the test.

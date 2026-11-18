@@ -65,7 +65,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ 11 Mobile web
 - [x] ⇉ 12 Forms
 - [x] ⇉ 13 File uploads and downloads
-- [ ] ⇉ 14 Security and authentication
+- [x] ⇉ 14 Security and authentication
 - [ ] ⇉ 15 Maintainability and Page Object Model
 - [ ] ⇉ 16 Real-world e-commerce project
 
@@ -263,3 +263,8 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   `testInfo.outputPath()` in place of `fs.unlink()` in `afterAll`. Measured differences are in the chapter: a 404 or 500 gives no event, `canceled`, or a WebKit "success" holding the error body, and `postDataBuffer()` left the file out of
   a multipart request on Chromium. Every code sample and behaviour ran on desktop Chromium, Firefox and WebKit in a throwaway project against a local fixture, since removed. **Not run:** headed mode, so the inline PDF behaviour is left out of the notes.
   `fileChooser` is now an `ApiRef` receiver. Chapter 14 is now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 14 must move those to chapter 15.
+- 2026-11-19: Chapter 14 notes follow the installed Playwright (1.65.1) where the reference PDF differs: a redirect and a missing cookie don't prove logout, so the notes replay the old session (a cookie-only logout still returned `200`); `context.tracing.start()` throws while `trace` is on;
+  `browser.newContext()` in a test inherits `use.storageState`; contexts close in `try`/`finally` instead of `afterAll`; and credentials use prefixed names, because existing variables such as `USER` win over a `.env` file. Added from testing: `page.route()` never ran for a provider reached through a server redirect,
+  WebKit refuses to fulfil a `302`, traces hold the typed password and session cookie, a failed `fill()` prints its value, and Back showed a cached private page in Chromium and Firefox without `no-store`. Every code sample ran on desktop Chromium, Firefox and WebKit in a throwaway project against a local fixture, since removed.
+  **Not run:** `codegen --save-storage` (it needs a window, so its flags come from the CLI help), the GitHub Actions snippet, real identity providers, and the `otpauth` and `dotenv` packages, which the unattended session could not install, so the notes use `node:crypto` (checked against the RFC 6238 vectors) and `process.loadEnvFile()`.
+  Statements that providers may block scripted logins and that CI log masking doesn't reach artifacts are general guidance and weren't measured. Chapter 15 is now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 15 must move those to chapter 16.

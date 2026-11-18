@@ -21,6 +21,7 @@ const pages = [
   '/chapters/12-forms',
   '/chapters/13-files',
   '/chapters/14-security-auth',
+  '/chapters/15-maintainability',
   '/playground',
   '/flashcards',
   '/config',

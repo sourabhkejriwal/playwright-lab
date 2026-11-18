@@ -1,0 +1,75 @@
+{
+  "chapter": 14,
+  "cards": [
+    {
+      "id": "security-auth/prove-logout",
+      "front": "How do you prove logout ended the session on the server?",
+      "back": "Save the session cookie before logging out, then replay it from a separate request context and expect a `401`."
+    },
+    {
+      "id": "security-auth/setup-project",
+      "front": "What is a setup project used for in authentication?",
+      "back": "It signs in once and saves the session with `storageState()`. Other projects list it in `dependencies` and start signed in."
+    },
+    {
+      "id": "security-auth/setup-failure",
+      "front": "What happens to dependent tests when the setup project fails?",
+      "back": "They don't run, and the report lists them as did not run."
+    },
+    {
+      "id": "security-auth/storage-state-contents",
+      "front": "What does `storageState()` save by default?",
+      "back": "Cookies, including `HttpOnly` ones, and local storage. IndexedDB needs `indexedDB: true`, and session storage is never saved."
+    },
+    {
+      "id": "security-auth/signed-out-test",
+      "front": "How does one test opt out of the project's saved session?",
+      "back": "Use `test.use({ storageState: { cookies: [], origins: [] } })`."
+    },
+    {
+      "id": "security-auth/new-context-inherits",
+      "front": "Does `browser.newContext()` in a test inherit `use.storageState`?",
+      "back": "Yes. It starts with the project's session unless you pass a different `storageState`."
+    },
+    {
+      "id": "security-auth/relative-state-path",
+      "front": "What is a relative `storageState` path relative to?",
+      "back": "The folder you run Playwright from, not the config file. Build it with `path.join(__dirname, ...)`."
+    },
+    {
+      "id": "security-auth/shared-logout",
+      "front": "Why shouldn't a logout test use the shared saved session?",
+      "back": "Logging out ends that session on the server, which signs out every test using the same state file."
+    },
+    {
+      "id": "security-auth/role-api-check",
+      "front": "Why call the API in a role test when the button is already hidden?",
+      "back": "Hiding a button isn't access control. The server must refuse the action, so expect a `403` for the lesser role."
+    },
+    {
+      "id": "security-auth/trace-secrets",
+      "front": "What can a Playwright trace expose?",
+      "back": "Typed passwords, request bodies and session cookies. Set `trace: 'off'` on the sign-in project and keep artifacts private."
+    },
+    {
+      "id": "security-auth/env-precedence",
+      "front": "A variable is set in the shell and in `.env`. Which value wins with `process.loadEnvFile()`?",
+      "back": "The shell's value. Existing variables aren't replaced, so use prefixed names like `TEST_PASSWORD`."
+    },
+    {
+      "id": "security-auth/route-redirect",
+      "front": "Why might `page.route()` never fire for an identity provider's URL?",
+      "back": "Routes don't run for requests that follow a server redirect. Intercept the first request in the chain."
+    },
+    {
+      "id": "security-auth/webkit-redirect",
+      "front": "Can `route.fulfill()` answer with a `302` in every browser?",
+      "back": "No. WebKit throws `Cannot fulfill with redirect status`, so send a small page that calls `location.replace()`."
+    },
+    {
+      "id": "security-auth/totp",
+      "front": "How can a test pass authenticator-app MFA?",
+      "back": "Keep the account's TOTP secret safe and generate the current code from it during the test."
+    }
+  ]
+}

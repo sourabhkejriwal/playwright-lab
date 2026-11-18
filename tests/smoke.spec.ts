@@ -183,7 +183,18 @@ test.describe('chapters', () => {
     await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
   });
 
-  for (const chapter of ['10-visual-regression', '12-forms', '13-files']) {
+  test('the security chapter renders its notes and quiz', async ({ page }) => {
+    await page.goto('/chapters/14-security-auth');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Security and authentication');
+    await expect(page.getByRole('heading', { level: 2, name: 'Testing logout properly' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'tests/logout.spec.ts' })).toContainText('extraHTTPHeaders');
+    await expect(
+      page.getByRole('main').getByRole('link', { name: 'Chapter 5', exact: true }),
+    ).toHaveAttribute('href', /\/chapters\/05-fixtures\/?$/);
+    await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
+  });
+
+  for (const chapter of ['10-visual-regression', '12-forms', '13-files', '14-security-auth']) {
     test(`chapter ${chapter} fits a 375px screen`, async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 800 });
       await page.goto(`/chapters/${chapter}`);
@@ -225,7 +236,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter shows a pending placeholder', async ({ page }) => {
-    await page.goto('/chapters/14-security-auth');
+    await page.goto('/chapters/15-maintainability');
     await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();
   });
 
@@ -255,7 +266,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter has no table of contents', async ({ page }) => {
-    await page.goto('/chapters/14-security-auth');
+    await page.goto('/chapters/15-maintainability');
     await expect(page.locator('[data-toc]')).toHaveCount(0);
   });
 

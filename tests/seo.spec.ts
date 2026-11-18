@@ -12,8 +12,8 @@ const pages = [
     type: 'article',
   },
   {
-    path: '/chapters/14-security-auth/',
-    title: 'ch14 Security and authentication · playwright-lab',
+    path: '/chapters/15-maintainability/',
+    title: 'ch15 Best practices for maintainability · playwright-lab',
     type: 'website',
   },
   { path: '/playground/', title: 'playground · playwright-lab', type: 'website' },

@@ -1,0 +1,60 @@
+{
+  "chapter": 14,
+  "questions": [
+    {
+      "question": "After logout the app redirects to `/login` and the session cookie is gone. What best proves the session has really ended?",
+      "options": [
+        "Check that the Log out button is no longer visible",
+        "Reload the login page and check its heading",
+        "Replay the old session cookie from a separate client and expect a `401`",
+        "Assert that `context.cookies()` returns an empty array"
+      ],
+      "answer": 2,
+      "explanation": "The other checks only describe the browser. An app can clear the cookie while the server keeps the session alive, and only replaying the old cookie exposes that."
+    },
+    {
+      "question": "An app keeps its access token in session storage. What happens if a test relies on `storageState()` alone?",
+      "options": [
+        "The token is saved like local storage",
+        "The token is missing, so the next context starts signed out",
+        "Playwright throws an error when saving",
+        "The token is saved only with `indexedDB: true`"
+      ],
+      "answer": 1,
+      "explanation": "`storageState()` saves cookies and local storage, plus IndexedDB on request, but never session storage. Copy that data yourself and restore it with `addInitScript()`."
+    },
+    {
+      "question": "A project sets `use.storageState`. What does `browser.newContext()` with no options give you inside a test?",
+      "options": [
+        "A signed-out context, because new contexts are always empty",
+        "An error, because the storage state is already in use",
+        "A context that shares cookies with the `page` fixture",
+        "A separate context that starts with the project's saved session"
+      ],
+      "answer": 3,
+      "explanation": "Contexts created in a test inherit options from `use`, including `storageState`. Pass `storageState: { cookies: [], origins: [] }` to get a signed-out context."
+    },
+    {
+      "question": "Why should the sign-in setup project use `trace: 'off'`?",
+      "options": [
+        "Traces record the typed password and the session cookie",
+        "Tracing stops `storageState()` from saving",
+        "Setup projects can't record traces",
+        "Traces make the saved session expire sooner"
+      ],
+      "answer": 0,
+      "explanation": "A trace holds action values, request bodies and cookies. Anyone who can open that artifact could read the credentials, even if they came from an environment variable."
+    },
+    {
+      "question": "An app answers `/oauth/start` with a `302` to the identity provider. A test's `page.route()` on the provider's URL never runs. Why?",
+      "options": [
+        "Routes can't match another origin",
+        "The glob needs a full regular expression",
+        "Routes don't run for requests that follow a server redirect",
+        "The route must be registered on the browser context"
+      ],
+      "answer": 2,
+      "explanation": "Only the first request in a redirect chain reaches the route handler. Intercept the app's own start URL instead, then send the browser on to the callback."
+    }
+  ]
+}
