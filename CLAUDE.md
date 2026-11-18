@@ -68,11 +68,12 @@ src/
   lib/auto-waiting.ts    auto-waiting explainer's scenarios, steps and action table (pure, tested against real Playwright)
   lib/fixture-graph.ts   fixture graph explainer's scenarios, generated code and run simulator (pure, tested against real Playwright)
   lib/parallel-sim.ts    parallel simulator's suites, shard split, worker schedule and insights (pure, tested against real Playwright)
+  lib/flaky-challenges.ts  "spot the flaky test" challenges and grading (pure, every listing is run on real Playwright)
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
   content/flashcards/    NN-slug.json flashcard deck per chapter
   content/quizzes/       NN-slug.json quiz per chapter
   components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, ChapterStatus, ChapterDone, ChapterProgressSync, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
-  islands/               React interactive components: Playground, LocatorEditor, Flashcards, Quiz, ConfigGenerator, AutoWaitingTimeline, FixtureGraph, ParallelSimulator, CodeText (renders `backticks` as code)
+  islands/               React interactive components: Playground, LocatorEditor, Flashcards, Quiz, ConfigGenerator, AutoWaitingTimeline, FixtureGraph, ParallelSimulator, FlakyChallenges, CodeText (renders `backticks` as code)
   stores/progress.ts     visitor progress in localStorage: chapters read, flashcard reviews, quiz scores
   layouts/BaseLayout.astro
   pages/                 routes; chapters/[slug].astro renders MDX or a "pending" placeholder
@@ -80,6 +81,7 @@ scripts/
   extract-chapters.mjs   PDF → source/chapters/NN-slug.txt (gitignored)
   serve-dist.mjs         tiny static server for tests (see gotchas)
 tests/                   smoke, a11y, playground, locator-engine (compares the engine with real Playwright), and more
+  support/flaky-world.ts the app the flaky challenges run against, with kind and hostile timing
 source/chapters/         raw reference text per chapter + INDEX.tsv: reference only, NEVER committed
 ```
 

@@ -46,7 +46,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ **Explainer: auto-waiting timeline** (actionability checks, step through)
 - [x] ⇉ **Explainer: fixture graph** (setup/teardown order, scopes)
 - [x] ⇉ **Explainer: parallel and shard simulator** (workers/shards sliders → runtime)
-- [ ] ⇉ **"Spot the flaky test"** challenges
+- [x] ⇉ **"Spot the flaky test"** challenges
 - [ ] ⇉ **CI pipeline builder** → GitHub Actions YAML
 - [ ] ⌘K search with Pagefind
 
@@ -150,3 +150,8 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   start-up varies; they are a model, and the 40 seconds of CI setup per shard is an assumption the page states.
 - 2026-11-18: Watch for flakiness: the playground's "re-evaluates when the sample page changes state" failed once on mobile in a full
   run, showing "invalid locator" after `fill`. It then passed 40 repeats and two more full runs.
+- 2026-11-18: "Spot the flaky test" lives at `/flaky`. `tests/flaky-challenges.spec.ts` runs each listing on real Playwright against
+  `tests/support/flaky-world.ts`: the flaky code must pass with kind timing and fail with the output the page shows under hostile
+  timing, and the fix must pass under both, so a challenge can't turn out to be simply broken. A challenge is solved only with the
+  right line and the right cause; some accept several lines, because the bug spans them. Titles name the feature, never the bug.
+  Solved challenges last for the visit only, like the playground's, to keep the saved progress format unchanged.

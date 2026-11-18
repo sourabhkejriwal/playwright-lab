@@ -1,0 +1,22 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import FlakyChallenges from '../islands/FlakyChallenges';
+---
+
+<BaseLayout
+  title="spot the flaky test"
+  description="Read real Playwright tests that pass only sometimes, find the line responsible, name the cause and see the fix."
+>
+  <p class="text-sm text-dim">
+    <span class="text-pass">$</span> drill --flaky
+  </p>
+  <h1 class="mt-3 text-2xl font-semibold text-bright">Spot the flaky test</h1>
+  <p class="mt-3 max-w-prose font-prose text-lg text-muted">
+    Each test below passes on a good day and fails on a bad one. Find the line responsible, say why it fails,
+    and compare your answer with the fix.
+  </p>
+  <noscript>
+    <p class="mt-6 text-sm text-pending">The challenges run in your browser, so they need JavaScript.</p>
+  </noscript>
+  <FlakyChallenges client:visible />
+</BaseLayout>
