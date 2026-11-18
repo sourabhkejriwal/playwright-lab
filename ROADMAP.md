@@ -41,7 +41,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
       strict-mode violation message, suggestion of a better locator; preset challenges
 - [x] ⇉ **Flashcards**: seed from `../pdf/advanced-selectors-interview-questions.md`; reveal, again/good/easy
       with spaced repetition; filter by chapter
-- [ ] ⇉ **Chapter quizzes**: 5 multiple-choice questions per chapter, explanations, score saved
+- [x] ⇉ **Chapter quizzes**: 5 multiple-choice questions per chapter, explanations, score saved
 - [ ] ⇉ **Config generator**: pick browsers, devices, retries, reporters, trace → `playwright.config.ts`
 - [ ] ⇉ **Explainer: auto-waiting timeline** (actionability checks, step through)
 - [ ] ⇉ **Explainer: fixture graph** (setup/teardown order, scopes)
@@ -119,3 +119,9 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   single-key shortcuts, because WCAG 2.1.4 would then require a way to turn them off. The filter lists only chapters that have
   cards, so today it offers "all chapters" and chapter 2; the seed questions are all about selectors. Follow-up: delete
   `src/components/ComingSoon.astro`, which nothing uses now (the unattended session wasn't permitted to remove it).
+- 2026-11-18: The quiz sits at the end of each written chapter that has a quiz file, above "mark chapter as done". Only chapter 2
+  has one today: a quiz tests the notes, so each Phase 5 chapter task should add its 5 questions in
+  `src/content/quizzes/NN-slug.json`, and unwritten chapters show no quiz. Options are shuffled when an attempt starts (in the
+  click handler, so hydration is unaffected); question order stays as written. Answers use radio buttons with a separate "check
+  answer" step, so arrow keys can't commit a choice by accident. The score is saved when the last answer is checked, so leaving
+  before the score screen still counts. An unfinished attempt is not saved.

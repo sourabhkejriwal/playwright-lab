@@ -1,5 +1,5 @@
 ---
-import { render } from 'astro:content';
+import { getEntry, render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import TerminalWindow from '../../components/TerminalWindow.astro';
 import StatusMark from '../../components/StatusMark.astro';
@@ -7,6 +7,7 @@ import ChapterStatus from '../../components/ChapterStatus.astro';
 import ChapterDone from '../../components/ChapterDone.astro';
 import TableOfContents from '../../components/TableOfContents.astro';
 import CodeCopy from '../../components/CodeCopy.astro';
+import Quiz from '../../islands/Quiz';
 import { mdxComponents } from '../../components/mdx';
 import { getChapters, type ChapterWithStatus } from '../../lib/chapters';
 import { pad } from '../../data/chapters';
@@ -28,6 +29,7 @@ interface Props {
 const { chapter, prev, next } = Astro.props;
 const written = chapter.status === 'ready' && chapter.entry;
 const { Content, headings } = written ? await render(chapter.entry!) : { Content: null, headings: [] };
+const quiz = written ? await getEntry('quizzes', `${pad(chapter.num)}-${chapter.slug}`) : undefined;
 const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
 const hasToc = tocHeadings.length >= 2;
 ---
@@ -69,6 +71,20 @@ const hasToc = tocHeadings.length >= 2;
           </TerminalWindow>
         )}
       </div>
+
+      {quiz && (
+        <section aria-labelledby="chapter-quiz" class="mt-12">
+          <h2 id="chapter-quiz" class="text-xl font-semibold text-bright">
+            Chapter quiz
+          </h2>
+          <noscript>
+            <p class="mt-3 text-sm text-pending">The quiz runs in your browser, so it needs JavaScript.</p>
+          </noscript>
+          <TerminalWindow title={`ch${pad(chapter.num)}.quiz.ts`} class="mt-4">
+            <Quiz client:visible slug={chapter.slug} questions={quiz.data.questions} />
+          </TerminalWindow>
+        </section>
+      )}
 
       {Content && <ChapterDone slug={chapter.slug} title={`ch${pad(chapter.num)}.spec.ts`} />}
 

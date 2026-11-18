@@ -63,11 +63,12 @@ src/
   lib/url.ts             url(): base-path-aware internal links
   lib/study-schema.ts    Zod schemas for flashcard decks and quizzes
   lib/flashcards.ts      spaced repetition: intervals, due dates, the study queue (pure, tested in Node)
+  lib/quiz.ts            shuffles a question's options and keeps the answer index right (pure, tested in Node)
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
   content/flashcards/    NN-slug.json flashcard deck per chapter
   content/quizzes/       NN-slug.json quiz per chapter
   components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, ChapterStatus, ChapterDone, ChapterProgressSync, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
-  islands/               React interactive components: Playground, LocatorEditor, Flashcards (planned: Quiz, …)
+  islands/               React interactive components: Playground, LocatorEditor, Flashcards, Quiz, CodeText (renders `backticks` as code)
   stores/progress.ts     visitor progress in localStorage: chapters read, flashcard reviews, quiz scores
   layouts/BaseLayout.astro
   pages/                 routes; chapters/[slug].astro renders MDX or a "pending" placeholder
@@ -114,6 +115,7 @@ The site looks like a Playwright test run in a dark terminal.
 - A chapter becomes ● ready on the site as soon as its MDX exists and isn't a draft. It shows ✓ read only for a visitor
   who has read it: static pages ship the unread state and `ChapterProgressSync` applies saved progress in the browser
   (use `<ChapterStatus>` for a chapter's mark, and the `data-if-read`/`data-if-unread` attributes for anything else).
+- A written chapter shows its quiz automatically once `src/content/quizzes/NN-slug.json` exists, so add the quiz along with the notes.
 - Flashcards and quizzes are JSON, one file per chapter, named like the chapter's MDX: `src/content/flashcards/NN-slug.json`
   (`{ chapter, cards: [{ id, front, back }] }`) and `src/content/quizzes/NN-slug.json`
   (`{ chapter, questions: [{ question, options, answer, explanation }] }`). Schemas are in `src/lib/study-schema.ts`.
@@ -150,6 +152,7 @@ Repo setting needed once: Settings → Pages → Source: **GitHub Actions**.
 - Never put a `//` comment inside a one-line object in `astro.config.mjs`: it swallows the closing brace.
 - **`robots.txt` is only honoured at a domain root.** Under the `/playwright-lab/` project path crawlers ignore it, so
   it takes effect only with a custom domain or a user site. Page-level `noindex` works either way.
+- **`client:visible` islands don't hydrate off-screen.** A test must scroll to one first (`scrollIntoViewIfNeeded()`), or its controls never appear.
 - **Changing the playground's sample page or engine?** Add the new cases to `expressions` in `tests/locator-engine.spec.ts`:
   real Playwright is the reference. Code touching the iframe must not use `instanceof` (its elements belong to another
   window), and the iframe needs `allow-scripts` in its sandbox or axe hangs.

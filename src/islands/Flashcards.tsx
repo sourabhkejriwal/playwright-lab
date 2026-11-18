@@ -11,6 +11,7 @@ import {
   type Deck,
 } from '../lib/flashcards';
 import { $progress, loadProgress, saveFlashcardReview, type FlashcardGrade } from '../stores/progress';
+import CodeText from './CodeText';
 
 interface Session {
   chapter: string;
@@ -25,22 +26,6 @@ const GRADES: { grade: FlashcardGrade; tone: string }[] = [
   { grade: 'good', tone: 'text-pass hover:border-pass' },
   { grade: 'easy', tone: 'text-info hover:border-info' },
 ];
-
-/** Card text is plain, with code in `backticks`. */
-function CardText({ text }: { text: string }) {
-  return text.split(/`([^`]+)`/).map((part, index) =>
-    index % 2 === 1 ? (
-      <code
-        key={index}
-        className="rounded-[4px] border border-line bg-raised px-1 font-mono text-[0.875em] break-words text-purple"
-      >
-        {part}
-      </code>
-    ) : (
-      part
-    ),
-  );
-}
 
 export default function Flashcards({ decks }: { decks: Deck[] }) {
   const progress = useStore($progress);
@@ -135,7 +120,7 @@ export default function Flashcards({ decks }: { decks: Deck[] }) {
             tabIndex={-1}
             className="font-prose text-lg leading-relaxed font-medium text-bright outline-none"
           >
-            <CardText text={card.front} />
+            <CodeText text={card.front} />
           </h2>
 
           {session.revealed ? (
@@ -148,7 +133,7 @@ export default function Flashcards({ decks }: { decks: Deck[] }) {
                 className="border-t border-line pt-5 font-prose leading-relaxed text-text outline-none"
               >
                 <p>
-                  <CardText text={card.back} />
+                  <CodeText text={card.back} />
                 </p>
               </div>
               <div role="group" aria-label="How well did you know it?" className="grid grid-cols-3 gap-2">
