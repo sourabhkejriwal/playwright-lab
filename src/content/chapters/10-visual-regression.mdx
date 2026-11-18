@@ -1,0 +1,336 @@
+---
+chapter: 10
+title: Visual regression testing
+summary: Compare screenshots against approved baselines, set tolerances you can defend, remove dynamic content, and keep rendering the same between machines and CI.
+readingMinutes: 12
+---
+
+import { url as siteUrl } from '../../lib/url';
+
+## What a visual test adds
+
+A functional test can pass while the button it clicked is hidden behind a banner, the wrong color, or half off the screen. A **visual regression test** compares what the page looks like now with an image you approved earlier, called the **baseline** or golden file.
+
+The loop has four steps:
+
+1. Capture the page or an element.
+2. Compare it with the baseline, pixel by pixel.
+3. Fail if too many pixels differ, and save images showing the difference.
+4. A person decides: fix the bug, or approve the new look by updating the baseline.
+
+## A screenshot isn't an assertion
+
+<ApiRef name="page.screenshot()" /> only saves an image. It can't fail because the page looks wrong, so it
+gives you no coverage. `toHaveScreenshot()` is the assertion.
+
+```ts title="tests/visual.spec.ts"
+import { test, expect } from '@playwright/test';
+
+test('debugging aid: never fails on appearance', async ({ page }) => {
+  await page.goto('/pricing');
+  await page.screenshot({ path: 'test-results/pricing.png', fullPage: true });
+});
+
+test('pricing page looks right', async ({ page }) => {
+  await page.goto('/pricing');
+  await expect(page).toHaveScreenshot('pricing.png');
+});
+```
+
+The two also start from different defaults, chosen for their different jobs.
+
+| Behavior               | `page.screenshot()` | `toHaveScreenshot()`                |
+| ---------------------- | ------------------- | ----------------------------------- |
+| Compares to baseline   | No                  | Yes                                 |
+| `animations`           | `'allow'`           | `'disabled'`                        |
+| `caret`                | `'hide'`            | `'hide'`                            |
+| `scale`                | `'device'`          | `'css'`                             |
+| Waits for a still page | No                  | Yes, two matching captures in a row |
+
+With `scale: 'css'`, a page at `deviceScaleFactor: 2` still produces a baseline at its CSS size. A 400×300 viewport gave a 400×300 baseline, while `page.screenshot()` gave 800×600.
+
+### Capture only what you need
+
+```ts title="tests/visual.spec.ts"
+// The visible viewport
+await expect(page).toHaveScreenshot('home.png');
+
+// The whole scrollable page
+await expect(page).toHaveScreenshot('home-full.png', { fullPage: true });
+
+// One component
+await expect(page.getByRole('navigation')).toHaveScreenshot('main-nav.png');
+```
+
+Prefer element screenshots for components. They run faster, unrelated changes elsewhere can't break them, and a failure points straight at the problem. Keep full-page shots for a few key pages.
+
+## The baseline workflow
+
+### First run
+
+There's nothing to compare with yet, so Playwright writes the baseline and **fails the test on purpose**.
+
+```text
+Error: A snapshot doesn't exist at tests/visual.spec.ts-snapshots/pricing-chromium-darwin.png, writing actual.
+```
+
+Look at the new image before you trust it, because it records whatever the page looked like, bugs included. Then commit it, and the next run compares against it.
+
+### File names
+
+The default path combines the test file, your name, the project and the operating system.
+
+```text
+tests/visual.spec.ts-snapshots/pricing-chromium-darwin.png
+                               │       │        └ platform
+                               │       └ project name
+                               └ name you passed
+```
+
+The middle part is the **project name** from your config, not the browser. A project called `desktop` produces `pricing-desktop-darwin.png`. The platform suffix is why a baseline made on a Mac is never used on Linux.
+
+Names must end in `.png` or `.webp`. Leave the name out and Playwright builds one from the test title, but descriptive names such as `checkout-summary-error.png` are easier to review. An array makes subfolders: `toHaveScreenshot(['checkout', 'summary.png'])`.
+
+### When a comparison fails
+
+```text
+Error: expect(page).toHaveScreenshot(expected) failed
+  20000 pixels (ratio 0.17 of all image pixels) are different.
+```
+
+The test's folder in `test-results/` receives three files, and the HTML report shows them side by side with a slider.
+
+| File                   | Contents                     |
+| ---------------------- | ---------------------------- |
+| `pricing-expected.png` | The approved baseline        |
+| `pricing-actual.png`   | What the page looks like now |
+| `pricing-diff.png`     | The differences, highlighted |
+
+### Update on purpose
+
+If the change is a bug, fix the code. If it's intended, update the baseline and commit the new image with the code change, so a reviewer sees both together.
+
+```bash
+npx playwright test tests/visual.spec.ts --update-snapshots
+```
+
+| Command                      | Missing baseline             | Baseline that differs                   |
+| ---------------------------- | ---------------------------- | --------------------------------------- |
+| No flag                      | Written, and the test fails  | Test fails                              |
+| `--update-snapshots` or `-u` | Written, and the test passes | Rewritten                               |
+| `--update-snapshots=all`     | Written, and the test passes | Rewritten, and so is every matching one |
+| `--update-snapshots=none`    | Not written, the test fails  | Test fails                              |
+
+Plain `-u` means `changed`. It leaves a baseline alone when the new capture is within tolerance, so your diff stays small. `--ignore-snapshots` skips these assertions entirely, which helps when you only want the functional checks.
+
+<Callout type="gotcha" title="a missing baseline in CI is written, then thrown away">
+  Under `CI=true` a missing baseline still fails the test and is written to the runner, where it disappears
+  with the job. Commit baselines to the repository, and use `--update-snapshots=none` if you want a run that
+  never writes one.
+</Callout>
+
+## Set tolerances you can defend
+
+Three options decide how much difference is acceptable.
+
+| Option              | Question it answers                                  | Default |
+| ------------------- | ---------------------------------------------------- | ------- |
+| `threshold`         | How different must one pixel be to count as changed? | `0.2`   |
+| `maxDiffPixels`     | How many changed pixels are allowed?                 | None    |
+| `maxDiffPixelRatio` | What share of all pixels may change, from 0 to 1?    | None    |
+
+Set them for one assertion or for the whole project.
+
+```ts title="playwright.config.ts" {4-7}
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  expect: {
+    toHaveScreenshot: { maxDiffPixelRatio: 0.01 },
+  },
+});
+```
+
+```ts title="tests/visual.spec.ts"
+await expect(page).toHaveScreenshot('chart.png', { maxDiffPixels: 150 });
+```
+
+`threshold` is a **perceived color difference**, not a percentage of a color's value. Channels count differently, so a large change in blue can matter less than a small change in gray. These are real results on a black page:
+
+| Page changes to | `threshold` | Result |
+| --------------- | ----------- | ------ |
+| `#333333`       | `0.2`       | Passes |
+| `#3c3c3c`       | `0.2`       | Fails  |
+| `#000096`       | `0.2`       | Passes |
+| `#0000ff`       | `0.2`       | Fails  |
+| `#000096`       | `0.05`      | Fails  |
+
+<Callout type="warn" title="the default can miss a visible color change">
+  Black to dark blue passed with every pixel on the page changed, because each pixel stayed under the default
+  `threshold`. If exact brand colors matter, lower `threshold` for that assertion.
+</Callout>
+
+- If you set both `maxDiffPixels` and `maxDiffPixelRatio`, the stricter limit applies.
+- A different image size always fails, however loose the limits are.
+- Raise limits only as far as the noise you've measured. A very high `maxDiffPixels` turns the test into one that can't fail.
+
+## Remove what changes on its own
+
+A page with live content never matches. Fix the cause when you can, and hide it only when you can't.
+
+### Freeze time and data
+
+Controlling the input keeps the content in the screenshot, so it's still tested.
+
+```ts title="tests/orders.spec.ts" {3,6-8}
+import { test, expect } from '@playwright/test';
+
+test.use({ locale: 'en-US', timezoneId: 'UTC' });
+
+test('orders page', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-01-15T10:00:00Z'));
+  await page.route('**/api/orders', (route) => route.fulfill({ json: [{ id: 1001 }, { id: 1002 }] }));
+
+  await page.goto('/orders');
+  await expect(page.getByRole('listitem')).toHaveCount(2);
+  await expect(page).toHaveScreenshot('orders.png');
+});
+```
+
+Wait for the real content first, as the `toHaveCount()` line does. Otherwise a loading state that holds still can become your baseline.
+
+### Mask an element
+
+`mask` paints a solid box over each matching element, pink (`#FF00FF`) unless you set `maskColor`.
+
+```ts title="tests/visual.spec.ts"
+await expect(page).toHaveScreenshot('dashboard.png', {
+  mask: [page.getByTestId('updated-at'), page.getByRole('img', { name: 'User avatar' })],
+});
+```
+
+<Callout type="gotcha" title="a mask that matches nothing passes silently">
+  If the locator finds no element, nothing is masked and no error is raised. Assert that the element is
+  visible first. A mask also follows its element's size, so a masked box that grows from 200px to 260px wide
+  still fails.
+</Callout>
+
+### Hide elements with a stylesheet
+
+`stylePath` applies CSS only while the screenshot is taken. It suits things that should disappear everywhere, such as a chat widget.
+
+```css title="tests/screenshot.css"
+.live-chat {
+  visibility: hidden;
+}
+```
+
+```ts title="playwright.config.ts" {3}
+export default defineConfig({
+  expect: {
+    toHaveScreenshot: { stylePath: './tests/screenshot.css' },
+  },
+});
+```
+
+`visibility: hidden` keeps the element's space, so the layout around it doesn't shift.
+
+### Animations
+
+You don't need a global CSS reset to stop animations, because `toHaveScreenshot()` defaults to `animations: 'disabled'`. Finite animations jump to their end state, and infinite ones return to their start.
+
+Anything that keeps changing another way, such as a ticking counter driven by JavaScript, fails with this message:
+
+```text
+Failed to take two consecutive stable screenshots.
+```
+
+Freeze it with `page.clock` or mask it.
+
+## Themes and languages
+
+Each theme or language needs its own baselines. Separate projects give you that without changing the tests, because the project name is part of the file name.
+
+```ts title="playwright.config.ts"
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  projects: [
+    { name: 'light', use: { ...devices['Desktop Chrome'], colorScheme: 'light' } },
+    { name: 'dark', use: { ...devices['Desktop Chrome'], colorScheme: 'dark' } },
+    { name: 'german', use: { ...devices['Desktop Chrome'], locale: 'de-DE' } },
+  ],
+});
+```
+
+`colorScheme` only drives `prefers-color-scheme`. If your app stores the theme itself, set it before the page's scripts run with <ApiRef name="page.addInitScript()" />.
+
+```ts title="tests/theme.spec.ts"
+await page.addInitScript(() => localStorage.setItem('theme', 'dark'));
+await page.goto('/');
+await expect(page).toHaveScreenshot('home-dark.png');
+```
+
+Prefer this to masking translated text, because a mask would hide the overflow bugs that long German words cause.
+
+## Keep rendering consistent
+
+Fonts, anti-aliasing and browser builds differ between operating systems, so a Mac baseline won't match a Linux CI run. The fix is to **create baselines in the same environment that checks them**.
+
+The most reliable place is CI itself. Run this workflow by hand, download the artifact, and commit the images.
+
+```yaml title=".github/workflows/update-baselines.yml"
+name: Update visual baselines
+on: workflow_dispatch
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --user 1001
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: npx playwright test --update-snapshots
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: visual-baselines
+          path: tests/**/*-snapshots/
+```
+
+Your normal test job should use the same image. <a href={siteUrl('chapters/07-ci-cd')}>Chapter 7</a> covers that job and how to upload the HTML report, which is where you'll review a failed comparison.
+
+To update from your own machine, run the same image locally.
+
+```bash
+docker run --rm --init --ipc=host \
+  -v "$(pwd)":/work -v /work/node_modules -w /work \
+  mcr.microsoft.com/playwright:v1.65.1-noble \
+  sh -c "npm ci && npx playwright test --update-snapshots"
+```
+
+The second `-v` keeps the container's Linux packages out of your project's `node_modules`.
+
+<Callout type="gotcha" title="linux doesn't mean the same machine">
+  On Apple Silicon, Docker normally runs the arm64 image, while `ubuntu-latest` is x64. Rendering can differ
+  between them, yet both files end in `-linux.png`. If baselines made this way fail in CI, generate them in
+  CI.
+</Callout>
+
+Keep the image tag equal to your `@playwright/test` version, and expect to refresh baselines when you upgrade, since a new browser build can render slightly differently.
+
+## Interview angle
+
+- **What's the difference between `page.screenshot()` and `toHaveScreenshot()`?** The first only captures an image. The second waits for a stable page, compares it with a baseline and can fail the test.
+- **Why does the first run fail?** No baseline exists, so Playwright writes one and fails to make you review it.
+- **Why do baselines have the platform in their names?** Rendering differs between operating systems, so each platform keeps its own images.
+- **How do you stop false failures between a laptop and CI?** Generate baselines in the same environment that checks them, usually the official Docker image or the CI job itself.
+- **`threshold` or `maxDiffPixels`?** `threshold` decides whether one pixel counts as changed. `maxDiffPixels` decides how many changed pixels are acceptable.
+- **How do you handle a timestamp?** Freeze it with `page.clock` so it's still tested, or mask it if you can't control it.
+- **Who approves a visual change?** A person reviews the diff, then commits the updated baseline with the code that caused it.

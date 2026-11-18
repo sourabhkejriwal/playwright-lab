@@ -137,6 +137,19 @@ test.describe('chapters', () => {
     await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
   });
 
+  test('the visual regression chapter renders its notes and quiz', async ({ page }) => {
+    await page.goto('/chapters/10-visual-regression');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Visual regression testing');
+    await expect(
+      page.getByRole('heading', { level: 2, name: 'Set tolerances you can defend' }),
+    ).toBeVisible();
+    await expect(page.getByRole('group', { name: 'tests/orders.spec.ts' })).toContainText('setFixedTime');
+    await expect(
+      page.getByRole('main').getByRole('link', { name: 'Chapter 7', exact: true }),
+    ).toHaveAttribute('href', /\/chapters\/07-ci-cd\/?$/);
+    await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
+  });
+
   test('code blocks show a title bar and highlighted lines', async ({ page }) => {
     await page.goto('/chapters/02-selectors');
 
@@ -168,7 +181,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter shows a pending placeholder', async ({ page }) => {
-    await page.goto('/chapters/10-visual-regression');
+    await page.goto('/chapters/11-mobile');
     await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();
   });
 
@@ -198,7 +211,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter has no table of contents', async ({ page }) => {
-    await page.goto('/chapters/10-visual-regression');
+    await page.goto('/chapters/11-mobile');
     await expect(page.locator('[data-toc]')).toHaveCount(0);
   });
 

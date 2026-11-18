@@ -1,0 +1,60 @@
+{
+  "chapter": 10,
+  "questions": [
+    {
+      "question": "A test calls `await page.screenshot({ path: 'home.png' })` and the page's layout is badly broken. What happens?",
+      "options": [
+        "The test fails with a pixel difference",
+        "The test passes, because `page.screenshot()` only saves an image",
+        "Playwright retries until the layout is fixed",
+        "The test fails because no baseline exists"
+      ],
+      "answer": 1,
+      "explanation": "`page.screenshot()` makes no comparison. Use `await expect(page).toHaveScreenshot()` to fail on visual changes."
+    },
+    {
+      "question": "You run a new `toHaveScreenshot('home.png')` assertion for the first time. What happens?",
+      "options": [
+        "The test passes and no file is written",
+        "The test is skipped until you pass `--update-snapshots`",
+        "Playwright writes the baseline and fails the test",
+        "Playwright downloads a baseline from the last CI run"
+      ],
+      "answer": 2,
+      "explanation": "With no baseline to compare, Playwright writes the capture and fails on purpose so you review the image before committing it."
+    },
+    {
+      "question": "What does `threshold: 0.2` control in `toHaveScreenshot()`?",
+      "options": [
+        "Up to 20% of the image's pixels may differ",
+        "How different one pixel's perceived color must be before it counts as changed",
+        "The test may take 20% longer than the timeout",
+        "Each color channel may change by exactly 20%"
+      ],
+      "answer": 1,
+      "explanation": "`threshold` is a per-pixel perceived color difference. `maxDiffPixels` and `maxDiffPixelRatio` limit how many changed pixels are allowed."
+    },
+    {
+      "question": "A screenshot test passes on your Mac, but CI on Ubuntu reports that its baseline is missing or different. What is the best fix?",
+      "options": [
+        "Set `maxDiffPixelRatio: 1` for every assertion",
+        "Delete the platform from the file name and share the Mac image",
+        "Create the baselines in the same environment that CI uses",
+        "Run the test with `--ignore-snapshots` in CI"
+      ],
+      "answer": 2,
+      "explanation": "Fonts and rendering differ between systems. Generating baselines in the CI job or matching Docker image keeps comparisons meaningful."
+    },
+    {
+      "question": "A dashboard shows a live timestamp that you can control from the test. What is the best way to keep the screenshot stable?",
+      "options": [
+        "Freeze the time with `page.clock.setFixedTime()`",
+        "Add a long `waitForTimeout()` before the screenshot",
+        "Raise `maxDiffPixels` until the test passes",
+        "Set `animations: 'allow'`"
+      ],
+      "answer": 0,
+      "explanation": "Freezing the input keeps the timestamp in the image and still tests how it renders. Mask it only when you can't control it."
+    }
+  ]
+}

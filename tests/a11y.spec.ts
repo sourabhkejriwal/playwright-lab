@@ -17,6 +17,7 @@ const pages = [
   '/chapters/08-headless-debugging',
   '/chapters/09-accessibility',
   '/chapters/10-visual-regression',
+  '/chapters/11-mobile',
   '/playground',
   '/flashcards',
   '/config',

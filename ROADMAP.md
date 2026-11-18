@@ -61,7 +61,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ 07 CI/CD pipelines
 - [x] ⇉ 08 Headless testing and debugging
 - [x] ⇉ 09 Accessibility testing with axe-core
-- [ ] ⇉ 10 Visual regression testing
+- [x] ⇉ 10 Visual regression testing
 - [ ] ⇉ 11 Mobile web
 - [ ] ⇉ 12 Forms
 - [ ] ⇉ 13 File uploads and downloads
@@ -236,3 +236,11 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - 2026-11-18: The home page progress bar is now two rows of 8 links instead of one row of 16, because 16 columns left each link under the 24px that WCAG 2.2
   `target-size` asks for. `tests/a11y.spec.ts` now scans with the full WCAG 2.0, 2.1 and 2.2 A and AA tags. That exposed `label-content-name-mismatch` on the theme toggle in the
   light theme, so its decorative `x` is now CSS content and the button keeps the name "light theme".
+- 2026-11-18: Chapter 10 notes follow the installed Playwright (1.65) where the reference PDF differs: `threshold` is a perceived color difference, not a percentage
+  (black to `#000096` passes at the default 0.2 with every pixel changed); the file name holds the project name, not the browser;
+  plain `--update-snapshots` means `changed`, so matching baselines are left alone; and `toHaveScreenshot()` already disables animations, so the CSS reset is dropped. Added from
+  testing: the stricter of `maxDiffPixels` and `maxDiffPixelRatio` wins, a size change always fails, a mask matching nothing passes silently, a resized mask fails, and a missing
+  baseline under `CI` is written to the runner and still fails. Snippets ran in a throwaway project on desktop Chromium on macOS, since removed, and the workflow YAML was parsed.
+  **Not run:** the workflow on GitHub and the `docker run` command, because Docker wasn't available to the unattended session. The advice that arm64 and x64 Linux images can render
+  differently is general guidance and wasn't measured. Chapter 11 is now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes
+  chapter 11 must move those to chapter 12.

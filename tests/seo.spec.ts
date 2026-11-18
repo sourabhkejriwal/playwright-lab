@@ -12,8 +12,8 @@ const pages = [
     type: 'article',
   },
   {
-    path: '/chapters/10-visual-regression/',
-    title: 'ch10 Visual regression testing · playwright-lab',
+    path: '/chapters/11-mobile/',
+    title: 'ch11 Testing mobile web experiences · playwright-lab',
     type: 'website',
   },
   { path: '/playground/', title: 'playground · playwright-lab', type: 'website' },

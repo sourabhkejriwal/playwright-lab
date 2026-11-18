@@ -1,0 +1,80 @@
+{
+  "chapter": 10,
+  "cards": [
+    {
+      "id": "visual-regression/baseline",
+      "front": "What is a baseline in visual testing?",
+      "back": "An approved image of the page or element. Later runs are compared with it, and it is committed to the repository."
+    },
+    {
+      "id": "visual-regression/screenshot-vs-assertion",
+      "front": "Why doesn't `page.screenshot()` give visual coverage?",
+      "back": "It only saves an image and never compares it. `expect(page).toHaveScreenshot()` compares with a baseline and can fail."
+    },
+    {
+      "id": "visual-regression/first-run",
+      "front": "What happens the first time `toHaveScreenshot()` runs?",
+      "back": "Playwright writes the baseline and fails the test, so you review the image before committing it."
+    },
+    {
+      "id": "visual-regression/file-name",
+      "front": "What makes up a default baseline file name?",
+      "back": "The name you passed, the project name and the platform, as in `pricing-chromium-darwin.png`."
+    },
+    {
+      "id": "visual-regression/failure-files",
+      "front": "Which images does a failed comparison produce?",
+      "back": "`-expected.png`, `-actual.png` and `-diff.png`, saved in `test-results/` and shown in the HTML report."
+    },
+    {
+      "id": "visual-regression/update-modes",
+      "front": "How does `-u` differ from `--update-snapshots=all`?",
+      "back": "`-u` means `changed`, so it rewrites only baselines that differ. `all` also rewrites ones that still match."
+    },
+    {
+      "id": "visual-regression/threshold",
+      "front": "What does `threshold` measure?",
+      "back": "The perceived color difference at which one pixel counts as changed, from 0 to 1. The default is 0.2."
+    },
+    {
+      "id": "visual-regression/both-limits",
+      "front": "What if you set both `maxDiffPixels` and `maxDiffPixelRatio`?",
+      "back": "The stricter limit applies."
+    },
+    {
+      "id": "visual-regression/size-change",
+      "front": "Can `maxDiffPixels` allow a screenshot with a different size?",
+      "back": "No. A different image size fails however loose the limits are."
+    },
+    {
+      "id": "visual-regression/mask",
+      "front": "What does the `mask` option do?",
+      "back": "It covers matching elements with a solid box, pink `#FF00FF` by default. Set `maskColor` to change it."
+    },
+    {
+      "id": "visual-regression/mask-no-match",
+      "front": "What happens if a `mask` locator matches nothing?",
+      "back": "Nothing is masked and no error is raised, so assert that the element is visible first."
+    },
+    {
+      "id": "visual-regression/animations",
+      "front": "How does `toHaveScreenshot()` treat animations by default?",
+      "back": "`animations` is `'disabled'`. Finite animations jump to their end state and infinite ones return to their start."
+    },
+    {
+      "id": "visual-regression/unstable",
+      "front": "What does \"Failed to take two consecutive stable screenshots\" mean?",
+      "back": "The page kept changing until the timeout. Freeze the changing content with `page.clock` or mask it."
+    },
+    {
+      "id": "visual-regression/style-path",
+      "front": "What is `stylePath` for?",
+      "back": "It applies a stylesheet only while the screenshot is taken, for example to hide a chat widget."
+    },
+    {
+      "id": "visual-regression/environment",
+      "front": "Where should baselines be generated?",
+      "back": "In the same environment that checks them, such as the CI job or the same Playwright Docker image."
+    }
+  ]
+}
