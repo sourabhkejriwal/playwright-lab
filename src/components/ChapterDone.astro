@@ -1,0 +1,53 @@
+---
+// The end-of-chapter toggle. It stays hidden until its script runs, so it can't be clicked before it works
+// and never shows without JavaScript. The hint text follows the visitor's progress through ChapterProgressSync.
+import TerminalWindow from './TerminalWindow.astro';
+
+interface Props {
+  slug: string;
+  title: string;
+}
+const { slug, title } = Astro.props;
+---
+
+<div data-chapter-done={slug} class="mt-12 hidden data-ready:block">
+  <TerminalWindow title={title}>
+    <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+      <p class="text-muted">
+        <span data-if-unread={slug}>finished these notes? mark them to track your progress.</span>
+        <span data-if-read={slug} hidden>
+          chapter done. click again to mark it unread.
+        </span>
+      </p>
+      <button
+        type="button"
+        aria-pressed="false"
+        class="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-term border border-line-strong bg-raised px-3 text-pass hover:text-bright"
+      >
+        <span aria-hidden="true" class="whitespace-nowrap">
+          [<span class="invisible group-aria-pressed:visible">x</span>]
+        </span>
+        mark chapter as done
+      </button>
+    </div>
+  </TerminalWindow>
+</div>
+
+<script>
+  import { $progress, loadProgress, setChapterRead } from '../stores/progress';
+
+  const control = document.querySelector<HTMLElement>('[data-chapter-done]');
+  const button = control?.querySelector('button');
+  const slug = control?.dataset.chapterDone;
+
+  if (control && button && slug) {
+    $progress.subscribe(({ chapters }) => {
+      button.setAttribute('aria-pressed', String(Object.hasOwn(chapters, slug)));
+    });
+    button.addEventListener('click', () => {
+      setChapterRead(slug, button.getAttribute('aria-pressed') !== 'true');
+    });
+    loadProgress();
+    control.dataset.ready = '';
+  }
+</script>

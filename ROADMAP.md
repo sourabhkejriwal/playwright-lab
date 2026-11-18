@@ -31,7 +31,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 
 - [x] nanostores progress store in `localStorage`: chapter read state, flashcard state, quiz scores
 - [x] Hero and chapter list reflect the user's own progress (read ✓ vs content-ready)
-- [ ] "Mark chapter as done" control at the end of each chapter
+- [x] "Mark chapter as done" control at the end of each chapter
 - [ ] Data format for flashcards and quizzes (content collection, Zod schema) per chapter
 
 ## Phase 4 · Interactive features (each ⇉ independent)
@@ -94,3 +94,6 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   written). ✓ no longer means "written". Pages ship the unread state and one small script (`ChapterProgressSync`) applies
   saved progress, instead of a React island for each of the many marks. "next up" now points at the first unread written
   chapter, because sending readers to an unwritten placeholder is a dead end. The sidebar counter is chapters read / 16.
+- 2026-11-18: "Mark chapter as done" is one toggle button (`aria-pressed`, stable name) on written chapters only, so a
+  visitor can undo it by clicking again. Chapters are marked read only by this button, never by scrolling. It is a small
+  `.astro` script rather than a React island, and it stays hidden until that script runs, so it never appears dead.

@@ -60,7 +60,7 @@ src/
   lib/chapters.ts        getChapters(): joins the list with MDX entries → status ready/pending
   lib/url.ts             url(): base-path-aware internal links
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
-  components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, ChapterStatus, ChapterProgressSync, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
+  components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, ChapterStatus, ChapterDone, ChapterProgressSync, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
   islands/               (planned) React interactive components: Playground, Flashcards, Quiz, …
   stores/progress.ts     visitor progress in localStorage: chapters read, flashcard reviews, quiz scores
   layouts/BaseLayout.astro

@@ -4,6 +4,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import TerminalWindow from '../../components/TerminalWindow.astro';
 import StatusMark from '../../components/StatusMark.astro';
 import ChapterStatus from '../../components/ChapterStatus.astro';
+import ChapterDone from '../../components/ChapterDone.astro';
 import TableOfContents from '../../components/TableOfContents.astro';
 import CodeCopy from '../../components/CodeCopy.astro';
 import { mdxComponents } from '../../components/mdx';
@@ -68,6 +69,8 @@ const hasToc = tocHeadings.length >= 2;
           </TerminalWindow>
         )}
       </div>
+
+      {Content && <ChapterDone slug={chapter.slug} title={`ch${pad(chapter.num)}.spec.ts`} />}
 
       <nav
         class="mt-16 flex justify-between gap-4 border-t border-line pt-6 text-sm"
