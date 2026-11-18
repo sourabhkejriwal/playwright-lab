@@ -76,7 +76,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [ ] Playground behaviour tests (locator → expected highlights)
 - [ ] Cross-browser projects (Firefox, WebKit) in CI
 - [ ] README: architecture, test strategy, badges, screenshots, live link
-- [ ] Add `wcag21a` and `wcag22aa` to `tests/a11y.spec.ts`, and fix the 16 home page links that fail `target-size` (found while writing chapter 9)
+- [x] Add `wcag21a` and `wcag22aa` to `tests/a11y.spec.ts`, and fix the 16 home page links that fail `target-size` (found while writing chapter 9)
 
 ## Notes and decisions log
 
@@ -233,3 +233,6 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   throwaway project on desktop Chromium, since removed. **Not run:** any screen reader, so the live region announcement advice comes from the ARIA
   specification and common guidance. Legal references were not checked against the standards' text. Chapter 10 is now the "unwritten chapter" example in the
   smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 10 must move those to chapter 11.
+- 2026-11-18: The home page progress bar is now two rows of 8 links instead of one row of 16, because 16 columns left each link under the 24px that WCAG 2.2
+  `target-size` asks for. `tests/a11y.spec.ts` now scans with the full WCAG 2.0, 2.1 and 2.2 A and AA tags. That exposed `label-content-name-mismatch` on the theme toggle in the
+  light theme, so its decorative `x` is now CSS content and the button keeps the name "light theme".

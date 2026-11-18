@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+// axe tags are exact: each one selects only the rules added at that WCAG version and level.
+const wcagTags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+
 const pages = [
   '/',
   '/chapters',
@@ -32,7 +35,7 @@ test.use({ reducedMotion: 'reduce' });
 for (const path of pages) {
   test(`no detectable a11y violations on ${path}`, async ({ page }) => {
     await page.goto(path);
-    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
     expect(results.violations).toEqual([]);
   });
 
@@ -40,7 +43,7 @@ for (const path of pages) {
     await page.addInitScript(() => localStorage.setItem('playwright-lab:theme', 'light'));
     await page.goto(path);
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
     expect(results.violations).toEqual([]);
   });
 }

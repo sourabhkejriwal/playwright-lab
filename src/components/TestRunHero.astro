@@ -2,6 +2,7 @@
 // Homepage hero panel: overall progress as a Playwright run summary.
 // One segment per chapter (green = read, blue = ready to read), plus a "next up" link.
 // The full chapter list lives in the sidebar, so this stays compact.
+// Two rows of 8 keep each link at least 24px wide (WCAG 2.2 target size) on a 320px screen.
 // Ships the "nothing read yet" state; ChapterProgressSync applies the visitor's progress.
 import TerminalWindow from './TerminalWindow.astro';
 import { url } from '../lib/url';
@@ -30,7 +31,7 @@ const segments = (c: ChapterWithStatus) =>
   </p>
   <p class="mt-2 text-muted">Running {chapters.length} chapters using 1 learner</p>
 
-  <ol class="mt-4 grid grid-cols-16 gap-1" aria-label="Chapter progress">
+  <ol class="mt-4 grid grid-cols-8 gap-1" aria-label="Chapter progress">
     {chapters.map((c, i) => (
       <li class="reveal" style={`animation-delay:${0.2 + i * 0.05}s`}>
         <a href={url(c.href)} class="block no-underline transition-opacity hover:opacity-80">

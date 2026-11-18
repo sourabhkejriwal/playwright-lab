@@ -1,6 +1,7 @@
 ---
 // Switches between the default dark theme and the opt-in light theme. BaseLayout's head script sets
 // data-theme before first paint, so without JavaScript the attribute is missing and the button stays hidden.
+// The x is CSS content because it's only decoration: as text it would be missing from the button's name (WCAG 2.5.3).
 ---
 
 <button
@@ -11,7 +12,7 @@
   class="hidden cursor-pointer gap-1 rounded-term py-0.5 text-muted hover:text-bright in-data-[theme]:inline-flex"
 >
   <span aria-hidden="true" class="whitespace-nowrap">
-    [<span class="invisible text-pass in-data-[theme=light]:visible">x</span>]
+    [<span class="invisible text-pass before:content-['x'] in-data-[theme=light]:visible"></span>]
   </span>
   light
 </button>
