@@ -16,6 +16,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "extract:chapters": "node scripts/extract-chapters.mjs",
+    "og:image": "node scripts/generate-og-image.mjs",
     "roadmap": "node scripts/run-roadmap.mjs",
     "astro": "astro"
   },

@@ -33,6 +33,7 @@ Never read the whole PDF. Chapter text is pre-extracted (see "Content workflow")
 | `pnpm test:ui`          | Playwright UI mode                                            |
 | `pnpm format`           | Prettier (incl. `.astro`)                                     |
 | `pnpm extract:chapters` | Re-extract `source/chapters/*.txt` from the PDF               |
+| `pnpm og:image`         | Re-render the committed `public/og-image.png`                 |
 | `pnpm roadmap`          | Work through `ROADMAP.md` unattended (see below)              |
 
 ## Unattended roadmap runs
@@ -128,3 +129,5 @@ Repo setting needed once: Settings → Pages → Source: **GitHub Actions**.
 - Shiki theme is `css-variables`; token colors are `--astro-code-*` in `tokens.css`. Stock themes
   (github-dark, github-dark-dimmed) failed axe contrast on comments.
 - Never put a `//` comment inside a one-line object in `astro.config.mjs`: it swallows the closing brace.
+- **`robots.txt` is only honoured at a domain root.** Under the `/playwright-lab/` project path crawlers ignore it, so
+  it takes effect only with a custom domain or a user site. Page-level `noindex` works either way.

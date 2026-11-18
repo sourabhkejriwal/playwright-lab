@@ -33,6 +33,7 @@ const hasToc = tocHeadings.length >= 2;
 <BaseLayout
   title={`ch${pad(chapter.num)} ${chapter.title}`}
   description={chapter.entry?.data.summary ?? chapter.blurb}
+  ogType={written ? 'article' : 'website'}
 >
   <div class:list={[hasToc && 'xl:grid xl:grid-cols-[minmax(0,1fr)_13rem] xl:gap-10']}>
     <article class="min-w-0">

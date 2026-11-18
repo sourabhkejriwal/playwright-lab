@@ -9,12 +9,22 @@ import { url } from '../lib/url';
 interface Props {
   title: string;
   description?: string;
+  /** Open Graph type: "article" for written chapter notes. */
+  ogType?: 'website' | 'article';
+  /** Keep the page out of search results (and drop its canonical link). */
+  noindex?: boolean;
 }
 const {
   title,
   description = 'Interactive study notes, playgrounds, and drills for Playwright test automation.',
+  ogType = 'website',
+  noindex = false,
 } = Astro.props;
 const fullTitle = title === 'playwright-lab' ? title : `${title} · playwright-lab`;
+// Trailing slash to match the sitemap and the URLs GitHub Pages serves.
+const canonical = new URL(Astro.url.pathname.replace(/\/?$/, '/'), Astro.site).href;
+const ogImage = new URL(url('og-image.png'), Astro.site).href;
+const ogImageAlt = 'playwright-lab: learn Playwright by running it.';
 const chapters = await getChapters();
 const currentChapter = chapters.find(
   (c) => url(c.href).replace(/\/$/, '') === Astro.url.pathname.replace(/\/$/, ''),
@@ -27,6 +37,18 @@ const currentChapter = chapters.find(
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
+    {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
+    <meta property="og:site_name" content="playwright-lab" />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    {!noindex && <meta property="og:url" content={canonical} />}
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={ogImageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#0b0e14" />
     <link rel="icon" type="image/svg+xml" href={url('favicon.svg')} />
     <link rel="sitemap" href={url('sitemap-index.xml')} />

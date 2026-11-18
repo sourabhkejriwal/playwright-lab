@@ -3,7 +3,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import ComingSoon from '../components/ComingSoon.astro';
 ---
 
-<BaseLayout title="playground">
+<BaseLayout
+  title="playground"
+  description="Type a Playwright locator and see what it matches on a sample page, with strict-mode errors and suggestions."
+>
   <ComingSoon
     cmd="locator --try"
     title="Locator playground"
