@@ -44,7 +44,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ **Chapter quizzes**: 5 multiple-choice questions per chapter, explanations, score saved
 - [x] ⇉ **Config generator**: pick browsers, devices, retries, reporters, trace → `playwright.config.ts`
 - [x] ⇉ **Explainer: auto-waiting timeline** (actionability checks, step through)
-- [ ] ⇉ **Explainer: fixture graph** (setup/teardown order, scopes)
+- [x] ⇉ **Explainer: fixture graph** (setup/teardown order, scopes)
 - [ ] ⇉ **Explainer: parallel and shard simulator** (workers/shards sliders → runtime)
 - [ ] ⇉ **"Spot the flaky test"** challenges
 - [ ] ⇉ **CI pipeline builder** → GitHub Actions YAML
@@ -138,3 +138,8 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   home page, not the top bar, which has no room for the two explainers still to come.
 - 2026-11-18: Watch for flakiness: the playground's "explains invalid input" failed once on mobile in a full run. Its error wasn't
   captured, and it then passed 40 repeats and two more full runs.
+- 2026-11-18: The fixture graph lives at `/fixture-graph`. `src/lib/fixture-graph.ts` generates the code each scenario shows and
+  simulates its run, and `tests/fixture-graph.spec.ts` runs that same code on the real Playwright CLI and compares what every
+  worker prints. Parallel workers are compared as a set, because either can start first. The two-worker scenario uses one spec
+  file per worker, because tests in one file stay in one worker by default. The graph drawing is hidden from screen readers;
+  the lifetimes list gives each fixture's state and creation count in words.

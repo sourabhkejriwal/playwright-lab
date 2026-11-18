@@ -1,0 +1,39 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import FixtureGraph from '../islands/FixtureGraph';
+import { RULES } from '../lib/fixture-graph';
+
+const inlineCode = (text: string) => text.replace(/`([^`]+)`/g, '<code class="font-mono text-xs">$1</code>');
+---
+
+<BaseLayout
+  title="fixture graph"
+  description="Step through Playwright fixture setup and teardown, and see how test and worker scopes change what runs and when."
+>
+  <p class="text-sm text-dim">
+    <span class="text-pass">$</span> explain --fixture-graph
+  </p>
+  <h1 class="mt-3 text-2xl font-semibold text-bright">Fixture graph</h1>
+  <p class="mt-3 max-w-prose font-prose text-lg text-muted">
+    Fixtures form a graph, and Playwright walks it to decide what to set up, what to share and what to tear
+    down. Pick a scenario and step through a run, with the same output the code prints.
+  </p>
+  <noscript>
+    <p class="mt-6 text-sm text-pending">The explainer runs in your browser, so it needs JavaScript.</p>
+  </noscript>
+  <FixtureGraph client:visible />
+
+  <section aria-labelledby="rules-heading" class="mt-12">
+    <h2 id="rules-heading" class="text-lg font-semibold text-bright">
+      The rules behind the order
+    </h2>
+    <dl class="mt-4 grid gap-3 md:grid-cols-2">
+      {RULES.map(({ name, meaning }) => (
+        <div class="rounded-term border border-line bg-surface p-4">
+          <dt class="text-sm text-pass">{name}</dt>
+          <dd class="mt-1 font-prose text-sm text-text" set:html={inlineCode(meaning)} />
+        </div>
+      ))}
+    </dl>
+  </section>
+</BaseLayout>

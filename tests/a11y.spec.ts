@@ -10,6 +10,7 @@ const pages = [
   '/flashcards',
   '/config',
   '/auto-waiting',
+  '/fixture-graph',
   '/about',
 ];
 
