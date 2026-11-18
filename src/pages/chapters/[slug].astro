@@ -38,6 +38,7 @@ const hasToc = tocHeadings.length >= 2;
   title={`ch${pad(chapter.num)} ${chapter.title}`}
   description={chapter.entry?.data.summary ?? chapter.blurb}
   ogType={written ? 'article' : 'website'}
+  searchable={Boolean(written)}
 >
   <div class:list={[hasToc && 'xl:grid xl:grid-cols-[minmax(0,1fr)_13rem] xl:gap-10']}>
     <article class="min-w-0">
@@ -73,7 +74,7 @@ const hasToc = tocHeadings.length >= 2;
       </div>
 
       {quiz && (
-        <section aria-labelledby="chapter-quiz" class="mt-12">
+        <section aria-labelledby="chapter-quiz" class="mt-12" data-pagefind-ignore>
           <h2 id="chapter-quiz" class="text-xl font-semibold text-bright">
             Chapter quiz
           </h2>

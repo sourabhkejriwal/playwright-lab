@@ -51,6 +51,11 @@
     outline: 2px solid var(--term-info);
     outline-offset: 2px;
   }
+  /* The page behind an open search dialog stays put, and keeps its width. */
+  html:has(dialog[open]) {
+    overflow: hidden;
+    scrollbar-gutter: stable;
+  }
 }
 
 /* Long-form chapter text: Inter for readability, mono for headings and code. */

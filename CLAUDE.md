@@ -26,7 +26,7 @@ Never read the whole PDF. Chapter text is pre-extracted (see "Content workflow")
 | Command                 | What it does                                                  |
 | ----------------------- | ------------------------------------------------------------- |
 | `pnpm dev`              | Dev server on http://localhost:4321                           |
-| `pnpm build`            | Static build to `dist/`                                       |
+| `pnpm build`            | Static build to `dist/`, then the Pagefind search index       |
 | `pnpm preview`          | Build, then serve `dist/` on :4322 (foreground)               |
 | `pnpm check`            | `astro check` type-checking (needs TypeScript 6, see gotchas) |
 | `pnpm test`             | Playwright: e2e + a11y, desktop and mobile projects           |
@@ -48,7 +48,7 @@ Logs go to `.roadmap/logs/`. Work is committed to local `main` and pushing is di
 
 Astro 7 (static output) · React 19 islands · MDX content collections · Tailwind CSS 4 · Shiki
 (`css-variables` theme) · nanostores for client state · CodeMirror 6 (playground) · Playwright +
-@axe-core/playwright · pnpm · Node 24. Planned: Pagefind (search), Motion (explainers).
+@axe-core/playwright · Pagefind (search) · pnpm · Node 24. Planned: Motion (explainers).
 
 ## Layout
 
@@ -64,6 +64,7 @@ src/
   lib/study-schema.ts    Zod schemas for flashcard decks and quizzes
   lib/flashcards.ts      spaced repetition: intervals, due dates, the study queue (pure, tested in Node)
   lib/quiz.ts            shuffles a question's options and keeps the answer index right (pure, tested in Node)
+  lib/search.ts          turns Pagefind results into search dialog rows (pure, tested in Node)
   lib/config-generator.ts  writes playwright.config.ts from the generator's choices (pure, tested by running real Playwright)
   lib/ci-builder.ts      writes a GitHub Actions workflow from the CI builder's choices (pure, its commands are run on real Playwright)
   lib/auto-waiting.ts    auto-waiting explainer's scenarios, steps and action table (pure, tested against real Playwright)
@@ -73,7 +74,7 @@ src/
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
   content/flashcards/    NN-slug.json flashcard deck per chapter
   content/quizzes/       NN-slug.json quiz per chapter
-  components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, ChapterStatus, ChapterDone, ChapterProgressSync, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
+  components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, ChapterStatus, ChapterDone, ChapterProgressSync, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle, Search
   islands/               React interactive components: Playground, LocatorEditor, Flashcards, Quiz, ConfigGenerator, CiBuilder, GeneratorParts (shared by those two), AutoWaitingTimeline, FixtureGraph, ParallelSimulator, FlakyChallenges, CodeText (renders `backticks` as code)
   stores/progress.ts     visitor progress in localStorage: chapters read, flashcard reviews, quiz scores
   layouts/BaseLayout.astro
@@ -150,6 +151,8 @@ Repo setting needed once: Settings → Pages → Source: **GitHub Actions**.
 
 ## Gotchas
 
+- **Search only works on a build.** Pagefind indexes `dist/` after `astro build`, so under `pnpm dev` the dialog says search isn't
+  available. Pages are indexed through `BaseLayout`'s `searchable` prop; wrap anything that shouldn't be found in `data-pagefind-ignore`.
 - **Don't use `astro preview` in tests.** Astro 7 auto-backgrounds `dev`/`preview` when it detects an AI
   agent (`AI_AGENT`, `CLAUDECODE` env), so Playwright's webServer thinks it exited. Tests use
   `scripts/serve-dist.mjs`. For the dev server, use `astro dev --background` / `astro dev stop` (see AGENTS.md).

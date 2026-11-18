@@ -1,4 +1,5 @@
 ---
+import Kbd from './Kbd.astro';
 import ThemeToggle from './ThemeToggle.astro';
 import { url } from '../lib/url';
 
@@ -40,6 +41,18 @@ const current = Astro.url.pathname.replace(/\/$/, '');
           );
         })}
       </ul>
+      <button
+        type="button"
+        data-search-open
+        aria-haspopup="dialog"
+        aria-keyshortcuts="Control+K Meta+K"
+        class="hidden cursor-pointer items-center gap-2 rounded-term py-0.5 text-muted hover:text-bright data-ready:inline-flex"
+      >
+        search
+        <span data-search-hint aria-hidden="true" class="hidden sm:inline">
+          <Kbd>ctrl k</Kbd>
+        </span>
+      </button>
       <ThemeToggle />
     </div>
   </nav>

@@ -48,7 +48,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ **Explainer: parallel and shard simulator** (workers/shards sliders → runtime)
 - [x] ⇉ **"Spot the flaky test"** challenges
 - [x] ⇉ **CI pipeline builder** → GitHub Actions YAML
-- [ ] ⌘K search with Pagefind
+- [x] ⌘K search with Pagefind
 
 ## Phase 5 · Chapter notes (each ⇉ independent; source in `source/chapters/`)
 
@@ -162,3 +162,9 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   the `v1.65.1-noble` container tag follows the naming convention without being pulled. `PLAYWRIGHT_VERSION` must equal the installed
   `@playwright/test`, and a test fails when an upgrade leaves it behind. Reports merge whenever more than one test job runs. Yarn is
   left out because classic and modern Yarn need different install flags. `GeneratorParts.tsx` holds what this and the config generator share.
+- 2026-11-18: Search is a native `<dialog>` in `Search.astro` with a small script rather than a React island, so every page doesn't
+  load React for it. Pagefind's index downloads on first open. The home page, the chapter list and unwritten chapters stay out of the
+  index, because they only repeat titles or lead to a dead end; quizzes stay out too. Results are links with `role="option"`, so they
+  can still open in a new tab. On a Mac only Cmd+K opens search, because Ctrl+K deletes to the end of the line in text fields. Pagefind's
+  excerpts are split into text pieces instead of being rendered as HTML. The unattended session could not run a build under
+  `/playwright-lab/`, so check search on the live site after the next deploy: `url()` sets Pagefind's `baseUrl` for that path.
