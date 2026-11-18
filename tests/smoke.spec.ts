@@ -8,7 +8,21 @@ test.describe('home', () => {
 
     const run = page.getByRole('list', { name: 'Chapter progress' });
     await expect(run.getByRole('listitem')).toHaveCount(16);
-    await expect(run.getByRole('link', { name: /Selectors/ })).toBeVisible();
+    await expect(run.getByRole('link', { name: 'Chapter 2, Selectors: passed' })).toBeVisible();
+    await expect(page.getByText(/next up/)).toContainText('ch01');
+  });
+
+  test('chapter sidebar lists every chapter and marks the current one', async ({ page, isMobile }) => {
+    await page.goto('/chapters/02-selectors');
+    // On small screens the sidebar lives in a collapsed drawer.
+    if (isMobile) await page.getByText('browse chapters').click();
+
+    const sidebar = page.getByRole('navigation', { name: 'Chapters' });
+    await expect(sidebar.getByRole('listitem')).toHaveCount(16 + 2); // chapters + practice links
+    await expect(sidebar.getByRole('link', { name: /Selectors/ })).toHaveAttribute('aria-current', 'page');
+
+    await sidebar.getByRole('link', { name: /Fixtures/ }).click();
+    await expect(page).toHaveURL(/\/chapters\/05-fixtures\/?$/);
   });
 
   test('main navigation reaches every section', async ({ page }) => {
@@ -45,7 +59,7 @@ test.describe('chapters', () => {
   test('prev/next links walk the chapters', async ({ page }) => {
     await page.goto('/chapters/01-setup');
     await page
-      .getByRole('navigation', { name: 'Chapter' })
+      .getByRole('navigation', { name: 'Previous and next chapter' })
       .getByRole('link', { name: /02 Selectors/ })
       .click();
     await expect(page).toHaveURL(/\/chapters\/02-selectors\/?$/);

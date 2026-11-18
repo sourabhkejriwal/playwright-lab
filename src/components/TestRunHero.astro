@@ -1,8 +1,8 @@
 ---
-// Homepage hero: the chapter list rendered as a Playwright list-reporter run.
-// Lines reveal one by one with CSS (no JS). Status = whether the chapter's notes are written.
+// Homepage hero panel: overall progress as a Playwright run summary.
+// One segment per chapter (green = notes written), plus a "next up" link.
+// The full chapter list lives in the sidebar, so this stays compact.
 import TerminalWindow from './TerminalWindow.astro';
-import StatusMark from './StatusMark.astro';
 import { url } from '../lib/url';
 import { pad } from '../data/chapters';
 import type { ChapterWithStatus } from '../lib/chapters';
@@ -13,29 +13,46 @@ interface Props {
 const { chapters } = Astro.props;
 const passed = chapters.filter((c) => c.status === 'passed').length;
 const pending = chapters.length - passed;
-const step = 0.07; // seconds between lines
+const next = chapters.find((c) => c.status === 'pending');
 ---
 
 <TerminalWindow title="~/playwright-lab — npx playwright test">
   <p class="text-dim">
-    <span class="text-pass">$</span> npx playwright test --reporter=list
+    <span class="text-pass">$</span> npx playwright test
   </p>
   <p class="mt-2 text-muted">Running {chapters.length} chapters using 1 learner</p>
-  <ol class="mt-3 space-y-0.5" aria-label="Chapter progress">
+
+  <ol class="mt-4 grid grid-cols-16 gap-1" aria-label="Chapter progress">
     {chapters.map((c, i) => (
-      <li class="reveal flex gap-3" style={`animation-delay:${0.3 + i * step}s`}>
-        <StatusMark status={c.status} />
-        <a href={url(c.href)} class="min-w-0 truncate text-text no-underline hover:text-bright">
-          <span class="text-dim">[ch{pad(c.num)}]</span> › {c.short}
-          <span class="hidden text-dim sm:inline"> › {c.blurb}</span>
+      <li class="reveal" style={`animation-delay:${0.2 + i * 0.05}s`}>
+        <a
+          href={url(c.href)}
+          title={`ch${pad(c.num)} ${c.short}: ${c.status}`}
+          class:list={[
+            'block h-6 rounded-sm no-underline transition-opacity hover:opacity-80',
+            c.status === 'passed' ? 'bg-pass' : 'bg-line-strong',
+          ]}
+        >
+          <span class="sr-only">
+            Chapter {c.num}, {c.short}: {c.status}
+          </span>
         </a>
       </li>
     ))}
   </ol>
-  <p class="reveal mt-4" style={`animation-delay:${0.4 + chapters.length * step}s`}>
+
+  <p class="mt-4">
     <span class="text-pass">{passed} passed</span>
     {pending > 0 && <span class="ml-3 text-pending">{pending} pending</span>}
   </p>
+  {next && (
+    <p class="mt-3 border-t border-line pt-3 text-muted">
+      next up ›{' '}
+      <a href={url(next.href)} class="text-info">
+        ch{pad(next.num)} {next.title}
+      </a>
+    </p>
+  )}
 </TerminalWindow>
 
 <style>
@@ -46,7 +63,7 @@ const step = 0.07; // seconds between lines
   @keyframes reveal {
     from {
       opacity: 0;
-      transform: translateY(2px);
+      transform: scaleY(0.4);
     }
     to {
       opacity: 1;

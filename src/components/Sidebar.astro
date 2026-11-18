@@ -1,0 +1,87 @@
+---
+// Chapter navigation for the left column (desktop) and the mobile drawer.
+// Marks the current page with aria-current and shows each chapter's status.
+import StatusMark from './StatusMark.astro';
+import { pad } from '../data/chapters';
+import { url } from '../lib/url';
+import type { ChapterWithStatus } from '../lib/chapters';
+
+interface Props {
+  chapters: ChapterWithStatus[];
+}
+const { chapters } = Astro.props;
+
+const strip = (p: string) => p.replace(/\/$/, '');
+const current = strip(Astro.url.pathname);
+const isCurrent = (href: string) => strip(url(href)) === current;
+
+const practice = [
+  { href: 'playground', label: 'Locator playground' },
+  { href: 'flashcards', label: 'Flashcards' },
+];
+const done = chapters.filter((c) => c.status === 'passed').length;
+---
+
+<nav aria-label="Chapters" class="text-sm">
+  <div class="flex items-baseline justify-between px-2">
+    <a
+      href={url('chapters')}
+      aria-current={isCurrent('chapters') ? 'page' : undefined}
+      class:list={[
+        'text-xs no-underline',
+        isCurrent('chapters') ? 'text-pass' : 'text-dim hover:text-bright',
+      ]}
+    >
+      # chapters
+    </a>
+    <span class="text-xs text-dim">
+      {done}/{chapters.length}
+    </span>
+  </div>
+  <ol class="mt-2 space-y-px">
+    {chapters.map((c) => {
+      const active = isCurrent(c.href);
+      return (
+        <li>
+          <a
+            href={url(c.href)}
+            aria-current={active ? 'page' : undefined}
+            class:list={[
+              'flex items-baseline gap-2 rounded-term px-2 py-1.5 no-underline transition-colors',
+              active
+                ? 'bg-raised text-bright shadow-[inset_2px_0_0_var(--term-pass)]'
+                : 'text-muted hover:bg-surface hover:text-bright',
+            ]}
+          >
+            <StatusMark status={c.status} />
+            <span class="w-5 shrink-0 text-xs text-dim">{pad(c.num)}</span>
+            <span class="min-w-0 truncate">{c.short}</span>
+          </a>
+        </li>
+      );
+    })}
+  </ol>
+
+  <p class="mt-6 px-2 text-xs text-dim"># practice</p>
+  <ul class="mt-2 space-y-px">
+    {practice.map((p) => {
+      const active = isCurrent(p.href);
+      return (
+        <li>
+          <a
+            href={url(p.href)}
+            aria-current={active ? 'page' : undefined}
+            class:list={[
+              'block rounded-term px-2 py-1.5 no-underline transition-colors',
+              active
+                ? 'bg-raised text-bright shadow-[inset_2px_0_0_var(--term-pass)]'
+                : 'text-muted hover:bg-surface hover:text-bright',
+            ]}
+          >
+            <span class="text-pass">›</span> {p.label}
+          </a>
+        </li>
+      );
+    })}
+  </ul>
+</nav>

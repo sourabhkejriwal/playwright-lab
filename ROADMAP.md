@@ -19,7 +19,8 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 ## Phase 2 · Publish and polish the shell
 
 - [x] Create GitHub repo, push, set Pages source to "GitHub Actions", confirm first deploy: live at https://sourabhkejriwal.github.io/playwright-lab/
-- [ ] Chapter page sidebar on desktop (chapter list with status) and table of contents from headings
+- [x] Two-column layout: sticky chapter sidebar (desktop), collapsible drawer (mobile)
+- [ ] Table of contents from headings on chapter pages (right rail on xl screens)
 - [ ] Code block polish: filename/title bar, copy button, line highlighting (`TerminalWindow` style)
 - [ ] MDX components: `<Callout type="tip|warn|gotcha">`, `<Kbd>`, `<ApiRef name="…">`
 - [ ] SEO: Open Graph image (terminal-style), meta per page, `robots.txt`

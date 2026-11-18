@@ -50,7 +50,7 @@ src/
   lib/chapters.ts        getChapters(): joins the list with MDX entries → status passed/pending
   lib/url.ts             url(): base-path-aware internal links
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
-  components/            .astro UI: TerminalWindow, StatusMark, TopBar, Footer, TestRunHero, ComingSoon
+  components/            .astro UI: Sidebar, TerminalWindow, StatusMark, TopBar, Footer, TestRunHero, ComingSoon
   islands/               (planned) React interactive components: Playground, Flashcards, Quiz, …
   layouts/BaseLayout.astro
   pages/                 routes; chapters/[slug].astro renders MDX or a "pending" placeholder
@@ -76,7 +76,7 @@ The site looks like a Playwright test run in a dark terminal.
 - **Shapes**: `rounded-term` (6px), 1px `border-line` borders, no shadows, no gradients.
 - **Frames**: wrap demos and callouts in `<TerminalWindow title="…">`.
 - **Motion**: subtle only; anything animated must respect `prefers-reduced-motion` (use `motion-safe:`).
-- **Layout**: `max-w-6xl` container, mobile-first; everything must work at 375px wide.
+- **Layout**: two columns from `lg` (16rem sticky chapter `Sidebar` + content, `max-w-7xl`); below `lg` the sidebar is a `<details>` drawer. Mobile-first; everything must work at 375px wide.
 
 ## Content workflow (chapters)
 

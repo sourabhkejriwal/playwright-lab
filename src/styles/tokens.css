@@ -38,6 +38,7 @@
   --astro-code-token-link: var(--term-info);
 
   --term-radius: 6px;
+  --header-h: 3.25rem; /* top bar height on desktop; the sidebar sticks below it */
   --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
   --font-prose: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
 

@@ -60,7 +60,10 @@ const { Content } = written ? await render(chapter.entry!) : { Content: null };
       )}
     </div>
 
-    <nav class="mt-16 flex justify-between gap-4 border-t border-line pt-6 text-sm" aria-label="Chapter">
+    <nav
+      class="mt-16 flex justify-between gap-4 border-t border-line pt-6 text-sm"
+      aria-label="Previous and next chapter"
+    >
       {prev ? (
         <a href={url(prev.href)} class="no-underline">
           ← {pad(prev.num)} {prev.short}
