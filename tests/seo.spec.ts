@@ -62,6 +62,31 @@ test('the share image is a 1200×630 PNG', async ({ page, request }) => {
   expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 630]);
 });
 
+test('the favicon is the terminal mark, with an ICO fallback', async ({ page, request }) => {
+  await page.goto('/');
+
+  const svgHref = await page.locator('head link[rel="icon"][type="image/svg+xml"]').getAttribute('href');
+  const svg = await request.get(svgHref!);
+  expect(svg.ok()).toBe(true);
+  expect(svg.headers()['content-type']).toContain('image/svg+xml');
+  expect(await svg.text()).toContain('<title>playwright-lab</title>');
+  // Loaded as an image, SVG is parsed as strict XML: decode() rejects if the file is malformed.
+  await page.evaluate((href) => {
+    const image = new Image();
+    image.src = href;
+    return image.decode();
+  }, svgHref!);
+
+  const icoHref = await page.locator('head link[rel="icon"][sizes="48x48"]').getAttribute('href');
+  const ico = await request.get(icoHref!);
+  expect(ico.ok()).toBe(true);
+
+  const body = await ico.body();
+  const count = body.readUInt16LE(4);
+  const widths = Array.from({ length: count }, (_, i) => body.readUInt8(6 + i * 16));
+  expect([body.readUInt16LE(2), widths]).toEqual([1, [16, 32, 48]]);
+});
+
 test('the 404 page is not indexed', async ({ page }) => {
   await page.goto('/does-not-exist');
   expect(await meta(page, 'name', 'robots')).toBe('noindex');

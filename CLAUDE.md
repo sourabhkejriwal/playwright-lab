@@ -34,6 +34,7 @@ Never read the whole PDF. Chapter text is pre-extracted (see "Content workflow")
 | `pnpm format`           | Prettier (incl. `.astro`)                                     |
 | `pnpm extract:chapters` | Re-extract `source/chapters/*.txt` from the PDF               |
 | `pnpm og:image`         | Re-render the committed `public/og-image.png`                 |
+| `pnpm favicon`          | Rebuild the committed `public/favicon.ico` from `favicon.svg` |
 | `pnpm roadmap`          | Work through `ROADMAP.md` unattended (see below)              |
 
 ## Unattended roadmap runs

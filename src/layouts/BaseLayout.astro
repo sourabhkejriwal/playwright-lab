@@ -50,7 +50,8 @@ const currentChapter = chapters.find(
     <meta property="og:image:alt" content={ogImageAlt} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#0b0e14" />
-    <link rel="icon" type="image/svg+xml" href={url('favicon.svg')} />
+    <link rel="icon" href={url('favicon.ico')} sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href={url('favicon.svg')} sizes="any" />
     <link rel="sitemap" href={url('sitemap-index.xml')} />
     <meta name="generator" content={Astro.generator} />
     <title>{fullTitle}</title>

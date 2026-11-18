@@ -24,7 +24,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] Code block polish: filename/title bar, copy button, line highlighting (`TerminalWindow` style)
 - [x] MDX components: `<Callout type="tip|warn|gotcha">`, `<Kbd>`, `<ApiRef name="…">`
 - [x] SEO: Open Graph image (terminal-style), meta per page, `robots.txt`
-- [ ] Custom favicon (terminal `$_` mark)
+- [x] Custom favicon (terminal `$_` mark)
 - [ ] Optional light theme (override tokens under `[data-theme='light']`) and toggle
 
 ## Phase 3 · Progress and learning engine
@@ -81,3 +81,6 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 
 - 2026-11-18: Chose design A "Terminal dev"; Astro over Next.js (static content, GitHub Pages).
 - 2026-11-18: Tests serve `dist/` via `scripts/serve-dist.mjs` (Astro 7 backgrounds preview under AI agents).
+- 2026-11-18: Favicon `$_` is drawn with SVG paths (no font dependency) on a dark tile so it reads on light and dark
+  browser tabs. `favicon.ico` (16, 32, 48) is generated from the SVG and linked explicitly, because browsers only
+  auto-discover `/favicon.ico` at the domain root and Pages serves the site under `/playwright-lab/`.

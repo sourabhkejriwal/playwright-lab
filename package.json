@@ -17,6 +17,7 @@
     "format:check": "prettier --check .",
     "extract:chapters": "node scripts/extract-chapters.mjs",
     "og:image": "node scripts/generate-og-image.mjs",
+    "favicon": "node scripts/generate-favicon.mjs",
     "roadmap": "node scripts/run-roadmap.mjs",
     "astro": "astro"
   },
