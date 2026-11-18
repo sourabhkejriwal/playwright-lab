@@ -205,12 +205,24 @@ test.describe('chapters', () => {
     await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
   });
 
+  test('the e-commerce chapter renders its notes and quiz', async ({ page }) => {
+    await page.goto('/chapters/16-ecommerce-project');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Real-world project: e-commerce');
+    await expect(page.getByRole('heading', { level: 2, name: 'Keep carts apart' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'tests/auth.setup.ts' })).toContainText('storageState');
+    await expect(
+      page.getByRole('main').getByRole('link', { name: 'Chapter 15', exact: true }),
+    ).toHaveAttribute('href', /\/chapters\/15-maintainability\/?$/);
+    await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
+  });
+
   for (const chapter of [
     '10-visual-regression',
     '12-forms',
     '13-files',
     '14-security-auth',
     '15-maintainability',
+    '16-ecommerce-project',
   ]) {
     test(`chapter ${chapter} fits a 375px screen`, async ({ page }) => {
       await page.setViewportSize({ width: 375, height: 800 });
@@ -252,11 +264,6 @@ test.describe('chapters', () => {
     await expect(block.getByRole('button', { name: 'copy code' })).toBeVisible();
   });
 
-  test('an unwritten chapter shows a pending placeholder', async ({ page }) => {
-    await page.goto('/chapters/16-ecommerce-project');
-    await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();
-  });
-
   test('table of contents jumps to a section and marks it current', async ({ page, isMobile }) => {
     test.skip(isMobile, 'the table of contents only shows on xl screens');
     // Tall enough that the page bottoms out before this section reaches the top of the viewport.
@@ -280,11 +287,6 @@ test.describe('chapters', () => {
     test.skip(!isMobile, 'covers the mobile layout only');
     await page.goto('/chapters/02-selectors');
     await expect(page.getByRole('navigation', { name: 'On this page' })).toBeHidden();
-  });
-
-  test('an unwritten chapter has no table of contents', async ({ page }) => {
-    await page.goto('/chapters/16-ecommerce-project');
-    await expect(page.locator('[data-toc]')).toHaveCount(0);
   });
 
   test('prev/next links walk the chapters', async ({ page }) => {

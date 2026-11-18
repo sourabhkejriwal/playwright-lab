@@ -65,12 +65,6 @@ test.describe('chapter quiz', () => {
   const savedQuiz = (page: Page) =>
     page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '{}').quizzes?.selectors, KEY);
 
-  test('an unwritten chapter has no quiz', async ({ page }) => {
-    await page.goto('/chapters/16-ecommerce-project');
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(quiz(page)).toHaveCount(0);
-  });
-
   test('an answer must be chosen before it can be checked', async ({ page }) => {
     await open(page);
     await expect(quiz(page).getByText(`question 1 of ${total}`)).toBeVisible();

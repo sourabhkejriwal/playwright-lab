@@ -1,0 +1,65 @@
+{
+  "chapter": 16,
+  "cards": [
+    {
+      "id": "ecommerce-project/setup-project",
+      "front": "How does a setup project save time in a suite that needs a signed-in user?",
+      "back": "It signs in once and saves the session with `storageState()`. Projects that list it in `dependencies` load that file, so their tests start signed in."
+    },
+    {
+      "id": "ecommerce-project/setup-fails",
+      "front": "What happens to dependent tests when the setup project fails?",
+      "back": "They don't run, and the report lists them as `did not run`."
+    },
+    {
+      "id": "ecommerce-project/top-level-state",
+      "front": "Why shouldn't a saved `storageState` go in the top-level `use` of the config?",
+      "back": "The setup project inherits it and fails with `ENOENT`, because the file doesn't exist yet. Set it on the dependent projects."
+    },
+    {
+      "id": "ecommerce-project/state-contents",
+      "front": "What does `context.storageState()` save?",
+      "back": "Cookies, including `HttpOnly` ones, and `localStorage`. It doesn't save `sessionStorage`."
+    },
+    {
+      "id": "ecommerce-project/signed-out",
+      "front": "How do you make a test start signed out when its project has a saved login?",
+      "back": "`test.use({ storageState: { cookies: [], origins: [] } })`. Passing `undefined` keeps the project's login."
+    },
+    {
+      "id": "ecommerce-project/new-context",
+      "front": "Does `browser.newContext()` inside a test use the project's options?",
+      "back": "Yes. It inherited `baseURL` and `storageState`, so pass an empty state when the context must be anonymous."
+    },
+    {
+      "id": "ecommerce-project/worker-login",
+      "front": "Why sign in for a role in a worker-scoped fixture?",
+      "back": "It signs in once per worker and shares the state, while a test-scoped fixture signs in for every test."
+    },
+    {
+      "id": "ecommerce-project/shared-cart",
+      "front": "Why can parallel tests sharing one account fail on a cart?",
+      "back": "Browser contexts are isolated, but the cart lives on the server. Each test that changes it needs its own user."
+    },
+    {
+      "id": "ecommerce-project/faker-unique",
+      "front": "Is `faker.internet.email()` safe for a field that must be unique?",
+      "back": "No. It repeated 11 times in 10,000 calls. Add a UUID to anything that must be unique."
+    },
+    {
+      "id": "ecommerce-project/faker-locale",
+      "front": "How do you get German data from current Faker versions?",
+      "back": "`import { fakerDE as faker } from '@faker-js/faker'`. Setting `faker.locale = 'de'` changed nothing."
+    },
+    {
+      "id": "ecommerce-project/ci-false",
+      "front": "What is `!!process.env.CI` when `CI=false`?",
+      "back": "`true`, because `'false'` is a non-empty string."
+    },
+    {
+      "id": "ecommerce-project/all-settled",
+      "front": "Why use `Promise.allSettled()` for concurrent registrations in one test?",
+      "back": "It waits for every job, while `Promise.all()` rejects at the first failure and leaves the others running."
+    }
+  ]
+}

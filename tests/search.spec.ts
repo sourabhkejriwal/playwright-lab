@@ -149,13 +149,13 @@ test.describe('site search', () => {
     await expect(dialog.getByRole('status')).toHaveText("search isn't available right now");
   });
 
-  test('leaves out listings, placeholders and the quiz', async ({ page }) => {
+  test('leaves out listings and the quiz', async ({ page }) => {
     const dialog = await searchFor(page, 'e-commerce');
     await expect(dialog.getByRole('status')).toHaveText(/result/);
     const hrefs = await dialog
       .getByRole('option')
       .evaluateAll((all) => all.map((a) => a.getAttribute('href')));
-    for (const href of hrefs) expect(href).not.toMatch(/\/chapters\/?$|\/chapters\/16-ecommerce-project/);
+    for (const href of hrefs) expect(href).not.toMatch(/\/chapters\/?$/);
 
     await dialog.getByRole('combobox').fill('Chapter quiz');
     await expect(dialog.getByRole('status')).not.toHaveText(/type to search/);

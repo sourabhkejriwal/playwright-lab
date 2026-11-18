@@ -1,0 +1,497 @@
+---
+chapter: 16
+title: 'Real-world project: e-commerce'
+summary: Bring the earlier chapters together in a shop test suite with page objects, a saved login, role fixtures, data factories, isolated carts, and a small concurrency check.
+readingMinutes: 15
+---
+
+import { url as siteUrl } from '../../lib/url';
+
+## What we're building
+
+This chapter assembles one test suite for an online tool shop. Visitors can browse products, register, sign in, and fill a cart. Each part of the suite comes from an earlier chapter, and the interesting decisions are about how the parts fit together.
+
+```text title="shop-tests/"
+shop-tests/
+├── .auth/                  saved logins (never committed)
+├── data/factory.ts         builds fresh test data
+├── fixtures/shop.ts        admin and shopper fixtures
+├── pages/
+│   ├── base-page.ts        parts shared by every page
+│   ├── login-page.ts
+│   ├── product-page.ts
+│   └── register-page.ts
+├── tests/
+│   ├── auth.setup.ts       signs in once
+│   ├── account.spec.ts
+│   ├── cart.spec.ts
+│   ├── register.spec.ts
+│   └── bulk.spec.ts
+├── .env                    credentials (never committed)
+└── playwright.config.ts
+```
+
+Keep generated and private files out of version control:
+
+```text title=".gitignore"
+.auth/
+.env
+test-results/
+playwright-report/
+```
+
+## Configure the project
+
+The config loads credentials, sets CI behaviour, and declares a `setup` project that runs before the browser projects.
+
+```ts title="playwright.config.ts" {22,25-26}
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+import { defineConfig, devices } from '@playwright/test';
+
+if (existsSync('.env')) process.loadEnvFile('.env');
+
+const customerState = path.join(__dirname, '.auth/customer.json');
+
+export default defineConfig({
+  testDir: './tests',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  reporter: [['list'], ['html', { open: 'never' }]],
+  use: {
+    baseURL: process.env.BASE_URL ?? 'http://localhost:3000',
+    testIdAttribute: 'data-test',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+  },
+  projects: [
+    { name: 'setup', testMatch: /.*\.setup\.ts/, use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'chromium',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'], storageState: customerState },
+    },
+  ],
+});
+```
+
+A few of these lines deserve a closer look:
+
+- **`process.loadEnvFile()`** is built into Node, so you don't need a package to read `.env`. It throws `ENOENT` when the file is missing, which is why the `existsSync()` check is there for CI. A variable already set in the shell wins over the file.
+- **`forbidOnly`** stops the run when a `test.only` was committed by mistake. Playwright reports `item focused with '.only' is not allowed` and exits with an error.
+- **`testIdAttribute`** points <ApiRef name="page.getByTestId()" /> at the attribute your app uses. Without it, the same locator found 0 elements on a page that uses `data-test`.
+
+You also don't need `ts-node`, because Playwright runs TypeScript test files on its own.
+
+<Callout type="gotcha" title="CI=false still counts as CI">
+  `!!process.env.CI` tests for a non-empty string, and `'false'` isn't empty. With `CI=false`, `forbidOnly`
+  was still on and the run stopped.
+</Callout>
+
+## Page objects for the shop
+
+A base class holds what every page shares. Each page then extends it and adds its own locators and actions. <a href={siteUrl('/chapters/15-maintainability')}>Chapter 15</a> covers the rules behind this design.
+
+```ts title="pages/base-page.ts"
+import type { Locator, Page } from '@playwright/test';
+
+export class BasePage {
+  readonly accountName: Locator;
+  readonly cartQuantity: Locator;
+
+  constructor(protected readonly page: Page) {
+    this.accountName = page.getByTestId('nav-user');
+    this.cartQuantity = page.getByTestId('cart-quantity');
+  }
+
+  async gotoHome() {
+    await this.page.goto('/');
+  }
+
+  async openCategory(name: string) {
+    await this.page.getByRole('list', { name: 'Categories' }).getByRole('link', { name }).click();
+  }
+}
+```
+
+```ts title="pages/login-page.ts"
+import type { Locator, Page } from '@playwright/test';
+import { BasePage } from './base-page';
+
+export class LoginPage extends BasePage {
+  private readonly email: Locator;
+  private readonly password: Locator;
+  private readonly submit: Locator;
+
+  constructor(page: Page) {
+    super(page);
+    this.email = page.getByTestId('email');
+    this.password = page.getByTestId('password');
+    this.submit = page.getByTestId('login-submit');
+  }
+
+  async goto() {
+    await this.page.goto('/auth/login');
+  }
+
+  async login(email: string, password: string) {
+    await this.email.fill(email);
+    await this.password.fill(password);
+    await this.submit.click();
+  }
+}
+```
+
+```ts title="pages/product-page.ts"
+import type { Locator, Page } from '@playwright/test';
+import { BasePage } from './base-page';
+
+export class ProductPage extends BasePage {
+  readonly name: Locator;
+  readonly addToCart: Locator;
+  readonly addedMessage: Locator;
+
+  constructor(page: Page) {
+    super(page);
+    this.name = page.getByRole('heading', { level: 1 });
+    this.addToCart = page.getByTestId('add-to-cart');
+    this.addedMessage = page.getByRole('status');
+  }
+
+  async openProduct(name: string) {
+    await this.page.getByTestId('product-card').filter({ hasText: name }).getByRole('link').click();
+  }
+}
+```
+
+`openProduct()` finds a card by its name. Picking "the first card" with `nth(0)` would break as soon as the catalogue's order changes, and the failure wouldn't say why.
+
+## Sign in once, reuse the session
+
+Most shop tests need a signed-in customer, and logging in through the form every time is slow. A setup project signs in once and saves the session to a file.
+
+```ts title="tests/auth.setup.ts"
+import path from 'node:path';
+import { test as setup, expect } from '@playwright/test';
+import { LoginPage } from '../pages/login-page';
+
+const customerState = path.join(__dirname, '../.auth/customer.json');
+
+setup('sign in as the customer', async ({ page }) => {
+  const email = process.env.CUSTOMER_EMAIL;
+  const password = process.env.CUSTOMER_PASSWORD;
+  if (!email || !password) throw new Error('Set CUSTOMER_EMAIL and CUSTOMER_PASSWORD');
+
+  const loginPage = new LoginPage(page);
+  await loginPage.goto();
+  await loginPage.login(email, password);
+  await expect(loginPage.accountName).toHaveText('Ada Shopper');
+
+  await page.context().storageState({ path: customerState });
+});
+```
+
+The assertion before saving matters. Without it, a failed login could save a signed-out session, and every later test would fail with a confusing error. Playwright creates the `.auth` folder for you.
+
+Every test in the `chromium` project now starts signed in:
+
+```ts title="tests/account.spec.ts"
+import { test, expect } from '../fixtures/shop';
+
+test('the saved session opens the account page', async ({ page }) => {
+  await page.goto('/account');
+  await expect(page.getByText('Signed in as Ada Shopper')).toBeVisible();
+});
+```
+
+### How the setup project behaves
+
+| Situation                                 | What happened in our runs                             |
+| ----------------------------------------- | ----------------------------------------------------- |
+| Setup fails                               | Dependent tests are reported as `did not run`         |
+| `--project=chromium`                      | Setup still runs first                                |
+| `--project=chromium --no-deps`            | Setup is skipped, and the saved file is used as it is |
+| `storageState` set in the top-level `use` | Setup itself fails with `ENOENT`                      |
+
+The last row is an easy mistake. A top-level `use` also applies to the setup project, which then tries to load a file it hasn't created yet. Set `storageState` on the projects that depend on setup.
+
+### What the file contains
+
+<ApiRef name="context.storageState()" /> saved the `HttpOnly` session cookie and `localStorage`. It did not
+save `sessionStorage`, so an app that keeps its token there will start signed out.
+
+<Callout type="warn" title="The saved file is a live login">
+  Anyone holding `.auth/customer.json` can act as that user until the session expires. Keep it out of Git and
+  out of shared artifacts. <a href={siteUrl('/chapters/14-security-auth')}>Chapter 14</a> covers this in more
+  detail.
+</Callout>
+
+<Callout type="gotcha" title="Build the path from __dirname">
+  A relative path follows the folder you run the command from. Running from `tests/` wrote a second copy to
+  `tests/.auth/`. `path.join(__dirname, ...)` always points at the same file.
+</Callout>
+
+## Tests that must start signed out
+
+Registration has to run without the saved session. Override `storageState` with an empty state:
+
+```ts title="tests/register.spec.ts"
+test.use({ storageState: { cookies: [], origins: [] } });
+```
+
+<Callout type="gotcha" title="storageState: undefined keeps you signed in">
+  `test.use({ storageState: undefined })` looks like it clears the session, but the project's value stayed in
+  force and the test opened the private account page. The empty object above redirected to the sign-in page as
+  expected.
+</Callout>
+
+Sometimes a test has to sign out halfway through. Clear all three stores, and do it after the page has loaded:
+
+```ts title="pages/base-page.ts"
+async clearSession() {
+  await this.page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  await this.page.context().clearCookies();
+  await this.page.reload();
+}
+```
+
+Clearing only the two storages left the user signed in, because the session was in a cookie. <ApiRef name="context.clearCookies()" /> is what signed them out. Calling `localStorage.clear()` on a blank page, before any `goto()`, threw a `SecurityError` in Chromium.
+
+## Fixtures for other roles
+
+An admin test needs a different login. A worker-scoped fixture signs in once per worker and shares the saved state, and a test-scoped fixture gives each test its own clean context.
+
+```ts title="fixtures/shop.ts"
+import { test as base, expect, type BrowserContext, type Page } from '@playwright/test';
+import { createUser, type NewUser } from '../data/factory';
+import { LoginPage } from '../pages/login-page';
+
+type StorageState = Awaited<ReturnType<BrowserContext['storageState']>>;
+const signedOut = { cookies: [], origins: [] };
+
+type TestFixtures = {
+  adminPage: Page;
+  shopper: NewUser;
+  shopperPage: Page;
+};
+type WorkerFixtures = { adminState: StorageState };
+
+export const test = base.extend<TestFixtures, WorkerFixtures>({
+  adminState: [
+    async ({ browser }, use) => {
+      const context = await browser.newContext({ storageState: signedOut });
+      const page = await context.newPage();
+      const loginPage = new LoginPage(page);
+      await loginPage.goto();
+      await loginPage.login(process.env.ADMIN_EMAIL!, process.env.ADMIN_PASSWORD!);
+      await expect(page.getByTestId('nav-user')).toHaveText('Grace Admin');
+      const state = await context.storageState();
+      await context.close();
+      await use(state);
+    },
+    { scope: 'worker' },
+  ],
+
+  adminPage: async ({ browser, adminState }, use) => {
+    const context = await browser.newContext({ storageState: adminState });
+    await use(await context.newPage());
+    await context.close();
+  },
+
+  shopper: async ({ request }, use) => {
+    const user = createUser();
+    const response = await request.post('/api/users/register', { data: user });
+    expect(response.status()).toBe(201);
+    await use(user);
+  },
+
+  shopperPage: async ({ browser, shopper }, use) => {
+    const context = await browser.newContext({ storageState: signedOut });
+    const response = await context.request.post('/api/login', {
+      data: { email: shopper.email, password: shopper.password },
+    });
+    expect(response.ok()).toBe(true);
+    await use(await context.newPage());
+    await context.close();
+  },
+});
+
+export { expect };
+```
+
+With one worker, six admin tests logged in once using the worker-scoped fixture. Logging in inside a test-scoped fixture took six logins for the same six tests. <a href={siteUrl('/chapters/05-fixtures')}>Chapter 5</a> explains fixture scopes.
+
+`context.storageState()` without a `path` returns the state as an object. That avoids a shared file that parallel workers could overwrite at the same moment.
+
+<Callout type="gotcha" title="browser.newContext() inherits the project's login">
+  Inside a test run, a plain <ApiRef name="browser.newContext()" /> picked up the project's `baseURL` and its
+  `storageState`, and opened the private page signed in. Pass the empty state whenever a new context must be
+  anonymous.
+</Callout>
+
+## Fresh data with a factory
+
+Hard-coded users collide as soon as a test runs twice. A factory returns a new user on every call, and each test overrides only the fields it cares about.
+
+```ts title="data/factory.ts"
+import { randomUUID } from 'node:crypto';
+import { faker } from '@faker-js/faker';
+
+export type NewUser = {
+  firstName: string;
+  dateOfBirth: string;
+  email: string;
+  password: string;
+};
+
+export function createUser(overrides: Partial<NewUser> = {}): NewUser {
+  return {
+    firstName: faker.person.firstName(),
+    dateOfBirth: faker.date.birthdate({ mode: 'age', min: 18, max: 80 }).toISOString().slice(0, 10),
+    email: `user-${randomUUID()}@example.test`,
+    password: faker.internet.password({ length: 12, prefix: '#1Aa' }),
+    ...overrides,
+  };
+}
+
+export function createUsers(count: number): NewUser[] {
+  return Array.from({ length: count }, () => createUser());
+}
+```
+
+The `prefix` guarantees a symbol, a digit, and both letter cases for the shop's password rules. The `length` includes the prefix, so this password has 12 characters in total.
+
+Three Faker details are easy to get wrong:
+
+- **Realistic isn't unique.** `faker.internet.email()` produced 11 duplicates in 10,000 calls, and 638 in 100,000. Use a UUID for anything the app requires to be unique. The reserved `.test` domain also means no real inbox can receive mail.
+- **Spread the overrides.** A factory that accepts `overrides` but never applies them silently ignores what the test asked for.
+- **Import a locale.** Setting `faker.locale = 'de'` raised no error and changed nothing in Faker 10. Use `import { fakerDE as faker } from '@faker-js/faker'` instead.
+
+### Use the factory in tests
+
+`RegisterPage` follows the same pattern as the other page objects. It exposes an `errors` locator and a `register(user)` action that fills in the form and submits it.
+
+```ts title="tests/register.spec.ts" {6,25}
+import { test, expect } from '@playwright/test';
+import { createUser } from '../data/factory';
+import { RegisterPage } from '../pages/register-page';
+
+test.describe('registration', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test('a new user lands on the sign-in page', async ({ page }) => {
+    const registerPage = new RegisterPage(page);
+    await registerPage.goto();
+
+    const registered = page.waitForResponse(
+      (response) => response.url().endsWith('/api/users/register') && response.status() === 201,
+    );
+    await registerPage.register(createUser());
+    await registered;
+
+    await expect(page).toHaveURL(/\/auth\/login/);
+  });
+
+  test('a short password and an empty name are rejected', async ({ page }) => {
+    const registerPage = new RegisterPage(page);
+    await registerPage.goto();
+
+    await registerPage.register(createUser({ firstName: '', password: 'short' }));
+
+    await expect(registerPage.errors).toHaveText([
+      'First name is required',
+      'Password must be at least 8 characters',
+    ]);
+  });
+});
+```
+
+Start <ApiRef name="page.waitForResponse()" /> before the click and await it afterwards, so the response can't arrive before you begin listening.
+
+## Keep carts apart
+
+A saved login is ideal for tests that only read. It causes trouble once tests change data on the server, because every test is then the same customer with the same cart.
+
+We ran three parallel tests that each added one product and expected a quantity of `1`. One passed. The other two failed, reading `2` and `3`, and which test failed depended on timing.
+
+The `shopperPage` fixture fixes this by registering a new customer for each test:
+
+```ts title="tests/cart.spec.ts"
+import { test, expect } from '../fixtures/shop';
+import { ProductPage } from '../pages/product-page';
+
+for (const product of ['Claw hammer', 'Combination pliers']) {
+  test(`${product} can be added to the cart`, async ({ shopperPage }) => {
+    const productPage = new ProductPage(shopperPage);
+
+    await productPage.gotoHome();
+    await productPage.openCategory('Hand tools');
+    await productPage.openProduct(product);
+    await expect(productPage.name).toHaveText(product);
+
+    await productPage.addToCart.click();
+
+    await expect(productPage.addedMessage).toHaveText('Added to cart');
+    await expect(productPage.cartQuantity).toHaveText('1');
+  });
+}
+```
+
+Registering and signing in through the API keeps this setup fast, and the form itself is still covered by the registration tests.
+
+<Callout type="tip" title="No need to wait for the toast to leave">
+  Our "added to cart" message covered the cart link for 1.5 seconds. An assertion on the quantity passed at
+  once, because assertions don't need a clickable element. A click on the covered link waited by itself and
+  went through after about two seconds, so neither needed an explicit wait.
+</Callout>
+
+## A small concurrency check
+
+A single test can open several isolated contexts and register users at the same time. This is a quick way to catch duplicate-key bugs and race conditions in a signup flow.
+
+```ts title="tests/bulk.spec.ts"
+import { test, expect } from '@playwright/test';
+import { createUsers } from '../data/factory';
+import { RegisterPage } from '../pages/register-page';
+
+test('five people can register at the same time', async ({ browser }) => {
+  const registrations = createUsers(5).map(async (user) => {
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    try {
+      const page = await context.newPage();
+      const registerPage = new RegisterPage(page);
+      await registerPage.goto();
+      await registerPage.register(user);
+      await expect(page).toHaveURL(/\/auth\/login/);
+    } finally {
+      await context.close();
+    }
+  });
+
+  const results = await Promise.allSettled(registrations);
+  expect(results.filter((result) => result.status === 'rejected')).toEqual([]);
+});
+```
+
+`Promise.allSettled()` waits for every registration to finish. With `Promise.all()`, the failure surfaced after about 200 ms while another job was still running in the background. Waiting for all of them means each context is closed before the test ends.
+
+<Callout type="warn" title="This isn't a load test">
+  A few browsers on one machine say little about how many users your site can handle, because the browsers use
+  far more resources than the traffic they create. For real load tests, use a dedicated tool such as k6,
+  Artillery, Locust, or JMeter, and only against an environment you have permission to stress.
+</Callout>
+
+## Interview angle
+
+- **How do you avoid logging in before every test?** Sign in once in a setup project, save the session with `storageState()`, and load that file in the projects that depend on setup.
+- **What does `storageState` capture?** Cookies, including `HttpOnly` ones, and `localStorage`. It doesn't capture `sessionStorage`.
+- **How do you make one test start signed out?** Use `test.use({ storageState: { cookies: [], origins: [] } })`. Passing `undefined` left the project's login in place.
+- **How do you test several roles?** Give each role its own saved state, either from the setup project or from a worker-scoped fixture that signs in once per worker.
+- **When is sharing one account a problem?** When tests change server-side data such as a cart. Parallel tests then see each other's changes, so create a separate user for each test.
+- **Why combine Faker with a UUID?** Faker gives realistic values but doesn't promise uniqueness. A UUID makes collisions practically impossible.
+- **What does `forbidOnly` protect against?** A committed `test.only` that would silently shrink the CI run to a single test.
+- **Can Playwright do load testing?** It can check small-scale concurrency. Browsers are too heavy for realistic load, so use a dedicated tool for that.

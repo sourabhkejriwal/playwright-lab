@@ -14,7 +14,7 @@ const pages = [
   {
     path: '/chapters/16-ecommerce-project/',
     title: 'ch16 Real-world project: e-commerce · playwright-lab',
-    type: 'website',
+    type: 'article',
   },
   { path: '/playground/', title: 'playground · playwright-lab', type: 'website' },
   { path: '/flashcards/', title: 'flashcards · playwright-lab', type: 'website' },

@@ -1,0 +1,60 @@
+{
+  "chapter": 16,
+  "questions": [
+    {
+      "question": "A project sets a saved `storageState`. Which line makes a group of tests start signed out?",
+      "options": [
+        "`test.use({ storageState: undefined })`",
+        "`test.use({ storageState: { cookies: [], origins: [] } })`",
+        "`test.use({ storageState: null, baseURL: undefined })`",
+        "`test.use({ contextOptions: { clean: true } })`"
+      ],
+      "answer": 1,
+      "explanation": "The empty state replaces the project's login. With `undefined`, the project's saved session stayed in force and the private page still opened."
+    },
+    {
+      "question": "An app keeps its login token in `sessionStorage`. What happens after you save and reuse `storageState`?",
+      "options": [
+        "The token is restored with the cookies",
+        "Playwright stops with an error when saving",
+        "The token is missing, so the user starts signed out",
+        "The token is moved into `localStorage`"
+      ],
+      "answer": 2,
+      "explanation": "`storageState()` saves cookies and `localStorage`, but not `sessionStorage`."
+    },
+    {
+      "question": "Three parallel tests share one saved customer login. Each adds a product and expects a cart quantity of 1. What is the likely result?",
+      "options": [
+        "Some fail, because they all change the same server-side cart",
+        "All pass, because each test has its own browser context",
+        "All are skipped by the setup project",
+        "Playwright runs them one at a time because they share a login"
+      ],
+      "answer": 0,
+      "explanation": "Contexts isolate the browser, not the account on the server. Give each test that changes server data its own user."
+    },
+    {
+      "question": "Why does the factory build emails with `randomUUID()` instead of `faker.internet.email()`?",
+      "options": [
+        "Faker can't generate email addresses",
+        "Faker's emails are rejected by every browser",
+        "A UUID makes the test run faster",
+        "Faker's values are realistic but can repeat"
+      ],
+      "answer": 3,
+      "explanation": "In 10,000 calls, `faker.internet.email()` produced 11 duplicates. Anything the app requires to be unique needs a unique part."
+    },
+    {
+      "question": "A config has `forbidOnly: !!process.env.CI`, and someone runs the suite locally with `CI=false`. A `test.only` is in the code. What happens?",
+      "options": [
+        "Only the focused test runs",
+        "The run stops, because the string 'false' is truthy",
+        "All tests run and `test.only` is ignored",
+        "The focused test is skipped"
+      ],
+      "answer": 1,
+      "explanation": "`!!'false'` is `true`, because any non-empty string is truthy, so `forbidOnly` is on and the run reports an error."
+    }
+  ]
+}
