@@ -70,7 +70,10 @@ function drawOverlay(doc: Document, analysis: Analysis | null, targets: Element[
   targets.forEach((element) => addBox(element, 'target'));
   if (analysis?.kind === 'resolved') {
     const state = analysis.matches.length > 1 ? 'strict' : 'match';
-    analysis.matches.forEach((match, index) => addBox(match.element, state, String(index)));
+    // Content in a closed <details> still has a size, so the box check alone would outline something unseen.
+    analysis.matches.forEach((match, index) => {
+      if (match.visible) addBox(match.element, state, String(index));
+    });
   }
   doc.documentElement.append(layer);
 }
