@@ -100,6 +100,19 @@ test.describe('chapters', () => {
     await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
   });
 
+  test('the CI/CD chapter renders its notes and quiz', async ({ page }) => {
+    await page.goto('/chapters/07-ci-cd');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('CI/CD pipelines');
+    await expect(page.getByRole('heading', { level: 2, name: 'A first workflow' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Dockerfile' })).toContainText(
+      'mcr.microsoft.com/playwright',
+    );
+    await expect(
+      page.getByRole('main').getByRole('link', { name: 'CI pipeline builder', exact: true }),
+    ).toHaveAttribute('href', /\/ci\/?$/);
+    await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
+  });
+
   test('code blocks show a title bar and highlighted lines', async ({ page }) => {
     await page.goto('/chapters/02-selectors');
 
@@ -131,7 +144,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter shows a pending placeholder', async ({ page }) => {
-    await page.goto('/chapters/07-ci-cd');
+    await page.goto('/chapters/08-headless-debugging');
     await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();
   });
 
@@ -161,7 +174,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter has no table of contents', async ({ page }) => {
-    await page.goto('/chapters/07-ci-cd');
+    await page.goto('/chapters/08-headless-debugging');
     await expect(page.locator('[data-toc]')).toHaveCount(0);
   });
 

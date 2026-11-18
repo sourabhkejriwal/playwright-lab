@@ -1,0 +1,474 @@
+---
+chapter: 7
+title: CI/CD pipelines
+summary: Run Playwright on every change with GitHub Actions, keep the reports, cover more platforms with a matrix, and pin the environment with Docker.
+readingMinutes: 13
+---
+
+import { url as siteUrl } from '../../lib/url';
+
+## What a pipeline gives you
+
+- **Continuous integration (CI)** builds and tests every change automatically, so a problem shows up while the change is still small.
+- **Continuous delivery** keeps every passing build ready to release, and a person decides when it goes out.
+- **Continuous deployment** goes one step further: every passing build is released without a manual step.
+
+Playwright is the safety net in all three. If the tests don't run on every change, nobody can trust a fast release.
+
+| Platform       | Pipeline file             | Good fit when                             |
+| -------------- | ------------------------- | ----------------------------------------- |
+| GitHub Actions | `.github/workflows/*.yml` | Your code is on GitHub                    |
+| GitLab CI      | `.gitlab-ci.yml`          | You want the whole toolchain in GitLab    |
+| Jenkins        | `Jenkinsfile`             | You run your own servers and need plugins |
+| CircleCI       | `.circleci/config.yml`    | You want hosted, container-first builds   |
+| Azure DevOps   | `azure-pipelines.yml`     | Your team already works in Azure          |
+
+The Playwright commands are the same everywhere. These notes use GitHub Actions.
+
+## GitHub Actions vocabulary
+
+| Term     | Meaning                                                                 |
+| -------- | ----------------------------------------------------------------------- |
+| Workflow | A YAML file in `.github/workflows/` that describes an automated process |
+| Event    | What starts a workflow, such as `push` or `pull_request`                |
+| Job      | A group of steps on one runner. Jobs run in parallel unless linked      |
+| Step     | One command or action inside a job, run in order                        |
+| Action   | A reusable step, referenced with `uses:`                                |
+| Runner   | The machine that executes a job                                         |
+
+## A first workflow
+
+`npm init playwright@latest` can generate a workflow for you. This version adds a few safer defaults.
+
+```yaml title=".github/workflows/playwright.yml" {9-10,14,22,26}
+name: Playwright tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=chromium
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+```
+
+To build a workflow for your own project, try the <a href={siteUrl('ci')}>CI pipeline builder</a>.
+
+| Line                      | Why it's there                                                             |
+| ------------------------- | -------------------------------------------------------------------------- |
+| `permissions`             | Gives the job's token only the access it needs                             |
+| `timeout-minutes`         | A stuck job would otherwise run for the default limit of six hours         |
+| `cache: npm`              | Reuses downloaded packages between runs                                    |
+| `npm ci`                  | Installs exactly what the lockfile says, and fails if it is out of date    |
+| `install --with-deps`     | Downloads the browser and the Linux libraries it needs                     |
+| `if: ${{ !cancelled() }}` | Uploads the report even after failed tests, which is when you need it most |
+| `retention-days`          | Deletes old reports automatically                                          |
+
+<Callout type="tip" title="don't cache the browsers">
+  The Playwright docs advise against it. Restoring the cache takes about as long as downloading the browsers,
+  and the Linux libraries from `--with-deps` have to be installed either way.
+</Callout>
+
+### When a step runs
+
+| Condition                 | Runs when                                      |
+| ------------------------- | ---------------------------------------------- |
+| No `if` at all            | Every earlier step succeeded                   |
+| `if: failure()`           | An earlier step failed                         |
+| `if: ${{ !cancelled() }}` | The run wasn't cancelled, whatever the results |
+| `if: always()`            | Always, even after the run is cancelled        |
+
+Keep the `${{ }}` around a condition that starts with `!`, because YAML reads a leading `!` as a tag.
+
+### Pin your actions
+
+`@v5` is a tag that follows the latest 5.x release, so you get fixes without breaking changes. The tag can still be moved. For
+third-party actions, pinning the full commit SHA is the safest choice, because a commit can't be changed later.
+
+## Make the config CI-aware
+
+GitHub Actions sets the `CI` environment variable on every run, so one config can behave differently there.
+
+```ts title="playwright.config.ts" {4-7,10,15}
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 2 : undefined,
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  use: {
+    baseURL: process.env.BASE_URL ?? 'http://localhost:3000',
+    trace: 'on-first-retry',
+  },
+  webServer: {
+    command: 'npm run start',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+  },
+});
+```
+
+| Option                | Effect on CI                                                              |
+| --------------------- | ------------------------------------------------------------------------- |
+| `forbidOnly`          | Fails the run if a stray `test.only` was committed                        |
+| `retries`             | Gives a failed test two more attempts                                     |
+| `workers`             | Keeps the load predictable on a small runner                              |
+| `github` reporter     | Adds failure annotations to the pull request's changed files              |
+| `trace`               | Records a trace on the first retry, and costs nothing when tests pass     |
+| `reuseExistingServer` | Always starts a new server on CI, and reuses your running one on a laptop |
+
+<Callout type="gotcha" title="a flaky test passes the build">
+  A test that fails and then passes on retry is reported as flaky, and the run still exits with code 0. Read
+  the flaky count, or add `--fail-on-flaky-tests` when you want those runs to fail. Retries buy time to fix
+  the cause. They aren't the fix.
+</Callout>
+
+### Secrets
+
+Keep passwords and tokens in the repository's secrets, and pass them to the step that needs them.
+
+```yaml
+- run: npx playwright test
+  env:
+    BASE_URL: https://staging.example.com
+    TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+```
+
+Pull requests from forks don't receive secrets, so tests that need them can't run there.
+
+### Run the affected tests first
+
+`--only-changed` runs test files that changed since a Git ref, along with test files that import a changed file. It needs the
+branch history, and the default checkout has only one commit.
+
+```yaml {3,6-7}
+- uses: actions/checkout@v5
+  with:
+    fetch-depth: 0
+- run: npm ci
+- run: npx playwright install --with-deps chromium
+- run: npx playwright test --only-changed=origin/$GITHUB_BASE_REF
+  if: github.event_name == 'pull_request'
+```
+
+Treat this as a quick first check. It can't see a backend change that a test never imports, so keep running the full suite too.
+
+## Reports and artifacts
+
+An **artifact** is a file saved from a run. Open the run's summary page, download `playwright-report`, unzip it, and view it locally:
+
+```bash
+npx playwright show-report ./playwright-report
+```
+
+Each test shows its status, steps, errors, and attachments. Traces in the report open in the Trace Viewer.
+
+<Callout type="warn" title="reports can contain secrets">
+  Traces capture network requests, page content, and typed values. Anyone who can open the report can read
+  them, so use test accounts and keep retention short.
+</Callout>
+
+### Add a job summary
+
+Text appended to `$GITHUB_STEP_SUMMARY` appears on the run's summary page as Markdown. Use it for short results and links, and keep
+rich content in the report itself.
+
+```yaml
+- name: Link to the report
+  if: ${{ !cancelled() }}
+  run: |
+    echo "## Playwright report" >> "$GITHUB_STEP_SUMMARY"
+    echo "[Download it from this run]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)" >> "$GITHUB_STEP_SUMMARY"
+```
+
+## Publish the report on GitHub Pages
+
+A published report is one click away, with nothing to download. In the repository, set **Settings → Pages → Source** to **GitHub
+Actions**, then split the work into two jobs.
+
+```yaml title=".github/workflows/report.yml" {23-24,29-30,33-34}
+name: Publish test report
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=chromium --reporter=html
+      - uses: actions/upload-pages-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          path: playwright-report
+
+  publish:
+    needs: test
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+```
+
+<Callout type="gotcha" title="publish failures too">
+  A job with `needs` is skipped when the job it depends on fails. Without `if: ${{ !cancelled() }}`, the site
+  would only update on green runs, and the report you need most would never appear. The workflow still shows
+  as failed.
+</Callout>
+
+- **Pages hosts one site per repository.** This workflow replaces whatever is there. If the repository already has a site, publish
+  the report from a separate repository or to another host.
+- **A Pages site is usually public, even from a private repository.** Access control needs GitHub Enterprise Cloud, so check
+  this before publishing traces.
+- **The `gh-pages` branch is the older approach.** Actions such as `peaceiris/actions-gh-pages` push the report to a branch, which needs
+  `contents: write`. The workflow above needs no write access to your code.
+
+### Gate a deployment on the tests
+
+The same `needs` link protects a release. Here the deploy job runs only when `test` succeeds, and only on `main`.
+
+```yaml
+deploy:
+  needs: test
+  if: github.ref == 'refs/heads/main'
+  runs-on: ubuntu-latest
+  steps:
+    - uses: actions/checkout@v5
+    - run: ./scripts/deploy.sh
+```
+
+## Cover more platforms with a matrix
+
+A **matrix** runs one job once for each combination of values.
+
+```yaml title=".github/workflows/matrix.yml" {4,6-9,24}
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        browser: [chromium, firefox, webkit]
+        exclude:
+          - { os: windows-latest, browser: webkit }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npx playwright test --project=${{ matrix.browser }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: report-${{ matrix.os }}-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 14
+```
+
+Three systems and three browsers make nine jobs, and `exclude` removes one, leaving eight.
+
+- **Set `fail-fast: false`.** The default cancels the other jobs at the first failure, so you lose the results that show whether a
+  bug affects one browser or all of them.
+- **Give each artifact a unique name.** `upload-artifact@v4` fails if two jobs in a run upload the same name.
+- **Each `--project` value must exist in your config.** A matrix value with no matching project fails the job.
+- **Watch the cost.** Windows and macOS runners use up included minutes faster on private repositories, so many teams run the full
+  matrix nightly and only Linux on pull requests.
+
+### Shards and one merged report
+
+A matrix can also split one suite across machines. Each job uses the `blob` reporter, and a final job joins the results.
+
+```yaml {4,7,11}
+strategy:
+  fail-fast: false
+  matrix:
+    shard: [1, 2, 3, 4]
+steps:
+  # checkout, setup-node, npm ci, install browsers
+  - run: npx playwright test --shard=${{ matrix.shard }}/4 --reporter=blob
+  - uses: actions/upload-artifact@v4
+    if: ${{ !cancelled() }}
+    with:
+      name: blob-report-${{ matrix.shard }}
+      path: blob-report/
+      retention-days: 1
+```
+
+```yaml
+merge-reports:
+  needs: test
+  if: ${{ !cancelled() }}
+  runs-on: ubuntu-latest
+  steps:
+    # checkout, setup-node, npm ci
+    - uses: actions/download-artifact@v4
+      with:
+        path: all-blob-reports
+        pattern: blob-report-*
+        merge-multiple: true
+    - run: npx playwright merge-reports --reporter=html ./all-blob-reports
+    - uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 14
+```
+
+The <a href={siteUrl('parallel')}>parallel simulator</a> shows how shard count changes the total time.
+
+## Use Docker for a consistent environment
+
+Docker packages the operating system, libraries, and browsers into one image, so a run behaves the same on a laptop and on CI. This
+matters most for screenshot tests, because fonts and rendering differ between systems.
+
+The official image includes the browsers and their libraries, but not your project's `@playwright/test`.
+
+```dockerfile title="Dockerfile"
+FROM mcr.microsoft.com/playwright:v1.65.1-noble
+
+WORKDIR /app
+
+# Copied first, so dependencies are only reinstalled when they change
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+
+CMD ["npx", "playwright", "test"]
+```
+
+```text title=".dockerignore"
+node_modules
+playwright-report
+test-results
+blob-report
+.git
+```
+
+<Callout type="gotcha" title="the image tag must match your version">
+  Each Playwright release expects its own browser builds. If `@playwright/test` and the image differ, the
+  browsers aren't found. Upgrade both together, and never use the `latest` tag.
+</Callout>
+
+Without `.dockerignore`, `COPY . .` would overwrite the Linux `node_modules` from `npm ci` with the one from your machine.
+
+### Build and run
+
+```bash
+docker build -t playwright-tests .
+
+docker run --rm --init --ipc=host -e CI=true \
+  -v "$(pwd)/playwright-report:/app/playwright-report" \
+  playwright-tests
+```
+
+| Flag         | Purpose                                                           |
+| ------------ | ----------------------------------------------------------------- |
+| `--rm`       | Removes the container when it exits                               |
+| `--init`     | Cleans up leftover child processes                                |
+| `--ipc=host` | Stops Chromium running out of shared memory and crashing          |
+| `-e CI=true` | Passes `CI` into the container, so the config's CI settings apply |
+| `-v`         | Saves the report on the host, because the container is deleted    |
+
+<Callout type="gotcha" title="variables don't enter the container by themselves">
+  Without `-e CI=true`, `process.env.CI` is empty inside the container. You lose retries and `forbidOnly`
+  without any warning. If you also use `-it` and the HTML reporter, a failed run starts the report server and
+  waits for Ctrl+C.
+</Callout>
+
+### Docker in GitHub Actions
+
+The simplest option needs no Dockerfile: run the whole job inside the official image.
+
+```yaml title=".github/workflows/container.yml" {4-6}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --user 1001
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: npx playwright test
+```
+
+There is no browser install step, because the image already has the browsers. If you need your own image, build it and mount the report
+folder so later steps can upload it.
+
+```yaml
+- uses: actions/checkout@v5
+- run: docker build -t playwright-tests .
+- run: >-
+    docker run --rm --init --ipc=host -e CI=true
+    -v "$GITHUB_WORKSPACE/playwright-report:/app/playwright-report"
+    playwright-tests
+- uses: actions/upload-artifact@v4
+  if: ${{ !cancelled() }}
+  with:
+    name: playwright-report
+    path: playwright-report/
+```
+
+## Interview angle
+
+- **Continuous delivery or continuous deployment?** Delivery keeps every build ready and a person releases it. Deployment releases every passing build automatically.
+- **Why `npm ci` instead of `npm install`?** It installs exactly what the lockfile records and fails if the lockfile is out of date.
+- **Why `if: ${{ !cancelled() }}` on the report upload?** Later steps are skipped after a failure by default, and failed runs are when the report matters.
+- **Does a flaky test fail the build?** No. It exits with code 0 unless you use `--fail-on-flaky-tests`.
+- **What does `forbidOnly` protect against?** A committed `test.only`, which would silently skip the rest of the suite.
+- **Why set `fail-fast: false` on a matrix?** So one failure doesn't cancel the jobs that show how widespread the problem is.
+- **How do you get one report from several shards?** Use the `blob` reporter in each job, upload the files, and run `merge-reports` in a final job.
+- **Why run tests in the official Docker image?** The browsers and system libraries are fixed, which removes differences between machines.
+- **What must match when using that image?** The image tag and the project's `@playwright/test` version.
+- **What's the risk of publishing reports?** Traces can include tokens and personal data, and Pages sites are usually public.

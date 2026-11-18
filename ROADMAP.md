@@ -58,7 +58,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ 04 AI-powered test generation
 - [x] ⇉ 05 Fixtures
 - [x] ⇉ 06 Parallelization and performance
-- [ ] ⇉ 07 CI/CD pipelines
+- [x] ⇉ 07 CI/CD pipelines
 - [ ] ⇉ 08 Headless testing and debugging
 - [ ] ⇉ 09 Accessibility testing with axe-core
 - [ ] ⇉ 10 Visual regression testing
@@ -208,3 +208,11 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - 2026-11-18: The flaky challenges' hostile cart shows its cookie banner on the first click, not after a timer, because a busy
   machine could reach `isVisible()` after any fixed delay and make the flaky code pass. Nested runs have a 20 second test timeout
   so a slow machine can't replace the timeout message a challenge expects.
+- 2026-11-18: Chapter 7 notes follow the installed Playwright (1.65) and current GitHub behaviour where the reference PDF differs: the report is
+  published with `actions/deploy-pages` and also after failed runs, rather than pushed to `gh-pages` only on green runs; matrix jobs use
+  `fail-fast: false` and unique artifact names; the Dockerfile uses `npm ci` with a `.dockerignore`; and `docker run` passes `-e CI=true`, because
+  containers don't inherit `CI`. Action versions copy `.github/workflows/deploy.yml`. Checked in throwaway projects on real Playwright: flaky exit
+  codes, `--fail-on-flaky-tests`, `forbidOnly`, the `github` reporter, blob file names, `merge-reports`, `--only-changed`, and the sample config
+  (loaded and type-checked). Every YAML snippet was parsed. **Not run:** the workflows on GitHub, `actionlint`, and all Docker commands, because
+  Docker wasn't available to the unattended session, so the `v1.65.1-noble` tag is still unpulled. Chapter 8 is now the "unwritten chapter" example in
+  the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 8 must move those to chapter 9.

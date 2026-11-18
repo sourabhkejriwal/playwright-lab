@@ -1,0 +1,60 @@
+{
+  "chapter": 7,
+  "questions": [
+    {
+      "question": "Why does the report upload step use `if: ${{ !cancelled() }}`?",
+      "options": [
+        "It makes the upload faster",
+        "Without it, the step is skipped when the tests fail",
+        "Artifacts can't be uploaded without a condition",
+        "It stops the report from being uploaded twice"
+      ],
+      "answer": 1,
+      "explanation": "Steps are skipped after an earlier failure by default, and a failed run is when you need the report most."
+    },
+    {
+      "question": "A test fails once, then passes on retry. What does the run do by default?",
+      "options": [
+        "It exits with code 1",
+        "It runs the whole suite again",
+        "It reports the test as flaky and exits with code 0",
+        "It marks the test as skipped"
+      ],
+      "answer": 2,
+      "explanation": "Flaky tests don't fail the run unless you pass `--fail-on-flaky-tests` or set `failOnFlakyTests` in the config."
+    },
+    {
+      "question": "What happens to a matrix with the default `fail-fast` setting when one job fails?",
+      "options": [
+        "GitHub cancels the jobs still in progress",
+        "The failed job retries on another runner",
+        "The other jobs continue, and the workflow passes",
+        "The matrix restarts from the first job"
+      ],
+      "answer": 0,
+      "explanation": "`fail-fast` is on by default. Set it to `false` to see whether a failure affects one environment or all of them."
+    },
+    {
+      "question": "Your tests run in the official Playwright image, but the browsers can't be found. What is the most likely cause?",
+      "options": [
+        "The job is missing `--ipc=host`",
+        "The image has no browsers until you install them",
+        "The report folder wasn't mounted",
+        "The image tag doesn't match the project's `@playwright/test` version"
+      ],
+      "answer": 3,
+      "explanation": "Each release expects its own browser builds, so the image tag and the package version must be upgraded together."
+    },
+    {
+      "question": "You run `docker run playwright-tests` on a CI runner where `CI` is set. What does `process.env.CI` contain inside the container?",
+      "options": [
+        "The same value as on the runner",
+        "Nothing, unless you pass it with `-e CI`",
+        "Always `true`, because the image sets it",
+        "The name of the CI provider"
+      ],
+      "answer": 1,
+      "explanation": "Containers don't inherit the host's environment variables, so CI-only settings such as retries won't apply unless you pass the variable in."
+    }
+  ]
+}

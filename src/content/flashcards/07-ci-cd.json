@@ -1,0 +1,125 @@
+{
+  "chapter": 7,
+  "cards": [
+    {
+      "id": "ci-cd/delivery-vs-deployment",
+      "front": "What's the difference between continuous delivery and continuous deployment?",
+      "back": "Delivery keeps every passing build ready and a person releases it. Deployment releases every passing build automatically."
+    },
+    {
+      "id": "ci-cd/workflow-location",
+      "front": "Where do GitHub Actions workflows live?",
+      "back": "In YAML files inside `.github/workflows/`."
+    },
+    {
+      "id": "ci-cd/job-vs-step",
+      "front": "What's the difference between a job and a step?",
+      "back": "A job is a group of steps on one runner, and jobs run in parallel unless linked with `needs`. Steps in a job run in order."
+    },
+    {
+      "id": "ci-cd/npm-ci",
+      "front": "Why use `npm ci` on CI?",
+      "back": "It installs exactly what the lockfile records, and fails if the lockfile doesn't match `package.json`."
+    },
+    {
+      "id": "ci-cd/with-deps",
+      "front": "What does `npx playwright install --with-deps chromium` add to a normal install?",
+      "back": "It also installs the operating system libraries the browser needs."
+    },
+    {
+      "id": "ci-cd/browser-cache",
+      "front": "Should you cache Playwright browsers on CI?",
+      "back": "The docs advise against it. Restoring takes about as long as downloading, and the system libraries must be installed anyway."
+    },
+    {
+      "id": "ci-cd/not-cancelled",
+      "front": "What does `if: ${{ !cancelled() }}` do on a step?",
+      "back": "Runs the step even after earlier failures, unless the run was cancelled."
+    },
+    {
+      "id": "ci-cd/timeout-minutes",
+      "front": "Why set `timeout-minutes` on a job?",
+      "back": "A stuck job would otherwise keep running until the default limit of six hours."
+    },
+    {
+      "id": "ci-cd/forbid-only",
+      "front": "What does `forbidOnly: !!process.env.CI` prevent?",
+      "back": "A committed `test.only` silently skipping the rest of the suite. The run fails instead."
+    },
+    {
+      "id": "ci-cd/flaky-exit-code",
+      "front": "What exit code does a run with only flaky failures return?",
+      "back": "0. Add `--fail-on-flaky-tests` to make those runs fail."
+    },
+    {
+      "id": "ci-cd/github-reporter",
+      "front": "What does the `github` reporter add?",
+      "back": "Failure annotations on the workflow run and on the pull request's changed files."
+    },
+    {
+      "id": "ci-cd/reuse-server",
+      "front": "Why set `reuseExistingServer: !process.env.CI`?",
+      "back": "CI always starts a new server, while a laptop can reuse the one already running."
+    },
+    {
+      "id": "ci-cd/only-changed",
+      "front": "What does `--only-changed=origin/main` need on GitHub Actions?",
+      "back": "The Git history, so set `fetch-depth: 0` on the checkout step. The default checkout has only one commit."
+    },
+    {
+      "id": "ci-cd/fork-secrets",
+      "front": "Do pull requests from forks receive repository secrets?",
+      "back": "No, so tests that depend on secrets can't run on those pull requests."
+    },
+    {
+      "id": "ci-cd/needs-skip",
+      "front": "What happens to a job with `needs: test` when `test` fails?",
+      "back": "It is skipped, unless its `if` uses a condition such as `${{ !cancelled() }}`."
+    },
+    {
+      "id": "ci-cd/pages-privacy",
+      "front": "Why be careful when publishing Playwright reports on GitHub Pages?",
+      "back": "Pages sites are usually public, and traces can contain tokens, page content, and typed values."
+    },
+    {
+      "id": "ci-cd/fail-fast",
+      "front": "Why set `fail-fast: false` on a test matrix?",
+      "back": "The default cancels running jobs at the first failure, which hides whether other environments are affected."
+    },
+    {
+      "id": "ci-cd/artifact-names",
+      "front": "Why must matrix jobs use different artifact names?",
+      "back": "`upload-artifact@v4` fails when two jobs in a run upload the same name."
+    },
+    {
+      "id": "ci-cd/merge-shards",
+      "front": "How do you get one report from a sharded matrix?",
+      "back": "Use `--reporter=blob` in each job, upload the files, then run `npx playwright merge-reports` in a final job."
+    },
+    {
+      "id": "ci-cd/docker-image",
+      "front": "What does the official Playwright Docker image include?",
+      "back": "Node.js, the browsers, and their system libraries. Your project's `@playwright/test` is still installed separately."
+    },
+    {
+      "id": "ci-cd/image-version",
+      "front": "Which version must the Playwright Docker image match?",
+      "back": "Your project's `@playwright/test` version. Otherwise the browsers aren't found."
+    },
+    {
+      "id": "ci-cd/ipc-host",
+      "front": "Why run Chromium containers with `--ipc=host`?",
+      "back": "It stops Chromium running out of shared memory and crashing."
+    },
+    {
+      "id": "ci-cd/docker-env",
+      "front": "How does `CI` reach Playwright inside `docker run`?",
+      "back": "Pass it explicitly with `-e CI=true`. Containers don't inherit the host's environment."
+    },
+    {
+      "id": "ci-cd/docker-volume",
+      "front": "How do you keep the HTML report after a container exits?",
+      "back": "Mount the folder: `-v \"$(pwd)/playwright-report:/app/playwright-report\"`."
+    }
+  ]
+}

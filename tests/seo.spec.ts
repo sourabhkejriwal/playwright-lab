@@ -12,8 +12,8 @@ const pages = [
     type: 'article',
   },
   {
-    path: '/chapters/07-ci-cd/',
-    title: 'ch07 CI/CD pipelines · playwright-lab',
+    path: '/chapters/08-headless-debugging/',
+    title: 'ch08 Headless testing and debugging · playwright-lab',
     type: 'website',
   },
   { path: '/playground/', title: 'playground · playwright-lab', type: 'website' },
