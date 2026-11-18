@@ -72,12 +72,12 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 ## Phase 6 · Testing the site (the portfolio story)
 
 - [x] Page Object Model for the site's own tests (`tests/pages/*`)
-- [ ] Visual regression snapshots for key pages (desktop and mobile), run in CI on Linux
 - [ ] Playground behaviour tests (locator → expected highlights)
 - [ ] Cross-browser projects (Firefox, WebKit) in CI
 - [ ] README: architecture, test strategy, badges, screenshots, live link
 - [x] Add `wcag21a` and `wcag22aa` to `tests/a11y.spec.ts`, and fix the 16 home page links that fail `target-size` (found while writing chapter 9)
 - [ ] Fix the playground's intermittent mobile failures: a valid locator sometimes shows "invalid locator" after `fill()` (see the chapter 12 note)
+- [ ] Visual regression snapshots for key pages (desktop and mobile), run in CI on Linux. Deferred: needs Linux baselines, which an unattended session can't generate (no Docker, no pushing)
 
 ## Notes and decisions log
 
