@@ -1,0 +1,45 @@
+/*
+ * Design A — "Terminal dev". Single source of truth for colors, fonts, and spacing.
+ * Components use the Tailwind utilities mapped in global.css (bg-bg, text-muted, border-line…),
+ * never raw hex. A light theme can be added later by overriding these vars under [data-theme='light'].
+ */
+:root {
+  /* surfaces, darkest → lightest */
+  --term-bg: #0b0e14;
+  --term-surface: #11151c;
+  --term-raised: #171c24;
+  --term-line: #232a35;
+  --term-line-strong: #344050;
+
+  /* text */
+  --term-text: #d6dde6;
+  --term-bright: #f3f6f9;
+  --term-muted: #8b96a5;
+  --term-dim: #7d8898; /* lowest-contrast text allowed: ≥4.5:1 on every surface (WCAG AA) */
+
+  /* test-reporter semantics */
+  --term-pass: #3fb950; /* ✓ passed / done / primary accent */
+  --term-pending: #d29922; /* ◌ pending / in progress */
+  --term-fail: #f85149; /* ✗ failed / errors */
+  --term-info: #58a6ff; /* links, info, selectors */
+  --term-purple: #bc8cff; /* keywords, highlights */
+
+  /* syntax highlighting (Shiki "css-variables" theme); every color ≥4.5:1 on --term-raised */
+  --astro-code-background: var(--term-raised);
+  --astro-code-foreground: var(--term-text);
+  --astro-code-token-comment: var(--term-dim);
+  --astro-code-token-keyword: #ff7b72;
+  --astro-code-token-string: #a5d6ff;
+  --astro-code-token-string-expression: #a5d6ff;
+  --astro-code-token-constant: #79c0ff;
+  --astro-code-token-function: #d2a8ff;
+  --astro-code-token-parameter: #ffa657;
+  --astro-code-token-punctuation: var(--term-muted);
+  --astro-code-token-link: var(--term-info);
+
+  --term-radius: 6px;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-prose: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+  color-scheme: dark;
+}

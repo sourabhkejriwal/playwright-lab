@@ -1,0 +1,121 @@
+@import '@fontsource-variable/jetbrains-mono';
+@import '@fontsource-variable/inter';
+@import './tokens.css';
+@import 'tailwindcss';
+
+/* Map design tokens to Tailwind utilities: bg-bg, bg-surface, text-muted, border-line, text-pass… */
+@theme inline {
+  --color-bg: var(--term-bg);
+  --color-surface: var(--term-surface);
+  --color-raised: var(--term-raised);
+  --color-line: var(--term-line);
+  --color-line-strong: var(--term-line-strong);
+  --color-text: var(--term-text);
+  --color-bright: var(--term-bright);
+  --color-muted: var(--term-muted);
+  --color-dim: var(--term-dim);
+  --color-pass: var(--term-pass);
+  --color-pending: var(--term-pending);
+  --color-fail: var(--term-fail);
+  --color-info: var(--term-info);
+  --color-purple: var(--term-purple);
+  --font-mono: var(--font-mono);
+  --font-prose: var(--font-prose);
+  --radius-term: var(--term-radius);
+}
+
+@layer base {
+  html {
+    background: var(--term-bg);
+    color: var(--term-text);
+    font-family: var(--font-mono);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--term-pass) 35%, transparent);
+  }
+  a {
+    color: var(--term-info);
+  }
+  :focus-visible {
+    outline: 2px solid var(--term-info);
+    outline-offset: 2px;
+  }
+}
+
+/* Long-form chapter text: Inter for readability, mono for headings and code. */
+@layer components {
+  .prose-term {
+    font-family: var(--font-prose);
+    font-size: 1rem;
+    line-height: 1.75;
+    max-width: 72ch;
+  }
+  .prose-term :where(h2, h3, h4) {
+    font-family: var(--font-mono);
+    color: var(--term-bright);
+    font-weight: 600;
+    margin: 2.25rem 0 0.75rem;
+  }
+  .prose-term h2 {
+    font-size: 1.35rem;
+  }
+  .prose-term h2::before {
+    content: '## ';
+    color: var(--term-dim);
+  }
+  .prose-term h3 {
+    font-size: 1.1rem;
+  }
+  .prose-term :where(p, ul, ol, pre, blockquote) {
+    margin: 0 0 1.1rem;
+  }
+  .prose-term :where(ul, ol) {
+    padding-left: 1.4rem;
+  }
+  .prose-term ul {
+    list-style: '›  ';
+  }
+  .prose-term ol {
+    list-style: decimal;
+  }
+  .prose-term li::marker {
+    color: var(--term-pass);
+  }
+  .prose-term :not(pre) > code {
+    font-family: var(--font-mono);
+    font-size: 0.875em;
+    color: var(--term-purple);
+    background: var(--term-raised);
+    border: 1px solid var(--term-line);
+    border-radius: 4px;
+    padding: 0.1em 0.35em;
+  }
+  .prose-term pre {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--term-line);
+    border-radius: var(--term-radius);
+    overflow-x: auto;
+  }
+  .prose-term blockquote {
+    border-left: 3px solid var(--term-pending);
+    padding-left: 1rem;
+    color: var(--term-muted);
+  }
+  .prose-term a {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

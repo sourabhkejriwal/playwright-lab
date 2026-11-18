@@ -1,0 +1,43 @@
+---
+chapter: 2
+title: Advanced selectors and dynamic content
+summary: Find elements the way users do, fall back to CSS or XPath only when you must, and let auto-waiting handle dynamic pages.
+readingMinutes: 6
+---
+
+## Start with user-facing locators
+
+Playwright's `getBy*` locators find elements by what a user perceives: role, accessible name, label,
+placeholder, or visible text. Tests written this way read like a description of the UI, and they survive
+class renames and layout refactors.
+
+```ts
+await page.getByRole('button', { name: 'Save', exact: true }).click();
+await page.getByLabel('Email address').fill('ada@example.com');
+await expect(page.getByText('Profile updated')).toBeVisible();
+```
+
+A rough order of preference:
+
+1. `getByRole()` with a `name`, for anything interactive
+2. `getByLabel()` for form fields
+3. `getByPlaceholder()`, `getByText()`, `getByAltText()`, `getByTitle()`
+4. `getByTestId()` when nothing user-facing is stable
+
+## Fall back deliberately
+
+CSS and XPath are still useful when there's no accessible hook, but keep them short and tied to stable
+attributes rather than page structure.
+
+```ts
+page.locator('input[type="password"]'); // fine: a stable attribute
+page.locator('div > div:nth-child(3) > span'); // brittle: encodes layout
+```
+
+## Let auto-waiting do its job
+
+Actions like `click()` and `fill()` wait for the element to be attached, visible, stable, enabled, and
+able to receive events before acting. Web-first assertions such as `toBeVisible()` retry until they pass or
+time out. That's why `page.waitForTimeout()` is almost never the right fix for a flaky test.
+
+> Coming next: dialogs, iframes with `frameLocator()`, and piercing shadow DOM.

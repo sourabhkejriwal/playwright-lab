@@ -1,0 +1,23 @@
+---
+// Placeholder body for pages whose feature is on the roadmap but not built yet.
+import TerminalWindow from './TerminalWindow.astro';
+import StatusMark from './StatusMark.astro';
+
+interface Props {
+  cmd: string;
+  title: string;
+  description: string;
+}
+const { cmd, title, description } = Astro.props;
+---
+
+<p class="text-sm text-dim">
+  <span class="text-pass">$</span> {cmd}
+</p>
+<h1 class="mt-3 text-2xl font-semibold text-bright">{title}</h1>
+<p class="mt-3 max-w-prose font-prose text-lg text-muted">{description}</p>
+<TerminalWindow title={cmd} class="mt-10 max-w-2xl">
+  <p>
+    <StatusMark status="skipped" label /> <span class="text-muted">— coming soon.</span>
+  </p>
+</TerminalWindow>

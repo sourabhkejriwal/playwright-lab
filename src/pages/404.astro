@@ -1,0 +1,15 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import TerminalWindow from '../components/TerminalWindow.astro';
+import { url } from '../lib/url';
+---
+
+<BaseLayout title="404">
+  <TerminalWindow title="Error" class="max-w-2xl">
+    <p class="text-fail">✗ Error: locator.click: page not found</p>
+    <p class="mt-2 text-muted">waiting for getByRole('main', &#123; name: '{Astro.url.pathname}' &#125;)</p>
+    <p class="mt-4">
+      <a href={url()}>← back to home</a>
+    </p>
+  </TerminalWindow>
+</BaseLayout>

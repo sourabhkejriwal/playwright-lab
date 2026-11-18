@@ -1,0 +1,21 @@
+---
+// Test-reporter style status glyph: ✓ passed, ◌ pending, ✗ failed, – skipped.
+export type Status = 'passed' | 'pending' | 'failed' | 'skipped';
+interface Props {
+  status: Status;
+  label?: boolean;
+}
+const { status, label = false } = Astro.props;
+const glyph = { passed: '✓', pending: '◌', failed: '✗', skipped: '–' }[status];
+const color = {
+  passed: 'text-pass',
+  pending: 'text-pending',
+  failed: 'text-fail',
+  skipped: 'text-dim',
+}[status];
+---
+
+<span class={color} data-status={status}>
+  <span aria-hidden="true">{glyph}</span>
+  {label ? ` ${status}` : <span class="sr-only">{status}</span>}
+</span>

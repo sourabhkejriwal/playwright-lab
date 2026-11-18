@@ -1,0 +1,20 @@
+---
+// A terminal-style framed panel with a title bar. Used for heroes, demos, and callouts.
+interface Props {
+  title?: string;
+  class?: string;
+}
+const { title = 'zsh', class: className = '' } = Astro.props;
+---
+
+<div class={`overflow-hidden rounded-term border border-line bg-surface ${className}`}>
+  <div class="flex items-center gap-2 border-b border-line bg-raised px-3 py-2">
+    <span class="size-2.5 rounded-full bg-fail/70" aria-hidden="true"></span>
+    <span class="size-2.5 rounded-full bg-pending/70" aria-hidden="true"></span>
+    <span class="size-2.5 rounded-full bg-pass/70" aria-hidden="true"></span>
+    <span class="ml-2 truncate text-xs text-dim">{title}</span>
+  </div>
+  <div class="p-4 text-sm sm:p-5">
+    <slot />
+  </div>
+</div>

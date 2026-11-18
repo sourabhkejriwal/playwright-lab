@@ -1,0 +1,17 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="about">
+  <p class="text-sm text-dim">
+    <span class="text-pass">$</span> cat about.md
+  </p>
+  <h1 class="mt-3 text-2xl font-semibold text-bright">About</h1>
+  <div class="prose-term mt-6 text-muted">
+    <p>
+      playwright-lab is a set of interactive study notes for end-to-end testing with Playwright. It's a static
+      Astro site with React islands, and it's tested with Playwright itself: end-to-end, accessibility,
+      visual, and mobile checks run in CI before every deploy.
+    </p>
+  </div>
+</BaseLayout>

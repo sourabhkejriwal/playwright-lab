@@ -1,0 +1,56 @@
+---
+// Homepage hero: the chapter list rendered as a Playwright list-reporter run.
+// Lines reveal one by one with CSS (no JS). Status = whether the chapter's notes are written.
+import TerminalWindow from './TerminalWindow.astro';
+import StatusMark from './StatusMark.astro';
+import { url } from '../lib/url';
+import { pad } from '../data/chapters';
+import type { ChapterWithStatus } from '../lib/chapters';
+
+interface Props {
+  chapters: ChapterWithStatus[];
+}
+const { chapters } = Astro.props;
+const passed = chapters.filter((c) => c.status === 'passed').length;
+const pending = chapters.length - passed;
+const step = 0.07; // seconds between lines
+---
+
+<TerminalWindow title="~/playwright-lab — npx playwright test">
+  <p class="text-dim">
+    <span class="text-pass">$</span> npx playwright test --reporter=list
+  </p>
+  <p class="mt-2 text-muted">Running {chapters.length} chapters using 1 learner</p>
+  <ol class="mt-3 space-y-0.5" aria-label="Chapter progress">
+    {chapters.map((c, i) => (
+      <li class="reveal flex gap-3" style={`animation-delay:${0.3 + i * step}s`}>
+        <StatusMark status={c.status} />
+        <a href={url(c.href)} class="min-w-0 truncate text-text no-underline hover:text-bright">
+          <span class="text-dim">[ch{pad(c.num)}]</span> › {c.short}
+          <span class="hidden text-dim sm:inline"> › {c.blurb}</span>
+        </a>
+      </li>
+    ))}
+  </ol>
+  <p class="reveal mt-4" style={`animation-delay:${0.4 + chapters.length * step}s`}>
+    <span class="text-pass">{passed} passed</span>
+    {pending > 0 && <span class="ml-3 text-pending">{pending} pending</span>}
+  </p>
+</TerminalWindow>
+
+<style>
+  .reveal {
+    opacity: 0;
+    animation: reveal 0.25s ease-out forwards;
+  }
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>

@@ -1,0 +1,33 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import StatusMark from '../../components/StatusMark.astro';
+import { getChapters } from '../../lib/chapters';
+import { pad } from '../../data/chapters';
+import { url } from '../../lib/url';
+
+const chapters = await getChapters();
+---
+
+<BaseLayout title="chapters" description="All 16 chapters of Playwright study notes.">
+  <p class="text-sm text-dim">
+    <span class="text-pass">$</span> ls chapters/
+  </p>
+  <h1 class="mt-3 text-2xl font-semibold text-bright">Chapters</h1>
+  <ol class="mt-8 divide-y divide-line overflow-hidden rounded-term border border-line">
+    {chapters.map((c) => (
+      <li>
+        <a
+          href={url(c.href)}
+          class="flex items-start gap-4 bg-surface px-4 py-4 no-underline transition-colors hover:bg-raised"
+        >
+          <StatusMark status={c.status} />
+          <span class="w-8 shrink-0 text-dim">{pad(c.num)}</span>
+          <span class="min-w-0">
+            <span class="block font-semibold text-bright">{c.title}</span>
+            <span class="mt-1 block font-prose text-sm text-muted">{c.blurb}</span>
+          </span>
+        </a>
+      </li>
+    ))}
+  </ol>
+</BaseLayout>
