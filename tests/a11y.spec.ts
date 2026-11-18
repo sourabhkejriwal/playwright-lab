@@ -9,6 +9,7 @@ const pages = [
   '/playground',
   '/flashcards',
   '/config',
+  '/ci',
   '/auto-waiting',
   '/fixture-graph',
   '/parallel',

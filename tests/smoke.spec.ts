@@ -18,7 +18,7 @@ test.describe('home', () => {
     if (isMobile) await page.getByText('browse chapters').click();
 
     const sidebar = page.getByRole('navigation', { name: 'Chapters' });
-    await expect(sidebar.getByRole('listitem')).toHaveCount(16 + 7); // chapters + practice links
+    await expect(sidebar.getByRole('listitem')).toHaveCount(16 + 8); // chapters + practice links
     await expect(sidebar.getByRole('link', { name: /Selectors/ })).toHaveAttribute('aria-current', 'page');
 
     await sidebar.getByRole('link', { name: /Fixtures/ }).click();

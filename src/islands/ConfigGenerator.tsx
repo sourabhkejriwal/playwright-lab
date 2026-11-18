@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   BROWSERS,
   DEFAULT_OPTIONS,
@@ -12,52 +12,10 @@ import {
   projectCount,
   type ConfigOptions,
 } from '../lib/config-generator';
-import CodeText from './CodeText';
+import { CHOICES, Choice, FilePanel, GROUP, LEGEND, Notes, SELECT, useFileActions } from './GeneratorParts';
 
 const FILE_NAME = 'playwright.config.ts';
-const BUTTON =
-  'min-h-11 cursor-pointer rounded-term border border-line-strong px-3 py-1.5 text-xs text-pass hover:border-pass disabled:cursor-not-allowed disabled:border-line disabled:text-muted';
-const GROUP = 'grid min-w-0 gap-2 rounded-term border border-line bg-surface p-4';
-const LEGEND = 'px-1 text-xs text-muted';
-const CHOICES = 'grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2';
-const SELECT = 'min-h-11 rounded-term border border-line-strong bg-raised px-2 text-sm text-bright';
 const RETRY_VALUES = Array.from({ length: MAX_RETRIES + 1 }, (_, value) => value);
-
-interface ChoiceProps {
-  type: 'checkbox' | 'radio';
-  group: string;
-  name: string;
-  hint: string;
-  checked: boolean;
-  disabled: boolean;
-  onChange: (checked: boolean) => void;
-}
-
-function Choice({ type, group, name, hint, checked, disabled, onChange }: ChoiceProps) {
-  const id = useId();
-  return (
-    <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-term border border-line-strong bg-raised px-3 py-1.5 hover:border-info has-checked:border-info">
-      <input
-        type={type}
-        name={group}
-        checked={checked}
-        disabled={disabled}
-        aria-labelledby={`${id}-name`}
-        aria-describedby={`${id}-hint`}
-        onChange={(event) => onChange(event.target.checked)}
-        className="size-4 shrink-0 accent-pass"
-      />
-      <span className="grid min-w-0">
-        <span id={`${id}-name`} className="text-sm break-words text-bright">
-          {name}
-        </span>
-        <span id={`${id}-hint`} className="font-prose text-xs break-words text-muted">
-          {hint}
-        </span>
-      </span>
-    </label>
-  );
-}
 
 interface RetrySelectProps {
   label: string;
@@ -112,42 +70,16 @@ const toggled = (list: string[], name: string, on: boolean) =>
 export default function ConfigGenerator() {
   const [options, setOptions] = useState(DEFAULT_OPTIONS);
   const [hydrated, setHydrated] = useState(false);
-  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
-  const copyTimer = useRef<number | undefined>(undefined);
 
-  useEffect(() => {
-    setHydrated(true);
-    return () => clearTimeout(copyTimer.current);
-  }, []);
+  useEffect(() => setHydrated(true), []);
 
   const code = useMemo(() => generateConfig(options), [options]);
   const notes = useMemo(() => configNotes(options), [options]);
+  const { copyState, resetCopy, copy, download } = useFileActions(code, FILE_NAME);
 
   const update = (change: Partial<ConfigOptions>) => {
-    clearTimeout(copyTimer.current);
-    setCopyState('idle');
+    resetCopy();
     setOptions((current) => ({ ...current, ...change }));
-  };
-
-  const copy = async () => {
-    let copied = true;
-    try {
-      await navigator.clipboard.writeText(code);
-    } catch {
-      copied = false;
-    }
-    setCopyState(copied ? 'copied' : 'failed');
-    clearTimeout(copyTimer.current);
-    copyTimer.current = window.setTimeout(() => setCopyState('idle'), 2000);
-  };
-
-  const download = () => {
-    const href = URL.createObjectURL(new Blob([code], { type: 'text/plain' }));
-    const link = document.createElement('a');
-    link.href = href;
-    link.download = FILE_NAME;
-    link.click();
-    URL.revokeObjectURL(href);
   };
 
   const status =
@@ -255,29 +187,16 @@ export default function ConfigGenerator() {
         aria-label="Generated config"
         className="grid min-w-0 gap-4 xl:sticky xl:top-[calc(var(--header-h)+1.5rem)]"
       >
-        <div className="overflow-hidden rounded-term border border-line bg-surface">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-raised px-3 py-2">
-            <h2 className="truncate text-xs text-muted">{FILE_NAME}</h2>
-            <div className="flex gap-2">
-              <button type="button" className={BUTTON} disabled={!hydrated} onClick={copy}>
-                {copyState === 'copied' ? 'copied' : copyState === 'failed' ? 'failed' : 'copy'}
-              </button>
-              <button type="button" className={BUTTON} disabled={!hydrated} onClick={download}>
-                download
-              </button>
-            </div>
-          </div>
-          <pre
-            tabIndex={0}
-            role="region"
-            aria-label={FILE_NAME}
-            className="overflow-auto bg-raised p-4 text-xs leading-relaxed text-text xl:max-h-[calc(100vh-22rem)]"
-          >
-            <code>
-              <Highlighted code={code} />
-            </code>
-          </pre>
-        </div>
+        <FilePanel
+          title={FILE_NAME}
+          label={FILE_NAME}
+          copyState={copyState}
+          disabled={!hydrated}
+          onCopy={copy}
+          onDownload={download}
+        >
+          <Highlighted code={code} />
+        </FilePanel>
 
         <p role="status" className="text-xs text-muted">
           {status}
@@ -287,20 +206,7 @@ export default function ConfigGenerator() {
           <span className="text-pass">$</span> <code className="text-text">{installCommand(options)}</code>
         </p>
 
-        {notes.length > 0 && (
-          <ul aria-label="Notes on this config" className="grid gap-2">
-            {notes.map(({ level, text }) => (
-              <li key={text} className="flex gap-2 font-prose text-sm text-text">
-                <span aria-hidden="true" className={level === 'warn' ? 'text-pending' : 'text-info'}>
-                  {level === 'warn' ? '!' : 'i'}
-                </span>
-                <span className="min-w-0 break-words">
-                  <CodeText text={text} />
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <Notes label="Notes on this config" notes={notes} />
       </section>
     </div>
   );

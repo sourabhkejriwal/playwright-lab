@@ -47,7 +47,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ **Explainer: fixture graph** (setup/teardown order, scopes)
 - [x] ⇉ **Explainer: parallel and shard simulator** (workers/shards sliders → runtime)
 - [x] ⇉ **"Spot the flaky test"** challenges
-- [ ] ⇉ **CI pipeline builder** → GitHub Actions YAML
+- [x] ⇉ **CI pipeline builder** → GitHub Actions YAML
 - [ ] ⌘K search with Pagefind
 
 ## Phase 5 · Chapter notes (each ⇉ independent; source in `source/chapters/`)
@@ -155,3 +155,10 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   timing, and the fix must pass under both, so a challenge can't turn out to be simply broken. A challenge is solved only with the
   right line and the right cause; some accept several lines, because the bug spans them. Titles name the feature, never the bug.
   Solved challenges last for the visit only, like the playground's, to keep the saved progress format unchanged.
+- 2026-11-18: The CI pipeline builder lives at `/ci`. `src/lib/ci-builder.ts` is pure, and `tests/ci-builder.spec.ts` reads the
+  generated YAML and runs its own commands on the real CLI: every matrix job, the artifact merge and `merge-reports`, then checks
+  each test ran exactly once. Actions themselves can't run locally, so their versions copy `.github/workflows/deploy.yml`, and
+  `download-artifact` stays on the same major as `upload-artifact`. The unattended session had no network access, so `actionlint` was not run and
+  the `v1.65.1-noble` container tag follows the naming convention without being pulled. `PLAYWRIGHT_VERSION` must equal the installed
+  `@playwright/test`, and a test fails when an upgrade leaves it behind. Reports merge whenever more than one test job runs. Yarn is
+  left out because classic and modern Yarn need different install flags. `GeneratorParts.tsx` holds what this and the config generator share.
