@@ -66,7 +66,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ 12 Forms
 - [x] ⇉ 13 File uploads and downloads
 - [x] ⇉ 14 Security and authentication
-- [ ] ⇉ 15 Maintainability and Page Object Model
+- [x] ⇉ 15 Maintainability and Page Object Model
 - [ ] ⇉ 16 Real-world e-commerce project
 
 ## Phase 6 · Testing the site (the portfolio story)
@@ -268,3 +268,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   WebKit refuses to fulfil a `302`, traces hold the typed password and session cookie, a failed `fill()` prints its value, and Back showed a cached private page in Chromium and Firefox without `no-store`. Every code sample ran on desktop Chromium, Firefox and WebKit in a throwaway project against a local fixture, since removed.
   **Not run:** `codegen --save-storage` (it needs a window, so its flags come from the CLI help), the GitHub Actions snippet, real identity providers, and the `otpauth` and `dotenv` packages, which the unattended session could not install, so the notes use `node:crypto` (checked against the RFC 6238 vectors) and `process.loadEnvFile()`.
   Statements that providers may block scripted logins and that CI log masking doesn't reach artifacts are general guidance and weren't measured. Chapter 15 is now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 15 must move those to chapter 16.
+- 2026-11-19: Chapter 15 notes follow the installed Playwright (1.65.1) where the reference PDF differs: `trace: 'on-failure'` is not a valid mode (it raised no error and left no trace, while `retain-on-failure` kept one); importing `expect` from both the fixture file and `@playwright/test` is a syntax error, so the fixture file re-exports it;
+  page objects expose locators, because `textContent()` returned an empty string for an error that appeared 300 ms later; environment files use `TEST_ENV`, because `NODE_ENV` was undefined in tests; and mocks are asserted through the rendered page, because a `fetch()` inside `page.evaluate()` passed on a page that showed no posts. Added from testing: `private` and `readonly` aren't enforced at run time (`tsc` reports both), `box: true` moves the failure to the calling line,
+  a missing `await` failed with `Test ended`, imported JSON changed by one test stays changed for the next test in that worker, fixture teardown runs after a failure, the last matching route wins, a route added after `goto()` misses the page's request, and `page.goto('/login')` drops a base path. Every code sample ran on desktop Chromium, Firefox and WebKit in a throwaway project against a local fixture, and the behaviours above ran on Chromium, since removed.
+  **Not run:** Faker, because the unattended session could not install packages, so the notes use `randomUUID()` and mention Faker only in general terms; typescript-eslint's `no-floating-promises` rule is general guidance. Watch for flakiness: the `route.fetch()` sample failed once on WebKit with `Response has been disposed`, then passed 30 repeats. `clock` is now an `ApiRef` receiver. Chapter 16 is now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, and it is the last one, so whoever writes chapter 16 must rewrite or remove those pending-state tests.

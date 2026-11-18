@@ -1,0 +1,410 @@
+---
+chapter: 15
+title: Best practices for maintainability
+summary: Keep a growing suite easy to change with clear structure, fixtures, page objects, isolated test data, and mocks that test your app instead of themselves.
+readingMinutes: 14
+---
+
+import { url as siteUrl } from '../../lib/url';
+
+## What maintainable means
+
+A maintainable suite is cheap to change. When the app changes, you should be able to answer yes to these questions:
+
+- **One fix:** does a changed button need an edit in one place only?
+- **Clear failures:** can you tell what broke from the test's name and the error?
+- **Independence:** does each test pass alone, in any order, and next to any other test?
+- **Readable intent:** can a teammate see what a test proves without reading every click?
+
+Each section below deals with one of these.
+
+## Structure tests so failures explain themselves
+
+Group related tests with `test.describe()` and name each test after the behaviour it proves. The report joins the names, so a failure reads as a sentence.
+
+```ts title="tests/sign-in.spec.ts"
+import { test, expect } from './fixtures';
+
+test.describe('sign in', () => {
+  test('a valid user reaches their todos', async ({ loginPage, page }) => {
+    await loginPage.signIn('ada', 'pw');
+    await expect(page).toHaveURL(/\/todos$/);
+  });
+
+  test('a wrong password shows an error', async ({ loginPage }) => {
+    await loginPage.signIn('ada', 'nope');
+    await expect(loginPage.error).toHaveText('Wrong username or password');
+  });
+});
+```
+
+Names like `test1` or `login works` tell you nothing in a CI log. Playwright also refuses to load a file with two identical titles in the same scope, and stops with `duplicate test title`.
+
+### Label long flows with steps
+
+<ApiRef name="test.step()" /> names a stage of a test, and the name shows up in the report and the trace.
+
+```ts title="tests/todos.spec.ts"
+test('finished todos can be cleared', async ({ todoPage }) => {
+  await test.step('add two todos', async () => {
+    await todoPage.add('Buy milk');
+    await todoPage.add('Walk dog');
+  });
+
+  await test.step('clear the finished one', async () => {
+    await todoPage.complete('Buy milk');
+    await todoPage.clearCompleted();
+  });
+
+  await expect(todoPage.items).toHaveText(['Walk dog']);
+});
+```
+
+<Callout type="gotcha" title="trace: 'on-failure' does nothing">
+  Playwright accepts this misspelled value without a warning and records no trace. A failing test left no
+  `trace.zip`. The value you want is `retain-on-failure`, which kept one in the same run.
+</Callout>
+
+## Page objects
+
+Without page objects, every test knows how the page is built. Rename one label and you fix it in a dozen files. A **page object** is a class that owns a page's locators and actions, so that knowledge lives in one place.
+
+```ts title="tests/pages/login-page.ts"
+import type { Locator, Page } from '@playwright/test';
+
+export class LoginPage {
+  readonly error: Locator;
+  private readonly username: Locator;
+  private readonly password: Locator;
+  private readonly submit: Locator;
+
+  constructor(private readonly page: Page) {
+    this.username = page.getByLabel('Username');
+    this.password = page.getByLabel('Password');
+    this.submit = page.getByRole('button', { name: 'Sign in' });
+    this.error = page.getByRole('alert');
+  }
+
+  async goto() {
+    await this.page.goto('/login');
+  }
+
+  async signIn(username: string, password: string) {
+    await this.username.fill(username);
+    await this.password.fill(password);
+    await this.submit.click();
+  }
+}
+```
+
+Creating a locator doesn't touch the browser. It's only a description, resolved each time it's used, so the constructor can run before the page has loaded. The same locators kept working after a reload.
+
+### Rules that keep page objects useful
+
+- **Expose locators, not text.** Tests can then use retrying assertions.
+- **Name actions after what the user wants:** `signIn()`, not `clickSubmitButton()`.
+- **Keep verdicts in the test.** A page object does things, and the test decides whether the result is right.
+- **Model what's shared.** Give a nav bar or dialog its own class, and don't wrap a page used by a single short test.
+
+### Return locators, not snapshots
+
+A getter that returns text reads the page once, and it doesn't wait for the value you expect:
+
+```ts title="tests/pages/login-page.ts"
+// Avoid: reads the text once, right now.
+async getError() {
+  return this.error.textContent();
+}
+```
+
+```ts title="tests/sign-in.spec.ts"
+// Prefer: retries until the text matches or the timeout ends.
+await expect(loginPage.error).toHaveText('Wrong username or password');
+```
+
+On a page that showed its error 300 ms after the response, <ApiRef name="locator.textContent()" /> returned an empty string. The assertion passed on the same page.
+
+### `private` and `readonly`
+
+They do different jobs, and you can combine them:
+
+| Keyword            | What the compiler stops       | Use it for                         |
+| ------------------ | ----------------------------- | ---------------------------------- |
+| `readonly`         | Assigning a new value         | Locators that tests may read       |
+| `private`          | Access from outside the class | Details tests shouldn't depend on  |
+| `private readonly` | Both                          | Inputs and buttons used by actions |
+
+<Callout type="gotcha" title="Playwright doesn't type-check your tests">
+  It removes the types and runs the code. A test that read a `private` locator and replaced a `readonly` one
+  ran without complaint, while `tsc --noEmit` reported both. Run `tsc` in CI if you want these rules enforced.
+</Callout>
+
+### Compose smaller objects
+
+Parts that appear on many pages become their own class, and the page object holds an instance:
+
+```ts title="tests/pages/todo-page.ts"
+import { test, type Locator, type Page } from '@playwright/test';
+
+export class NavBar {
+  readonly account: Locator;
+
+  constructor(page: Page) {
+    this.account = page.getByRole('navigation').getByRole('link', { name: 'Account' });
+  }
+}
+
+export class TodoPage {
+  readonly nav: NavBar;
+  readonly items: Locator;
+  private readonly newTodo: Locator;
+  private readonly clearCompletedButton: Locator;
+
+  constructor(private readonly page: Page) {
+    this.nav = new NavBar(page);
+    this.items = page.getByRole('listitem');
+    this.newTodo = page.getByLabel('New todo');
+    this.clearCompletedButton = page.getByRole('button', { name: 'Clear completed' });
+  }
+
+  async goto() {
+    await this.page.goto('/todos');
+  }
+
+  item(text: string) {
+    return this.items.filter({ hasText: text });
+  }
+
+  async add(text: string) {
+    await test.step(
+      `add todo "${text}"`,
+      async () => {
+        await this.newTodo.fill(text);
+        await this.newTodo.press('Enter');
+      },
+      { box: true },
+    );
+  }
+
+  async complete(text: string) {
+    await this.item(text).getByRole('checkbox').check();
+  }
+
+  async clearCompleted() {
+    await this.clearCompletedButton.click();
+  }
+}
+```
+
+The `box: true` option changes where a failure points. Without it, the error showed a line inside the page object. With it, the error pointed at the line in the test that called the method, which is usually the more useful place to start.
+
+<Callout type="warn" title="Await every page object method">
+  These methods are async, so a forgotten `await` lets the test run ahead. In our run the next line counted 0
+  todos, and the test failed with `locator.fill: Test ended`. The `no-floating-promises` rule in
+  typescript-eslint catches this before you run anything.
+</Callout>
+
+<Callout type="gotcha" title="A leading slash drops the base path">
+  With `baseURL` set to `http://localhost:4599/app/`, `page.goto('/login')` opened `/login`, while
+  `page.goto('login')` opened `/app/login`. This matters when your app is served from a subfolder.
+</Callout>
+
+## Fixtures deliver the page objects
+
+Creating page objects in every test is repetition too. A fixture builds one, does its setup, and hands it to any test that asks for it. <a href={siteUrl('/chapters/05-fixtures')}>Chapter 5</a> covers fixtures in depth.
+
+```ts title="tests/fixtures.ts"
+import { test as base, expect } from '@playwright/test';
+import { LoginPage } from './pages/login-page';
+import { TodoPage } from './pages/todo-page';
+
+type Fixtures = {
+  loginPage: LoginPage;
+  todoPage: TodoPage;
+};
+
+export const test = base.extend<Fixtures>({
+  loginPage: async ({ page }, use) => {
+    const loginPage = new LoginPage(page);
+    await loginPage.goto();
+    await use(loginPage);
+  },
+  todoPage: async ({ page }, use) => {
+    const todoPage = new TodoPage(page);
+    await todoPage.goto();
+    await use(todoPage);
+  },
+});
+
+export { expect };
+```
+
+Re-export `expect` so a spec needs just one import. Importing `expect` from both this file and `@playwright/test` is a syntax error: `Identifier 'expect' has already been declared`.
+
+## Managing test data
+
+Most flaky suites have a data problem: values that collide, values that change, or values one test leaves behind for the next.
+
+### Keep shared values in one file
+
+Move values that many tests share out of the specs, and load the right file for the environment:
+
+```json title="tests/data/dev.json"
+{
+  "users": { "standard": { "username": "ada" } },
+  "products": { "inStock": "Blue mug" }
+}
+```
+
+```ts title="tests/data/index.ts"
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+
+type TestData = {
+  users: { standard: { username: string } };
+  products: { inStock: string };
+};
+
+const environment = process.env.TEST_ENV ?? 'dev';
+const file = path.join(__dirname, `${environment}.json`);
+
+export const testData: TestData = JSON.parse(readFileSync(file, 'utf8'));
+```
+
+Run against another environment with `TEST_ENV=staging npx playwright test`. Use a name of your own here, since `NODE_ENV` was undefined inside our tests and other tools give it their own meaning.
+
+You can also write `import data from './data.json'`. Playwright runs that as it is, but `tsc` reports an error unless `resolveJsonModule` is on in `tsconfig.json`.
+
+<Callout type="warn" title="Data files aren't for secrets">
+  Usernames and product names can be committed. Passwords and tokens belong in environment variables, as
+  <a href={siteUrl('/chapters/14-security-auth')}>Chapter 14</a> explains.
+</Callout>
+
+### Build fresh data for each test
+
+Shared objects leak between tests. When one test changed a value from an imported JSON file, the next test in the same worker saw the changed value. A small builder avoids this, because each call returns a new object:
+
+```ts title="tests/fixtures.ts"
+import { randomUUID } from 'node:crypto';
+
+export type NewUser = { email: string; password: string };
+
+export function buildUser(overrides: Partial<NewUser> = {}): NewUser {
+  return {
+    email: `user-${randomUUID()}@example.test`,
+    password: 'Str0ng!pass',
+    ...overrides,
+  };
+}
+```
+
+A test states only what matters to it, as in `buildUser({ password: 'short' })`. The UUID stops parallel workers and repeated runs from colliding on the same email, and the reserved `.test` domain means no real person can ever receive a message.
+
+Libraries such as Faker can produce realistic names and addresses. They help when you want varied input, but random data doesn't guarantee uniqueness, so keep a unique part in anything the app requires to be unique.
+
+### Create and clean up in a fixture
+
+A fixture can create what a test needs through the API and remove it afterwards. Code after `use()` still ran when the test failed, so cleanup in a fixture is more dependable than a final step in the test.
+
+```ts title="tests/fixtures.ts"
+export const test = base.extend<{ account: NewUser }>({
+  account: async ({ request }, use) => {
+    const user = buildUser();
+    const created = await request.post('/api/users', { data: { email: user.email } });
+    expect(created.status()).toBe(201);
+
+    await use(user);
+
+    await request.delete(`/api/users/${encodeURIComponent(user.email)}`);
+  },
+});
+```
+
+```ts title="tests/register.spec.ts"
+test('an email can only be registered once', async ({ account, page }) => {
+  await page.goto('/register');
+  await page.getByLabel('Email').fill(account.email);
+  await page.getByLabel('Password').fill(account.password);
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByRole('status')).toHaveText('Email already taken');
+});
+```
+
+### Control the clock
+
+Dates change every day, so a test that expects today's date will break tomorrow. Fix the time with <ApiRef name="clock.setFixedTime()" /> before the page loads:
+
+```ts title="tests/date.spec.ts"
+test('shows the current date', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2030-01-15T12:00:00Z'));
+  await page.goto('/clock');
+  await expect(page.getByText('Today is 2030-01-15')).toBeVisible();
+});
+```
+
+## Mocking APIs
+
+A mock replaces a backend response, so a test can produce states that are hard to create for real: an empty list, a server error, or a very long title. Set one up with <ApiRef name="page.route()" /> and <ApiRef name="route.fulfill()" />.
+
+```ts title="tests/posts.spec.ts"
+test('shows the posts from the API', async ({ page }) => {
+  await page.route('**/api/posts', (route) => route.fulfill({ json: [{ id: 1, title: 'Mocked post' }] }));
+  await page.goto('/posts');
+  await expect(page.getByRole('listitem')).toHaveText(['Mocked post']);
+});
+
+test('explains an empty list', async ({ page }) => {
+  await page.route('**/api/posts', (route) => route.fulfill({ json: [] }));
+  await page.goto('/posts');
+  await expect(page.getByRole('alert')).toHaveText('No posts yet');
+});
+
+test('explains a server error', async ({ page }) => {
+  await page.route('**/api/posts', (route) => route.fulfill({ status: 500, json: { error: 'boom' } }));
+  await page.goto('/posts');
+  await expect(page.getByRole('alert')).toHaveText("Couldn't load posts");
+});
+```
+
+<Callout type="gotcha" title="Assert on the page, not on the mock">
+  A test that calls `fetch()` inside `page.evaluate()` and checks the result only proves the mock returned
+  what you gave it. Ours passed on a page that rendered no posts at all. Let the app make the request, then
+  check what the user sees.
+</Callout>
+
+Three rules cover most routing problems:
+
+- **Register first.** A route added after `page.goto()` missed the request the page had already made.
+- **The last route wins.** With two matching routes, the one registered later answered, so a test can override a default from a fixture.
+- **Large payloads can live in a file:** `route.fulfill({ path: path.join(__dirname, 'mocks/posts.json') })`.
+
+### Keep mocks close to the real API
+
+A mock doesn't notice when the real API changes, so a suite can stay green while production breaks. <ApiRef name="route.fetch()" /> reduces that risk: it gets the real response and changes only the part the test cares about.
+
+```ts title="tests/posts.spec.ts"
+test('copes with a long title', async ({ page }) => {
+  await page.route('**/api/posts', async (route) => {
+    const response = await route.fetch();
+    const posts = await response.json();
+    posts[0].title = 'A very long title';
+    await route.fulfill({ response, json: posts });
+  });
+
+  await page.goto('/posts');
+  await expect(page.getByRole('listitem').first()).toHaveText('A very long title');
+});
+```
+
+Keep a few end-to-end tests that use the real backend too, so the suite still proves the two sides work together.
+
+## Interview angle
+
+- **What problem does the Page Object Model solve?** It puts a page's locators and actions in one class, so a UI change means one fix and tests read as user behaviour.
+- **Should a page object return text or a locator?** A locator. Tests can then use web-first assertions, which retry, while `textContent()` reads once.
+- **Where do assertions belong?** The checks a test exists to make stay in the test. Page objects perform actions and expose locators.
+- **`private` or `readonly` on a page object?** `readonly` for locators tests can read, `private readonly` for internals. Both are compile-time only, so run `tsc` in CI.
+- **How do you stop tests colliding on data?** Build fresh data per test with a unique part, and create and clean it up in a fixture.
+- **Why clean up in a fixture rather than at the end of the test?** Code after `use()` still runs when the test fails.
+- **What's the risk of mocking?** Mocks can drift from the real API. Patch real responses with `route.fetch()` and keep some full end-to-end tests.
+- **Why might a route not take effect?** It was registered after the request was made, or a route registered later matched first.

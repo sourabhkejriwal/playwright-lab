@@ -12,8 +12,8 @@ const pages = [
     type: 'article',
   },
   {
-    path: '/chapters/15-maintainability/',
-    title: 'ch15 Best practices for maintainability · playwright-lab',
+    path: '/chapters/16-ecommerce-project/',
+    title: 'ch16 Real-world project: e-commerce · playwright-lab',
     type: 'website',
   },
   { path: '/playground/', title: 'playground · playwright-lab', type: 'website' },

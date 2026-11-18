@@ -1,0 +1,65 @@
+{
+  "chapter": 15,
+  "cards": [
+    {
+      "id": "maintainability/page-object",
+      "front": "What is a page object?",
+      "back": "A class that owns a page's locators and actions, so a UI change needs one fix and tests read as user behaviour."
+    },
+    {
+      "id": "maintainability/locators-are-lazy",
+      "front": "Why can a page object create locators in its constructor before the page has loaded?",
+      "back": "Creating a locator doesn't touch the browser. It's resolved each time it's used."
+    },
+    {
+      "id": "maintainability/return-locators",
+      "front": "Why should a page object expose a locator instead of returning `textContent()`?",
+      "back": "`textContent()` reads once. A locator lets the test use a web-first assertion such as `toHaveText()`, which retries."
+    },
+    {
+      "id": "maintainability/private-readonly",
+      "front": "Does Playwright enforce `private` and `readonly` when it runs tests?",
+      "back": "No. It removes types without checking them, so run `tsc --noEmit` in CI."
+    },
+    {
+      "id": "maintainability/boxed-step",
+      "front": "What does `{ box: true }` do on `test.step()`?",
+      "back": "It reports a failure at the line in the test that called the step, not at a line inside the helper."
+    },
+    {
+      "id": "maintainability/trace-value",
+      "front": "Which `trace` value keeps traces only for failed tests?",
+      "back": "`retain-on-failure`. The value `on-failure` is silently accepted and records nothing."
+    },
+    {
+      "id": "maintainability/re-export-expect",
+      "front": "Why re-export `expect` from your fixtures file?",
+      "back": "A spec then needs one import. Importing `expect` from two modules is a syntax error."
+    },
+    {
+      "id": "maintainability/test-data-builder",
+      "front": "Why use a builder function instead of a shared data object?",
+      "back": "Each call returns a new object, so a change made by one test can't leak into the next test in that worker."
+    },
+    {
+      "id": "maintainability/fixture-cleanup",
+      "front": "Why put test data cleanup in a fixture?",
+      "back": "Code after `use()` runs even when the test fails."
+    },
+    {
+      "id": "maintainability/fixed-time",
+      "front": "How do you make a date-dependent test stable?",
+      "back": "Call `page.clock.setFixedTime()` before the page loads."
+    },
+    {
+      "id": "maintainability/route-order",
+      "front": "Two `page.route()` handlers match the same URL. Which one answers?",
+      "back": "The one registered last."
+    },
+    {
+      "id": "maintainability/patch-response",
+      "front": "How can a mock stay close to the real API?",
+      "back": "Call `route.fetch()` for the real response, change only what the test needs, and pass it to `route.fulfill()`."
+    }
+  ]
+}

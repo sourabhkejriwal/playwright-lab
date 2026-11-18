@@ -8,6 +8,7 @@ interface ApiClass {
 
 const RECEIVERS: Record<string, ApiClass> = {
   browser: { page: 'browser', anchor: 'browser' },
+  clock: { page: 'clock', anchor: 'clock' },
   context: { page: 'browsercontext', anchor: 'browser-context' },
   dialog: { page: 'dialog', anchor: 'dialog' },
   download: { page: 'download', anchor: 'download' },

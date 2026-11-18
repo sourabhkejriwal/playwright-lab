@@ -1,0 +1,60 @@
+{
+  "chapter": 15,
+  "questions": [
+    {
+      "question": "A page object has `async getError() { return this.error.textContent(); }`. The error appears shortly after the form is submitted. What is the main problem?",
+      "options": [
+        "`textContent()` can't be called inside a class",
+        "It reads the text once, so it can return an empty value before the error appears",
+        "It throws unless the locator is `private`",
+        "It retries for too long and slows the suite"
+      ],
+      "answer": 1,
+      "explanation": "`textContent()` doesn't wait for the text you expect. Expose the locator and use `await expect(loginPage.error).toHaveText(...)`, which retries."
+    },
+    {
+      "question": "A test reads a `private` locator from a page object. What happens when you run it with `npx playwright test`?",
+      "options": [
+        "The test runs, because Playwright removes types without checking them",
+        "Playwright stops with a compile error",
+        "The locator is `undefined` at run time",
+        "The test is skipped with a warning"
+      ],
+      "answer": 0,
+      "explanation": "`private` and `readonly` are enforced by the TypeScript compiler only. Run `tsc --noEmit` in CI to catch this kind of misuse."
+    },
+    {
+      "question": "A config sets `trace: 'on-failure'` and a test fails. What do you get?",
+      "options": [
+        "A trace for the failed test",
+        "A configuration error before any test runs",
+        "A trace for every test",
+        "No trace and no warning"
+      ],
+      "answer": 3,
+      "explanation": "`on-failure` isn't a valid mode, and it's accepted silently. Use `retain-on-failure` to keep traces for failed tests."
+    },
+    {
+      "question": "Where should a test account's cleanup go so it still runs when the test fails?",
+      "options": [
+        "On the last line of the test",
+        "Inside the page object's constructor",
+        "After `await use(user)` in a fixture",
+        "In a `test.step()` at the end of the test"
+      ],
+      "answer": 2,
+      "explanation": "Code after `use()` is the fixture's teardown, and it runs whether the test passed or failed. Lines at the end of a test are skipped once an assertion fails."
+    },
+    {
+      "question": "A test mocks an API, calls `fetch()` inside `page.evaluate()`, and asserts on the returned JSON. What does it prove?",
+      "options": [
+        "That the page renders the data correctly",
+        "Only that the mock returned what the test gave it",
+        "That the real API matches the mock",
+        "That the app handles server errors"
+      ],
+      "answer": 1,
+      "explanation": "The app's own code is never exercised, so the test passes even on a page that shows nothing. Let the app make the request and assert on what the user sees."
+    }
+  ]
+}
