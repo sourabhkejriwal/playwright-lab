@@ -43,7 +43,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
       with spaced repetition; filter by chapter
 - [x] ⇉ **Chapter quizzes**: 5 multiple-choice questions per chapter, explanations, score saved
 - [x] ⇉ **Config generator**: pick browsers, devices, retries, reporters, trace → `playwright.config.ts`
-- [ ] ⇉ **Explainer: auto-waiting timeline** (actionability checks, step through)
+- [x] ⇉ **Explainer: auto-waiting timeline** (actionability checks, step through)
 - [ ] ⇉ **Explainer: fixture graph** (setup/teardown order, scopes)
 - [ ] ⇉ **Explainer: parallel and shard simulator** (workers/shards sliders → runtime)
 - [ ] ⇉ **"Spot the flaky test"** challenges
@@ -131,3 +131,10 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   `github` reporter is added on CI only, because it prints workflow commands anywhere else. `json` and `junit` write to
   `reports/`, because Playwright empties `test-results/` at the start of a run. Choices aren't saved between visits. Devices are
   models older Playwright versions also know, so the file works in projects that haven't upgraded.
+- 2026-11-18: The auto-waiting timeline lives at `/auto-waiting`. Its scenarios and action table are data in
+  `src/lib/auto-waiting.ts`, and `tests/auto-waiting.spec.ts` replays them on real Playwright: stuck scenarios must print the
+  call log lines we show, and each table row is tested by breaking one check at a time. Scenarios use `page.locator('#save')`
+  because `getByRole` can't match a hidden button, which would hide the check being taught. It is linked from the sidebar and
+  home page, not the top bar, which has no room for the two explainers still to come.
+- 2026-11-18: Watch for flakiness: the playground's "explains invalid input" failed once on mobile in a full run. Its error wasn't
+  captured, and it then passed 40 repeats and two more full runs.

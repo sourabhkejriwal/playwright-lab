@@ -65,11 +65,12 @@ src/
   lib/flashcards.ts      spaced repetition: intervals, due dates, the study queue (pure, tested in Node)
   lib/quiz.ts            shuffles a question's options and keeps the answer index right (pure, tested in Node)
   lib/config-generator.ts  writes playwright.config.ts from the generator's choices (pure, tested by running real Playwright)
+  lib/auto-waiting.ts    auto-waiting explainer's scenarios, steps and action table (pure, tested against real Playwright)
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
   content/flashcards/    NN-slug.json flashcard deck per chapter
   content/quizzes/       NN-slug.json quiz per chapter
   components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, ChapterStatus, ChapterDone, ChapterProgressSync, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
-  islands/               React interactive components: Playground, LocatorEditor, Flashcards, Quiz, ConfigGenerator, CodeText (renders `backticks` as code)
+  islands/               React interactive components: Playground, LocatorEditor, Flashcards, Quiz, ConfigGenerator, AutoWaitingTimeline, CodeText (renders `backticks` as code)
   stores/progress.ts     visitor progress in localStorage: chapters read, flashcard reviews, quiz scores
   layouts/BaseLayout.astro
   pages/                 routes; chapters/[slug].astro renders MDX or a "pending" placeholder

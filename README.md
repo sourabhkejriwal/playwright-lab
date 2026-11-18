@@ -15,6 +15,7 @@ Interactive study notes, a locator playground, and drills for end-to-end testing
 - **Flashcards and quizzes** _(in progress)_: interview-style drills with progress saved locally.
 - **Config generator:** pick browsers, devices, retries, reporters and tracing, and get a
   `playwright.config.ts`.
+- **Auto-waiting timeline:** step through the checks Playwright runs before it acts, with real call logs.
 
 ## Tech
 

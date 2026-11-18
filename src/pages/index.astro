@@ -26,6 +26,12 @@ const tools = [
     text: 'Pick browsers, devices and reporters, get a playwright.config.ts.',
   },
   {
+    href: 'auto-waiting',
+    cmd: 'explain --auto-waiting',
+    title: 'Auto-waiting timeline',
+    text: 'Step through the checks Playwright runs before it acts.',
+  },
+  {
     href: 'chapters',
     cmd: 'ls chapters/',
     title: 'Chapter notes',
@@ -67,7 +73,7 @@ const tools = [
     <h2 id="tools-heading" class="text-sm text-dim">
       # tools
     </h2>
-    <ul class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <ul class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {tools.map((t) => (
         <li>
           <a

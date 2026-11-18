@@ -9,6 +9,7 @@ const pages = [
   '/playground',
   '/flashcards',
   '/config',
+  '/auto-waiting',
   '/about',
 ];
 

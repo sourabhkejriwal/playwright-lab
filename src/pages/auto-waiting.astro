@@ -1,0 +1,91 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import AutoWaitingTimeline from '../islands/AutoWaitingTimeline';
+import { ACTIONS, CHECKS } from '../lib/auto-waiting';
+
+const inlineCode = (text: string) => text.replace(/`([^`]+)`/g, '<code class="font-mono text-xs">$1</code>');
+---
+
+<BaseLayout
+  title="auto-waiting timeline"
+  description="Step through what Playwright checks before it clicks or fills, and see why a test waits or times out."
+>
+  <p class="text-sm text-dim">
+    <span class="text-pass">$</span> explain --auto-waiting
+  </p>
+  <h1 class="mt-3 text-2xl font-semibold text-bright">Auto-waiting timeline</h1>
+  <p class="mt-3 max-w-prose font-prose text-lg text-muted">
+    Before Playwright acts on an element, it waits until the element is ready. Pick a scenario and step
+    through each check, with the same call log Playwright prints.
+  </p>
+  <noscript>
+    <p class="mt-6 text-sm text-pending">The timeline runs in your browser, so it needs JavaScript.</p>
+  </noscript>
+  <AutoWaitingTimeline client:visible />
+
+  <section aria-labelledby="checks-heading" class="mt-12">
+    <h2 id="checks-heading" class="text-lg font-semibold text-bright">
+      What each check means
+    </h2>
+    <dl class="mt-4 grid gap-3 md:grid-cols-2">
+      {CHECKS.map(({ name, meaning }) => (
+        <div class="rounded-term border border-line bg-surface p-4">
+          <dt class="text-sm text-pass">{name}</dt>
+          <dd class="mt-1 font-prose text-sm text-text" set:html={inlineCode(meaning)} />
+        </div>
+      ))}
+    </dl>
+  </section>
+
+  <section aria-labelledby="matrix-heading" class="mt-12">
+    <h2 id="matrix-heading" class="text-lg font-semibold text-bright">
+      Which action waits for what
+    </h2>
+    <p class="mt-2 max-w-prose font-prose text-sm text-muted">
+      Every locator action waits for its element to exist. These are the extra checks each one runs.
+    </p>
+    <div
+      tabindex="0"
+      role="region"
+      aria-labelledby="matrix-heading"
+      class="mt-4 overflow-x-auto rounded-term border border-line"
+    >
+      <table class="w-full min-w-2xl border-collapse text-left text-xs">
+        <thead class="bg-raised text-muted">
+          <tr>
+            <th scope="col" class="px-3 py-2 font-normal">
+              action
+            </th>
+            {CHECKS.map(({ name }) => (
+              <th scope="col" class="px-3 py-2 text-center font-normal">
+                {name}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {ACTIONS.map(({ name, checks }) => (
+            <tr class="border-t border-line">
+              <th scope="row" class="px-3 py-2 font-normal text-bright">
+                {name}
+              </th>
+              {CHECKS.map((check) =>
+                checks.includes(check.name) ? (
+                  <td class="px-3 py-2 text-center text-pass">
+                    <span aria-hidden="true">✓</span>
+                    <span class="sr-only">waits</span>
+                  </td>
+                ) : (
+                  <td class="px-3 py-2 text-center text-muted">
+                    <span aria-hidden="true">–</span>
+                    <span class="sr-only">does not wait</span>
+                  </td>
+                ),
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</BaseLayout>
