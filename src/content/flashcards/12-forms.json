@@ -1,0 +1,95 @@
+{
+  "chapter": 12,
+  "cards": [
+    {
+      "id": "forms/fill-vs-press-sequentially",
+      "front": "What's the difference between `fill()` and `pressSequentially()`?",
+      "back": "`fill()` replaces the value in one step with no key events. `pressSequentially()` sends key events for each character and keeps existing text."
+    },
+    {
+      "id": "forms/press-sequentially-existing-text",
+      "front": "Where does `pressSequentially()` put text in a field that already has a value?",
+      "back": "Before the existing text, so `old` becomes `newold`. Call `clear()` first if the field might have a value."
+    },
+    {
+      "id": "forms/press",
+      "front": "Does `locator.press('a')` change an input's value?",
+      "back": "Yes. It types the letter and fires `input`, as a real key press would."
+    },
+    {
+      "id": "forms/type-deprecated",
+      "front": "What should replace the deprecated `locator.type()`?",
+      "back": "`fill()` for most fields, or `pressSequentially()` when the page needs real key events."
+    },
+    {
+      "id": "forms/select-string",
+      "front": "What does a plain string match in `selectOption('Japan')`?",
+      "back": "Either the option's value or its visible label."
+    },
+    {
+      "id": "forms/select-assert",
+      "front": "Why does `expect(select).toHaveText('Japan')` fail?",
+      "back": "A select's text includes every option. Use `toHaveValue()`, or check the text of `option:checked`."
+    },
+    {
+      "id": "forms/multi-select",
+      "front": "How do you assert and clear a `<select multiple>`?",
+      "back": "Assert with `toHaveValues([...])`, and clear it with `selectOption([])`."
+    },
+    {
+      "id": "forms/custom-dropdown",
+      "front": "How do you choose from a dropdown that isn't a native `<select>`?",
+      "back": "Click to open it, then click the option, ideally with `getByRole('option', { name })`."
+    },
+    {
+      "id": "forms/check-vs-click",
+      "front": "Why use `check()` rather than `click()` on a checkbox?",
+      "back": "`check()` does nothing if the box is already checked, and it verifies the final state. `click()` just toggles."
+    },
+    {
+      "id": "forms/uncheck-radio",
+      "front": "What happens when you call `uncheck()` on a radio button?",
+      "back": "It throws. A radio is cleared only by selecting another radio in its group."
+    },
+    {
+      "id": "forms/styled-checkbox",
+      "front": "`check()` times out on a styled checkbox whose real input is hidden. What should the test do?",
+      "back": "Click the visible label, as a user would, then assert the input with `toBeChecked()`."
+    },
+    {
+      "id": "forms/force",
+      "front": "Why is `click({ force: true })` risky?",
+      "back": "It skips actionability checks, so it can pass while the click lands on an overlay or a disabled control does nothing."
+    },
+    {
+      "id": "forms/date-format",
+      "front": "What format does `fill()` need for `<input type=\"date\">`?",
+      "back": "`YYYY-MM-DD`, whatever the locale displays. A wrong format can leave the field empty without an error."
+    },
+    {
+      "id": "forms/clock",
+      "front": "How do you stop date tests from expiring?",
+      "back": "Call `page.clock.setFixedTime()` before the page loads, so today's date never changes."
+    },
+    {
+      "id": "forms/native-validation",
+      "front": "How do you test native browser validation across browsers?",
+      "back": "Assert the `validity` state, for example `toHaveJSProperty('validity.valueMissing', true)`. The bubble isn't in the DOM and its wording varies."
+    },
+    {
+      "id": "forms/accessible-error",
+      "front": "What does `toHaveAccessibleErrorMessage()` require on the input?",
+      "back": "`aria-invalid=\"true\"` and `aria-errormessage` pointing to the message. For `aria-describedby`, use `toHaveAccessibleDescription()`."
+    },
+    {
+      "id": "forms/blur",
+      "front": "Why might a validation error not appear after `fill()`?",
+      "back": "`fill()` leaves focus in the field, so blur and `change` handlers haven't run. Call `blur()` or press Tab."
+    },
+    {
+      "id": "forms/payload",
+      "front": "How do you verify the data a form submitted?",
+      "back": "Start `page.waitForRequest()` before the click, then assert the request's `postDataJSON()`."
+    }
+  ]
+}

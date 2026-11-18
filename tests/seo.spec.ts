@@ -12,8 +12,8 @@ const pages = [
     type: 'article',
   },
   {
-    path: '/chapters/12-forms/',
-    title: 'ch12 Testing forms · playwright-lab',
+    path: '/chapters/13-files/',
+    title: 'ch13 File uploads and downloads · playwright-lab',
     type: 'website',
   },
   { path: '/playground/', title: 'playground · playwright-lab', type: 'website' },

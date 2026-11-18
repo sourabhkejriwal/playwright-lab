@@ -1,0 +1,440 @@
+---
+chapter: 12
+title: Testing forms
+summary: Fill every kind of field the way a user would, handle custom widgets without shortcuts, and prove that validation and submission really work.
+readingMinutes: 13
+---
+
+import { url as siteUrl } from '../../lib/url';
+
+## What a form test should prove
+
+A form test is more than filling fields. It should answer three questions:
+
+1. Can a user complete every control?
+2. Does bad input produce a clear error and stop the submission?
+3. Does good input send the right data and show the right result?
+
+Here is the happy path in one test. Each control uses the locator and action that suits it.
+
+```ts title="tests/signup.spec.ts"
+import { test, expect } from '@playwright/test';
+
+test('creates an account', async ({ page }) => {
+  await page.goto('/signup');
+
+  await page.getByLabel('Email').fill('ada@example.com');
+  await page.getByLabel('Country').selectOption('New Zealand');
+  await page.getByRole('checkbox', { name: 'I accept the terms' }).check();
+  await page.getByRole('button', { name: 'Create account' }).click();
+
+  await expect(page).toHaveURL(/\/welcome$/);
+  await expect(page.getByRole('heading', { name: 'Welcome' })).toBeVisible();
+});
+```
+
+Finding fields by their label also tests something useful: if `getByLabel('Email')` can't find the field, a screen reader user probably can't identify it either.
+
+<Callout type="tip" title="use locator methods">
+  `page.fill(selector, value)`, `page.check(selector)` and similar calls still work, but Playwright's docs
+  recommend the locator versions, such as `locator.fill(value)`.
+</Callout>
+
+## Text inputs
+
+Three methods put keys or text into a field, and they behave differently.
+
+|                | `fill()`        | `pressSequentially()`          | `press()`               |
+| -------------- | --------------- | ------------------------------ | ----------------------- |
+| Existing text  | Replaced        | Kept, new text goes before it  | Kept                    |
+| Key events     | None            | One set per character          | One set                 |
+| `input` event  | Once            | Once per character             | If the key changes text |
+| `change` event | When focus goes | When focus goes                | When focus goes         |
+| Best for       | Most fields     | Masks, autocomplete, shortcuts | Enter, Tab, key combos  |
+
+Start with <ApiRef name="locator.fill()" />. It's fast, and it works with controlled components in frameworks such as React.
+
+```ts title="tests/profile.spec.ts"
+const name = page.getByLabel('Display name');
+
+await name.fill('Ada Lovelace');
+await expect(name).toHaveValue('Ada Lovelace');
+
+await name.press('ControlOrMeta+A');
+await name.press('Backspace');
+await expect(name).toBeEmpty();
+```
+
+`ControlOrMeta` means Command on macOS and Control elsewhere, so the shortcut works on both.
+
+### When keystrokes matter
+
+Use <ApiRef name="locator.pressSequentially()" /> when the page reacts to individual keys. This phone field formats digits in a `keydown` handler. `fill()` skips that handler and leaves `5551234567` unformatted.
+
+```ts title="tests/phone.spec.ts"
+const phone = page.getByLabel('Phone');
+
+await phone.pressSequentially('5551234567');
+await expect(phone).toHaveValue('555-123-4567');
+```
+
+<Callout type="gotcha" title="pressSequentially doesn't clear the field">
+  On a field holding `old`, `pressSequentially('new')` produced `newold` in Chromium, Firefox and WebKit. Call
+  `clear()` first when the field might already have a value.
+</Callout>
+
+`press()` isn't limited to special keys. `press('a')` types the letter and fires `input`, just as a real key press would.
+
+`locator.type()` is deprecated. Use `fill()`, or `pressSequentially()` when you need real key events.
+
+### When fill() refuses
+
+| Field                            | What `fill()` does                                |
+| -------------------------------- | ------------------------------------------------- |
+| `readonly` or `disabled`         | Waits for it to become editable, then times out   |
+| `type="number"` given `'abc'`    | Throws `Cannot type text into input[type=number]` |
+| `type="checkbox"` or `radio`     | Throws, so use `check()`                          |
+| `maxlength="3"` given `'abcdef'` | Keeps `abc`, as the browser would                 |
+| `contenteditable` element        | Replaces its text                                 |
+
+## Dropdowns
+
+### Native select
+
+<ApiRef name="locator.selectOption()" /> only works on a real `<select>`. A plain string matches either the option's value or its visible label.
+
+```ts title="tests/country.spec.ts"
+const country = page.getByLabel('Country');
+
+await country.selectOption('NZ'); // value
+await expect(country).toHaveValue('NZ');
+
+await country.selectOption('Japan'); // visible label
+await expect(country).toHaveValue('JP');
+
+await country.selectOption({ label: 'Australia' });
+await expect(country.locator('option:checked')).toHaveText('Australia');
+```
+
+Use `{ value }` or `{ label }` when you want to be explicit. Avoid `{ index }` unless position is the point of the test, because reordering the list changes what it selects.
+
+<Callout type="gotcha" title="toHaveText reads every option">
+  `expect(select).toHaveText('Australia')` fails because a select's text includes all of its options. Assert
+  `toHaveValue()`, or check the text of `option:checked`.
+</Callout>
+
+If the option doesn't exist or is disabled, `selectOption()` keeps waiting until it times out. Labels must match in full, so `{ label: 'United' }` won't select "United Kingdom".
+
+### Multiple selection
+
+Pass an array to a `<select multiple>`. The new selection replaces the old one, and an empty array clears it.
+
+```ts title="tests/toppings.spec.ts"
+const toppings = page.getByLabel('Toppings');
+
+await toppings.selectOption(['olives', 'Mushrooms']);
+await expect(toppings).toHaveValues(['mushrooms', 'olives']);
+
+await toppings.selectOption([]);
+await expect(toppings).toHaveValues([]);
+```
+
+An array can hold all strings or all objects, but mixing them throws an error. On a single select an array doesn't throw: only the first match is selected, so an assertion has to catch the mistake.
+
+### Custom dropdowns
+
+A dropdown built from `div` or `li` elements throws `Element is not a <select> element`. Operate it as a user would: open it, then choose an option.
+
+```ts title="tests/size.spec.ts"
+const size = page.getByRole('combobox', { name: 'Size' });
+
+await size.click();
+await page.getByRole('option', { name: 'Large', exact: true }).click();
+await expect(size).toHaveText('Large');
+```
+
+Actions wait for their target, so no sleep is needed while the list animates or loads.
+
+### Autocomplete
+
+Autocomplete usually listens for typing, so this is a good place for `pressSequentially()`.
+
+```ts title="tests/city.spec.ts"
+const city = page.getByRole('combobox', { name: 'City' });
+
+await city.pressSequentially('Wel', { delay: 50 });
+await page.getByRole('option', { name: 'Wellington' }).click();
+await expect(city).toHaveValue('Wellington');
+```
+
+## Checkboxes and radio buttons
+
+<ApiRef name="locator.check()" /> and <ApiRef name="locator.uncheck()" /> describe the state you want. If the
+box is already in that state, nothing happens. `click()` would flip it.
+
+```ts title="tests/terms.spec.ts"
+const terms = page.getByRole('checkbox', { name: 'I accept the terms' });
+
+await terms.check();
+await terms.check(); // still checked
+await expect(terms).toBeChecked();
+
+await terms.setChecked(false);
+await expect(terms).not.toBeChecked();
+```
+
+<ApiRef name="locator.setChecked()" /> is handy when the state comes from test data. `check()` also confirms
+the state changed, and fails with `Clicking the checkbox did not change its state` if the page cancels the
+click. It works on elements with `role="checkbox"` too.
+
+For a mixed "select all" box, use `toBeChecked({ indeterminate: true })`.
+
+### Radio groups
+
+Selecting one radio should clear the others, so assert both sides. A `fieldset` with a `legend` is exposed as a named group, which keeps same-named options apart.
+
+```ts title="tests/shipping.spec.ts"
+const shipping = page.getByRole('group', { name: 'Shipping' });
+const standard = shipping.getByRole('radio', { name: 'Standard' });
+const express = shipping.getByRole('radio', { name: 'Express' });
+
+await standard.check();
+await express.check();
+
+await expect(express).toBeChecked();
+await expect(standard).not.toBeChecked();
+```
+
+Calling `uncheck()` on a radio throws, because a radio can only be cleared by choosing another in its group.
+
+### Styled controls and force
+
+Design systems often hide the real input and draw a replacement. `check()` then times out, because the input can't receive a click. A user clicks the label, so the test should too.
+
+```ts title="tests/news.spec.ts"
+await page.getByText('Subscribe to news').click();
+await expect(page.getByLabel('Subscribe to news')).toBeChecked();
+```
+
+Avoid `{ force: true }` as a first fix. It skips the checks that make a test represent a real user, and the results vary:
+
+| Situation                  | `check({ force: true })`            | `click({ force: true })`           |
+| -------------------------- | ----------------------------------- | ---------------------------------- |
+| An overlay covers the box  | Fails, state didn't change          | **Passes**, and clicks the overlay |
+| The box is disabled        | Fails, state didn't change          | **Passes**, and nothing happens    |
+| The box is `display: none` | Fails with `Element is not visible` | Fails                              |
+
+<Callout type="warn" title="a forced click can hide a real bug">
+  A forced `click()` on a covered control reports success even though a user couldn't reach it. If you must
+  force an action, assert the result straight afterwards.
+</Callout>
+
+## Dates and custom fields
+
+### Native date inputs
+
+Native date and time inputs take one fixed format, whatever the visitor's locale displays.
+
+| Input type       | Value for `fill()` |
+| ---------------- | ------------------ |
+| `date`           | `2026-03-09`       |
+| `time`           | `13:45`            |
+| `datetime-local` | `2026-03-09T13:45` |
+| `month`          | `2026-03`          |
+| `week`           | `2026-W11`         |
+
+```ts title="tests/start-date.spec.ts"
+const start = page.getByLabel('Start date');
+
+await start.fill('2026-03-09');
+await expect(start).toHaveValue('2026-03-09');
+```
+
+<Callout type="gotcha" title="a wrong date format can fail silently">
+  `fill('03/09/2026')` on a date input threw no error in any of the three engines, and the field stayed empty.
+  Always follow it with `toHaveValue()`.
+</Callout>
+
+### Calendar widgets
+
+A read-only input that opens a calendar can't be filled. Drive the calendar instead, and find its parts by role and name rather than generated classes.
+
+```ts title="tests/calendar.spec.ts"
+await page.getByLabel('Arrival').click();
+
+const calendar = page.getByRole('dialog', { name: 'Choose date' });
+const month = calendar.getByRole('heading');
+
+while ((await month.textContent()) !== 'May 2026') {
+  await calendar.getByRole('button', { name: 'Next month' }).click();
+}
+
+await calendar.getByRole('button', { name: '9 May 2026', exact: true }).click();
+await expect(page.getByLabel('Arrival')).toHaveValue('2026-05-09');
+```
+
+`exact: true` matters here. Without it, the name `9 May 2026` also matches `19 May 2026`, and the click fails with a strict mode violation.
+
+### Control today's date
+
+A hardcoded date eventually falls into the past. Fix the browser's clock with <ApiRef name="page.clock" /> before the page loads, so "today" never moves.
+
+```ts title="tests/booking.spec.ts"
+import { test, expect } from '@playwright/test';
+
+test('rejects a date in the past', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-03-09T10:00:00'));
+  await page.goto('/booking');
+
+  await page.getByLabel('Start date').fill('2026-03-08');
+  await page.getByRole('button', { name: 'Book' }).click();
+
+  await expect(page.getByRole('alert')).toHaveText('Choose today or a later date');
+});
+```
+
+### Don't set values with evaluate()
+
+Writing `input.value` in `page.evaluate()` looks like a neat shortcut for awkward widgets, but it skips what you're trying to test, including any rules the widget enforces.
+
+<Callout type="gotcha" title="React can ignore a value set by script">
+  On a controlled React 19 input, we set `input.value` and dispatched `input` and `change` events. The field
+  showed the new date, while the component's state stayed empty. `fill()` updated both.
+</Callout>
+
+Prefer `fill()` or the widget's real controls. Fields inside an open shadow root need no special syntax, because locators already reach into them, as <a href={siteUrl('chapters/02-selectors')}>chapter 2</a> explains.
+
+## Validation
+
+### Native browser validation
+
+Attributes such as `required` and `type="email"` make the browser block the submission and show a bubble. The bubble isn't part of the page, so a locator can't find it. Its wording differs too: Chromium, Firefox and WebKit each gave a different message for a bad email.
+
+Assert the validity state instead of the wording.
+
+```ts title="tests/contact.spec.ts"
+const email = page.getByLabel('Email');
+
+await page.getByRole('button', { name: 'Send' }).click();
+await expect(email).toHaveJSProperty('validity.valueMissing', true);
+await expect(email).toBeFocused();
+
+await email.fill('not-an-email');
+await expect(email).toHaveJSProperty('validity.typeMismatch', true);
+```
+
+### Inline error messages
+
+For errors your app renders, loop over the bad inputs. Each case becomes its own test with its own name in the report.
+
+```ts title="tests/signup-errors.spec.ts"
+import { test, expect } from '@playwright/test';
+
+const cases = [
+  { name: 'empty', value: '', error: 'Enter your email' },
+  { name: 'no domain', value: 'ada@', error: 'Enter a valid email' },
+];
+
+for (const { name, value, error } of cases) {
+  test(`rejects an email: ${name}`, async ({ page }) => {
+    await page.goto('/signup');
+    const email = page.getByLabel('Email');
+
+    await email.fill(value);
+    await page.getByRole('button', { name: 'Create account' }).click();
+
+    await expect(email).toHaveAccessibleErrorMessage(error);
+    await expect(page).toHaveURL(/\/signup$/);
+  });
+}
+```
+
+<ApiRef name="expect(locator).toHaveAccessibleErrorMessage()" /> checks both the message and its link to the
+field, which a visible-text check would miss. It needs `aria-invalid="true"` and `aria-errormessage` on the
+input. If your app links the error with `aria-describedby`, use
+<ApiRef name="expect(locator).toHaveAccessibleDescription()" />.
+<a href={siteUrl('chapters/09-accessibility')}>Chapter 9</a> covers wider accessibility scans.
+
+If an error is only shown by styling, <ApiRef name="expect(locator).toContainClass()" /> checks one class. `toHaveClass('is-invalid')` compares the whole attribute, so it fails on `class="field is-invalid"`.
+
+### Validation on blur
+
+`fill()` leaves focus in the field. A rule that runs when the user leaves the field won't run until you move focus yourself.
+
+```ts title="tests/email-blur.spec.ts"
+const email = page.getByLabel('Email');
+
+await email.fill('ada@');
+await expect(page.getByText('Enter a valid email')).toBeHidden();
+
+await email.blur();
+await expect(email).toHaveAccessibleErrorMessage('Enter a valid email');
+```
+
+The same applies to `change` listeners on text fields, which fire only when focus leaves. `press('Tab')` works as well, and also proves the keyboard path.
+
+## Submission
+
+### Check what was sent
+
+A success message doesn't prove the server received the right data. Start waiting for the request **before** the click, then inspect it.
+
+```ts title="tests/signup-payload.spec.ts"
+await page.getByLabel('Email').fill('ada@example.com');
+await page.getByLabel('Country').selectOption('NZ');
+await page.getByRole('checkbox', { name: 'I accept the terms' }).check();
+
+const sent = page.waitForRequest('**/api/signup');
+await page.getByRole('button', { name: 'Create account' }).click();
+
+const request = await sent;
+expect(request.postDataJSON()).toEqual({
+  email: 'ada@example.com',
+  country: 'NZ',
+  terms: 'on',
+});
+```
+
+`postDataJSON()` also parses a classic URL-encoded form post into an object.
+
+### Test the failure path
+
+Servers fail, and that path is rarely exercised by hand. <ApiRef name="page.route()" /> forces the failure so you can check that the user gets a message and keeps their work.
+
+```ts title="tests/signup-failure.spec.ts"
+await page.route('**/api/signup', (route) => route.fulfill({ status: 500 }));
+
+const email = page.getByLabel('Email');
+await email.fill('ada@example.com');
+await page.getByLabel('Country').selectOption('NZ');
+await page.getByRole('checkbox', { name: 'I accept the terms' }).check();
+
+const submit = page.getByRole('button', { name: 'Create account' });
+await submit.click();
+
+await expect(page.getByRole('alert')).toHaveText('Something went wrong. Try again.');
+await expect(email).toHaveValue('ada@example.com');
+await expect(submit).toBeEnabled();
+```
+
+Assertions like these retry until they pass or time out, so asynchronous errors need no `waitForTimeout()`.
+
+### A form test checklist
+
+- Every field can be found by its label.
+- Each validation rule has a failing case and a passing case.
+- Errors are linked to their fields, and the form doesn't submit.
+- The request contains the expected data.
+- A server error leaves the user's input intact and lets them retry.
+- The form can be completed with the keyboard.
+
+## Interview angle
+
+- **What's the difference between `fill()` and `pressSequentially()`?** `fill()` replaces the value in one step without key events. `pressSequentially()` sends real key events for each character and doesn't clear the field.
+- **When does `fill()` give the wrong result?** When the page depends on key events, as an input mask does, or on a blur that `fill()` doesn't cause.
+- **Why prefer `check()` to `click()` on a checkbox?** `check()` is idempotent and verifies the final state. `click()` just toggles.
+- **How do you automate a custom dropdown?** Open it and click the option by role. `selectOption()` only works on a native `<select>`.
+- **Why is `{ force: true }` risky?** It skips actionability checks, so a test can pass on a control that a user can't reach.
+- **How do you test native validation messages across browsers?** Assert the `validity` state, because the wording differs by browser and the bubble isn't in the DOM.
+- **How do you keep date tests from expiring?** Fix the time with `page.clock.setFixedTime()` before the page loads.
+- **How do you verify what a form submitted?** Start `page.waitForRequest()` before the click, then assert `postDataJSON()`.

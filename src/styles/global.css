@@ -106,6 +106,8 @@
     border: 1px solid var(--term-line);
     border-radius: 4px;
     padding: 0.1em 0.35em;
+    /* Long API names must wrap, and `anywhere` also lets table columns shrink to fit a phone. */
+    overflow-wrap: anywhere;
   }
   .code-frame {
     margin: 0 0 1.1rem;

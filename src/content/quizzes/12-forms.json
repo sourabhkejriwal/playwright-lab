@@ -1,0 +1,60 @@
+{
+  "chapter": 12,
+  "questions": [
+    {
+      "question": "A phone field adds dashes from a `keydown` handler. What does `fill('5551234567')` leave in the field?",
+      "options": [
+        "`555-123-4567`, because `fill()` sends each key",
+        "`5551234567`, because `fill()` sends no key events",
+        "An empty field, because masked inputs reject `fill()`",
+        "A timeout, because the field isn't editable"
+      ],
+      "answer": 1,
+      "explanation": "`fill()` sets the text without key events, so the handler never runs. Use `pressSequentially()` when the page reacts to individual keys."
+    },
+    {
+      "question": "An email rule runs when the field loses focus. After `email.fill('ada@')`, no error appears. What should the test do next?",
+      "options": [
+        "Wait a fixed time with `page.waitForTimeout()`",
+        "Call `email.fill('ada@')` a second time",
+        "Dispatch a `keydown` event on the field",
+        "Call `email.blur()`, then assert the error"
+      ],
+      "answer": 3,
+      "explanation": "`fill()` leaves focus in the field, so blur handlers haven't run. `blur()` or `press('Tab')` moves focus away as a user would."
+    },
+    {
+      "question": "What happens when `selectOption(['US', 'UK'])` runs on a single-choice `<select>`?",
+      "options": [
+        "Only the first match is selected, and no error is thrown",
+        "Both options are selected",
+        "It throws because the select isn't `multiple`",
+        "The last match is selected"
+      ],
+      "answer": 0,
+      "explanation": "A single select takes the first match without complaint, so only an assertion such as `toHaveValue()` will reveal the mistake."
+    },
+    {
+      "question": "An overlay covers a checkbox. What does `checkbox.click({ force: true })` do?",
+      "options": [
+        "It removes the overlay and ticks the box",
+        "It ticks the box directly, ignoring the overlay",
+        "It reports success, but the click lands on the overlay",
+        "It always throws an actionability error"
+      ],
+      "answer": 2,
+      "explanation": "Forcing skips the checks, but the click still happens at that screen position. The box stays unticked, and only an assertion will notice."
+    },
+    {
+      "question": "A test sets `input.value` in `page.evaluate()` on a controlled React input and dispatches `input`. The field looks right, but the app's state is empty. What's the best fix?",
+      "options": [
+        "Dispatch the `change` event twice",
+        "Use `locator.fill()` on the input",
+        "Add `{ force: true }` to the evaluate call",
+        "Wait for the network to go idle"
+      ],
+      "answer": 1,
+      "explanation": "React tracks the value set by script, so it sees no change and doesn't call its handler. `fill()` enters text the way the browser expects and updates the state."
+    }
+  ]
+}

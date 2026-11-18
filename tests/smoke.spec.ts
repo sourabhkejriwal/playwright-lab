@@ -161,6 +161,28 @@ test.describe('chapters', () => {
     await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
   });
 
+  test('the forms chapter renders its notes and quiz', async ({ page }) => {
+    await page.goto('/chapters/12-forms');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Testing forms');
+    await expect(page.getByRole('heading', { level: 2, name: 'Checkboxes and radio buttons' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'tests/shipping.spec.ts' })).toContainText('getByRole');
+    await expect(
+      page.getByRole('main').getByRole('link', { name: 'Chapter 9', exact: true }),
+    ).toHaveAttribute('href', /\/chapters\/09-accessibility\/?$/);
+    await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
+  });
+
+  for (const chapter of ['10-visual-regression', '12-forms']) {
+    test(`chapter ${chapter} fits a 375px screen`, async ({ page }) => {
+      await page.setViewportSize({ width: 375, height: 800 });
+      await page.goto(`/chapters/${chapter}`);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBe(0);
+    });
+  }
+
   test('code blocks show a title bar and highlighted lines', async ({ page }) => {
     await page.goto('/chapters/02-selectors');
 
@@ -192,7 +214,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter shows a pending placeholder', async ({ page }) => {
-    await page.goto('/chapters/12-forms');
+    await page.goto('/chapters/13-files');
     await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();
   });
 
@@ -222,7 +244,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter has no table of contents', async ({ page }) => {
-    await page.goto('/chapters/12-forms');
+    await page.goto('/chapters/13-files');
     await expect(page.locator('[data-toc]')).toHaveCount(0);
   });
 

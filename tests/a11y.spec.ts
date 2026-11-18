@@ -19,6 +19,7 @@ const pages = [
   '/chapters/10-visual-regression',
   '/chapters/11-mobile',
   '/chapters/12-forms',
+  '/chapters/13-files',
   '/playground',
   '/flashcards',
   '/config',

@@ -63,7 +63,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ 09 Accessibility testing with axe-core
 - [x] ⇉ 10 Visual regression testing
 - [x] ⇉ 11 Mobile web
-- [ ] ⇉ 12 Forms
+- [x] ⇉ 12 Forms
 - [ ] ⇉ 13 File uploads and downloads
 - [ ] ⇉ 14 Security and authentication
 - [ ] ⇉ 15 Maintainability and Page Object Model
@@ -77,6 +77,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [ ] Cross-browser projects (Firefox, WebKit) in CI
 - [ ] README: architecture, test strategy, badges, screenshots, live link
 - [x] Add `wcag21a` and `wcag22aa` to `tests/a11y.spec.ts`, and fix the 16 home page links that fail `target-size` (found while writing chapter 9)
+- [ ] Fix the playground's intermittent mobile failures: a valid locator sometimes shows "invalid locator" after `fill()` (see the chapter 12 note)
 
 ## Notes and decisions log
 
@@ -251,3 +252,9 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   with no meta viewport laid out at 980px. Snippets and behaviours ran in a throwaway project on Pixel 5 (Chromium) and iPhone 15 (WebKit) presets, with engine differences also checked on desktop Chromium,
   WebKit and Firefox, since removed. **Not run:** anything on a real phone. The statements that emulation can't show real hardware performance or every iOS bug are general guidance and weren't measured.
   Chapter 12 is now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 12 must move those to chapter 13.
+- 2026-11-18: Chapter 12 notes follow the installed Playwright (1.65) where the reference PDF differs: `press()` does change a field's value, `locator.type()` is deprecated, an array passed to a single select picks the
+  first match instead of throwing, `check({ force: true })` on a covered box fails rather than passing, `>> css=` is not valid shadow DOM syntax, and `page.toBeVisible()` doesn't exist. The notes advise against setting values
+  with `page.evaluate()`, because a controlled React 19 input kept its state empty. Every code sample and the behaviours above ran on Chromium, Firefox and WebKit in a throwaway project against a local fixture, since removed.
+  Inline code in chapters now wraps with `overflow-wrap: anywhere`, which also fixes the sideways scroll chapter 10 had at 375px. Avoid `xy` in chapter text as well as a lone `x`: Pagefind matched it for "xylophone". Watch for
+  flakiness: the playground's "a unique locator gets one green highlight" failed once on mobile in a full run, showing "invalid locator" for a valid locator after `fill()`. It then passed 40 repeats and a full run. Chapter 13 is
+  now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 13 must move those to chapter 14.
