@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import StatusMark from '../../components/StatusMark.astro';
+import ChapterStatus from '../../components/ChapterStatus.astro';
 import { getChapters } from '../../lib/chapters';
 import { pad } from '../../data/chapters';
 import { url } from '../../lib/url';
@@ -20,7 +20,7 @@ const chapters = await getChapters();
           href={url(c.href)}
           class="flex items-start gap-4 bg-surface px-4 py-4 no-underline transition-colors hover:bg-raised"
         >
-          <StatusMark status={c.status} />
+          <ChapterStatus chapter={c} />
           <span class="w-8 shrink-0 text-dim">{pad(c.num)}</span>
           <span class="min-w-0">
             <span class="block font-semibold text-bright">{c.title}</span>

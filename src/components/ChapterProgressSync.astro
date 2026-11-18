@@ -1,0 +1,34 @@
+---
+// Pages are static, so they ship the "nothing read yet" state. This applies the visitor's saved progress to them:
+//   data-if-read / data-if-unread="slug"   shown only in that state
+//   data-read-count / data-unread-count    number of written chapters in that state
+//   data-next-chapter="slug"               link shown for the first unread chapter
+//   data-next-up / data-next-done          shown while a chapter is left to read / once none is
+---
+
+<script>
+  import { $progress, loadProgress } from '../stores/progress';
+
+  const all = (selector: string) => [...document.querySelectorAll<HTMLElement>(selector)];
+
+  // Only written chapters carry data-if-read, so a saved entry for an unwritten chapter never counts.
+  const written = [...new Set(all('[data-if-read]').map((el) => el.dataset.ifRead as string))];
+
+  $progress.subscribe(({ chapters }) => {
+    const isRead = (slug = '') => Object.hasOwn(chapters, slug);
+    const readCount = written.filter((slug) => isRead(slug)).length;
+
+    all('[data-if-read]').forEach((el) => (el.hidden = !isRead(el.dataset.ifRead)));
+    all('[data-if-unread]').forEach((el) => (el.hidden = isRead(el.dataset.ifUnread)));
+    all('[data-read-count]').forEach((el) => (el.textContent = String(readCount)));
+    all('[data-unread-count]').forEach((el) => (el.textContent = String(written.length - readCount)));
+
+    const links = all('[data-next-chapter]');
+    const next = links.find((el) => !isRead(el.dataset.nextChapter));
+    links.forEach((el) => (el.hidden = el !== next));
+    all('[data-next-up]').forEach((el) => (el.hidden = !next));
+    all('[data-next-done]').forEach((el) => (el.hidden = Boolean(next)));
+  });
+
+  loadProgress();
+</script>

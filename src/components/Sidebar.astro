@@ -1,7 +1,7 @@
 ---
 // Chapter navigation for the left column (desktop) and the mobile drawer.
 // Marks the current page with aria-current and shows each chapter's status.
-import StatusMark from './StatusMark.astro';
+import ChapterStatus from './ChapterStatus.astro';
 import { pad } from '../data/chapters';
 import { url } from '../lib/url';
 import type { ChapterWithStatus } from '../lib/chapters';
@@ -19,7 +19,6 @@ const practice = [
   { href: 'playground', label: 'Locator playground' },
   { href: 'flashcards', label: 'Flashcards' },
 ];
-const done = chapters.filter((c) => c.status === 'passed').length;
 ---
 
 <nav aria-label="Chapters" class="text-sm">
@@ -35,7 +34,8 @@ const done = chapters.filter((c) => c.status === 'passed').length;
       # chapters
     </a>
     <span class="text-xs text-dim">
-      {done}/{chapters.length}
+      <span data-read-count>0</span>/{chapters.length}
+      <span class="sr-only"> chapters read</span>
     </span>
   </div>
   <ol class="mt-2 space-y-px">
@@ -53,7 +53,7 @@ const done = chapters.filter((c) => c.status === 'passed').length;
                 : 'text-muted hover:bg-surface hover:text-bright',
             ]}
           >
-            <StatusMark status={c.status} />
+            <ChapterStatus chapter={c} />
             <span class="w-5 shrink-0 text-xs text-dim">{pad(c.num)}</span>
             <span class="min-w-0 truncate">{c.short}</span>
           </a>

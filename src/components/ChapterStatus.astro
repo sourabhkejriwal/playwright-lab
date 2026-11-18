@@ -1,0 +1,23 @@
+---
+// A chapter's status mark. Written chapters render both states; ChapterProgressSync shows the visitor's own.
+import StatusMark from './StatusMark.astro';
+import type { ChapterWithStatus } from '../lib/chapters';
+
+interface Props {
+  chapter: Pick<ChapterWithStatus, 'slug' | 'status'>;
+}
+const { chapter } = Astro.props;
+---
+
+{chapter.status === 'ready' ? (
+  <span>
+    <span data-if-unread={chapter.slug}>
+      <StatusMark status="ready" />
+    </span>
+    <span data-if-read={chapter.slug} hidden>
+      <StatusMark status="read" />
+    </span>
+  </span>
+) : (
+  <StatusMark status="pending" />
+)}

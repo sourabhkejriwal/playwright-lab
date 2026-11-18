@@ -1,6 +1,6 @@
 /**
  * Master list of chapters. Order, slugs, and titles live here; written content lives in
- * src/content/chapters/<NN>-<slug>.mdx. A chapter counts as "passed" once its MDX exists.
+ * src/content/chapters/<NN>-<slug>.mdx. A chapter counts as "ready" once its MDX exists.
  * `source` points at the extracted reference text (gitignored) for authoring sessions.
  */
 export interface ChapterMeta {

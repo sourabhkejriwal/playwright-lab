@@ -2,7 +2,7 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 import { chapters, pad, type ChapterMeta } from '../data/chapters';
 
 export interface ChapterWithStatus extends ChapterMeta {
-  status: 'passed' | 'pending';
+  status: 'ready' | 'pending'; // whether the notes are written; what the visitor has read is client-side
   entry?: CollectionEntry<'chapters'>;
   href: string; // path without base; pass through url()
 }
@@ -16,7 +16,7 @@ export async function getChapters(): Promise<ChapterWithStatus[]> {
     return {
       ...meta,
       entry,
-      status: written ? 'passed' : 'pending',
+      status: written ? 'ready' : 'pending',
       href: `chapters/${pad(meta.num)}-${meta.slug}`,
     };
   });

@@ -8,8 +8,8 @@ test.describe('home', () => {
 
     const run = page.getByRole('list', { name: 'Chapter progress' });
     await expect(run.getByRole('listitem')).toHaveCount(16);
-    await expect(run.getByRole('link', { name: 'Chapter 2, Selectors: passed' })).toBeVisible();
-    await expect(page.getByText(/next up/)).toContainText('ch01');
+    await expect(run.getByRole('link', { name: 'Chapter 2, Selectors: ready' })).toBeVisible();
+    await expect(page.getByText(/next up/)).toContainText('ch02');
   });
 
   test('chapter sidebar lists every chapter and marks the current one', async ({ page, isMobile }) => {

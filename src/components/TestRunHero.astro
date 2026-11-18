@@ -1,7 +1,8 @@
 ---
 // Homepage hero panel: overall progress as a Playwright run summary.
-// One segment per chapter (green = notes written), plus a "next up" link.
+// One segment per chapter (green = read, blue = ready to read), plus a "next up" link.
 // The full chapter list lives in the sidebar, so this stays compact.
+// Ships the "nothing read yet" state; ChapterProgressSync applies the visitor's progress.
 import TerminalWindow from './TerminalWindow.astro';
 import { url } from '../lib/url';
 import { pad } from '../data/chapters';
@@ -11,9 +12,16 @@ interface Props {
   chapters: ChapterWithStatus[];
 }
 const { chapters } = Astro.props;
-const passed = chapters.filter((c) => c.status === 'passed').length;
-const pending = chapters.length - passed;
-const next = chapters.find((c) => c.status === 'pending');
+const ready = chapters.filter((c) => c.status === 'ready');
+const pending = chapters.length - ready.length;
+
+const segments = (c: ChapterWithStatus) =>
+  c.status === 'ready'
+    ? [
+        { status: 'ready', color: 'bg-info', attrs: { 'data-if-unread': c.slug } },
+        { status: 'read', color: 'bg-pass', attrs: { 'data-if-read': c.slug, hidden: true } },
+      ]
+    : [{ status: 'pending', color: 'bg-line-strong', attrs: {} }];
 ---
 
 <TerminalWindow title="~/playwright-lab — npx playwright test">
@@ -25,33 +33,46 @@ const next = chapters.find((c) => c.status === 'pending');
   <ol class="mt-4 grid grid-cols-16 gap-1" aria-label="Chapter progress">
     {chapters.map((c, i) => (
       <li class="reveal" style={`animation-delay:${0.2 + i * 0.05}s`}>
-        <a
-          href={url(c.href)}
-          title={`ch${pad(c.num)} ${c.short}: ${c.status}`}
-          class:list={[
-            'block h-6 rounded-sm no-underline transition-opacity hover:opacity-80',
-            c.status === 'passed' ? 'bg-pass' : 'bg-line-strong',
-          ]}
-        >
-          <span class="sr-only">
-            Chapter {c.num}, {c.short}: {c.status}
-          </span>
+        <a href={url(c.href)} class="block no-underline transition-opacity hover:opacity-80">
+          {segments(c).map(({ status, color, attrs }) => (
+            <span
+              {...attrs}
+              title={`ch${pad(c.num)} ${c.short}: ${status}`}
+              class:list={['block h-6 rounded-sm', color]}
+            >
+              <span class="sr-only">
+                Chapter {c.num}, {c.short}: {status}
+              </span>
+            </span>
+          ))}
         </a>
       </li>
     ))}
   </ol>
 
   <p class="mt-4">
-    <span class="text-pass">{passed} passed</span>
+    <span class="text-pass">
+      <span data-read-count>0</span> read
+    </span>
+    <span class="ml-3 text-info">
+      <span data-unread-count>{ready.length}</span> ready
+    </span>
     {pending > 0 && <span class="ml-3 text-pending">{pending} pending</span>}
   </p>
-  {next && (
-    <p class="mt-3 border-t border-line pt-3 text-muted">
-      next up ›{' '}
-      <a href={url(next.href)} class="text-info">
-        ch{pad(next.num)} {next.title}
-      </a>
-    </p>
+  {ready.length > 0 && (
+    <>
+      <p data-next-up class="mt-3 border-t border-line pt-3 text-muted">
+        next up ›{' '}
+        {ready.map((c, i) => (
+          <a href={url(c.href)} data-next-chapter={c.slug} hidden={i > 0} class="text-info">
+            ch{pad(c.num)} {c.title}
+          </a>
+        ))}
+      </p>
+      <p data-next-done hidden class="mt-3 border-t border-line pt-3 text-pass">
+        all written chapters read
+      </p>
+    </>
   )}
 </TerminalWindow>
 

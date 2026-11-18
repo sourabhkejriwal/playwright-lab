@@ -1,14 +1,16 @@
 ---
-// Test-reporter style status glyph: ✓ passed, ◌ pending, ✗ failed, – skipped.
-export type Status = 'passed' | 'pending' | 'failed' | 'skipped';
+// Test-reporter style status glyph: ✓ passed or read, ● ready, ◌ pending, ✗ failed, – skipped.
+export type Status = 'passed' | 'read' | 'ready' | 'pending' | 'failed' | 'skipped';
 interface Props {
   status: Status;
   label?: boolean;
 }
 const { status, label = false } = Astro.props;
-const glyph = { passed: '✓', pending: '◌', failed: '✗', skipped: '–' }[status];
+const glyph = { passed: '✓', read: '✓', ready: '●', pending: '◌', failed: '✗', skipped: '–' }[status];
 const color = {
   passed: 'text-pass',
+  read: 'text-pass',
+  ready: 'text-info',
   pending: 'text-pending',
   failed: 'text-fail',
   skipped: 'text-dim',

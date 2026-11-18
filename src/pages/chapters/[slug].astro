@@ -3,6 +3,7 @@ import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import TerminalWindow from '../../components/TerminalWindow.astro';
 import StatusMark from '../../components/StatusMark.astro';
+import ChapterStatus from '../../components/ChapterStatus.astro';
 import TableOfContents from '../../components/TableOfContents.astro';
 import CodeCopy from '../../components/CodeCopy.astro';
 import { mdxComponents } from '../../components/mdx';
@@ -24,7 +25,7 @@ interface Props {
   next?: ChapterWithStatus;
 }
 const { chapter, prev, next } = Astro.props;
-const written = chapter.status === 'passed' && chapter.entry;
+const written = chapter.status === 'ready' && chapter.entry;
 const { Content, headings } = written ? await render(chapter.entry!) : { Content: null, headings: [] };
 const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
 const hasToc = tocHeadings.length >= 2;
@@ -44,7 +45,7 @@ const hasToc = tocHeadings.length >= 2;
         {pad(chapter.num)}-{chapter.slug}
       </p>
       <h1 class="mt-3 flex items-baseline gap-3 text-2xl font-semibold text-bright sm:text-3xl">
-        <StatusMark status={chapter.status} />
+        <ChapterStatus chapter={chapter} />
         {chapter.entry?.data.title ?? chapter.title}
       </h1>
       <p class="mt-3 max-w-prose font-prose text-lg text-muted">

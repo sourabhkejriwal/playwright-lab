@@ -57,10 +57,10 @@ src/
   styles/tokens.css      design tokens (ONLY place for raw colors)
   styles/global.css      Tailwind import, token → utility mapping, .prose-term chapter styles
   data/chapters.ts       master list of 16 chapters (num, slug, title, short, blurb)
-  lib/chapters.ts        getChapters(): joins the list with MDX entries → status passed/pending
+  lib/chapters.ts        getChapters(): joins the list with MDX entries → status ready/pending
   lib/url.ts             url(): base-path-aware internal links
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
-  components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
+  components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, ChapterStatus, ChapterProgressSync, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
   islands/               (planned) React interactive components: Playground, Flashcards, Quiz, …
   stores/progress.ts     visitor progress in localStorage: chapters read, flashcard reviews, quiz scores
   layouts/BaseLayout.astro
@@ -83,7 +83,7 @@ The site looks like a Playwright test run in a dark terminal.
 - **Themes**: dark is the default. `:root[data-theme='light']` in `tokens.css` overrides the color tokens, so a new
   color token needs a light value too. `ThemeToggle` saves the choice; an inline script in `BaseLayout` applies it before first paint.
 - **Semantics**: pass/green = done or primary action; pending/amber = in progress; fail/red = errors;
-  info/blue = links. Status glyphs via `<StatusMark status="passed|pending|failed|skipped" />`.
+  info/blue = links. Status glyphs via `<StatusMark status="passed|read|ready|pending|failed|skipped" />`.
 - **Type**: JetBrains Mono for UI and headings; Inter (`font-prose`, `.prose-term`) for long-form reading.
   Lowercase, terminal-flavoured microcopy (`$ ls chapters/`, `./chapters`, `# tools`).
 - **Shapes**: `rounded-term` (6px), 1px `border-line` borders, no shadows, no gradients.
@@ -105,7 +105,9 @@ The site looks like a Playwright test run in a dark terminal.
   `<Callout type="tip|warn|gotcha" title="optional">`, `<Kbd>Ctrl</Kbd>`, and `<ApiRef name="page.getByRole()" />`.
   `ApiRef` builds the Playwright docs link from the name (`src/lib/api-ref.ts`); an unknown receiver fails the build,
   so add new classes to `RECEIVERS` there.
-- A chapter becomes ✓ passed on the site as soon as its MDX exists and isn't a draft.
+- A chapter becomes ● ready on the site as soon as its MDX exists and isn't a draft. It shows ✓ read only for a visitor
+  who has read it: static pages ship the unread state and `ChapterProgressSync` applies saved progress in the browser
+  (use `<ChapterStatus>` for a chapter's mark, and the `data-if-read`/`data-if-unread` attributes for anything else).
 - Flashcard and quiz data will live beside chapters (see ROADMAP phase 3/4).
 
 ## Coding conventions

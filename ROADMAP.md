@@ -30,7 +30,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 ## Phase 3 · Progress and learning engine
 
 - [x] nanostores progress store in `localStorage`: chapter read state, flashcard state, quiz scores
-- [ ] Hero and chapter list reflect the user's own progress (read ✓ vs content-ready)
+- [x] Hero and chapter list reflect the user's own progress (read ✓ vs content-ready)
 - [ ] "Mark chapter as done" control at the end of each chapter
 - [ ] Data format for flashcards and quizzes (content collection, Zod schema) per chapter
 
@@ -90,3 +90,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   hand on plain nanostores atoms instead of adding `@nanostores/persistent`, because saves must re-read storage to merge
   other tabs and damaged entries must be dropped one by one. Chapters and quizzes are keyed by chapter slug, flashcards by
   card id. The store only records flashcard schedules; the spaced-repetition maths belongs to the flashcards task.
+- 2026-11-18: Chapters have three visible states: ✓ read (this visitor), ● ready (notes written, unread), ◌ pending (not
+  written). ✓ no longer means "written". Pages ship the unread state and one small script (`ChapterProgressSync`) applies
+  saved progress, instead of a React island for each of the many marks. "next up" now points at the first unread written
+  chapter, because sending readers to an unwritten placeholder is a dead end. The sidebar counter is chapters read / 16.
