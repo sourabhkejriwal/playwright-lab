@@ -51,6 +51,36 @@ test.describe('chapters', () => {
     await expect(page.locator('pre').first()).toContainText('getByRole');
   });
 
+  test('code blocks show a title bar and highlighted lines', async ({ page }) => {
+    await page.goto('/chapters/02-selectors');
+
+    const titled = page.getByRole('group', { name: 'profile.spec.ts' });
+    await expect(titled).toContainText('profile.spec.ts');
+    await expect(titled.locator('[data-highlighted]')).toHaveCount(1);
+    await expect(titled.locator('[data-highlighted]')).toContainText("getByRole('button'");
+
+    // Without a title the bar falls back to the language.
+    const untitled = page.getByRole('group', { name: 'ts', exact: true });
+    await expect(untitled.locator('[data-highlighted]')).toContainText('brittle');
+  });
+
+  test('the copy button copies the code block', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('/chapters/02-selectors');
+
+    const block = page.getByRole('group', { name: 'profile.spec.ts' });
+    await block.getByRole('button', { name: 'copy code' }).click();
+    // The pointer is still over the button, so this also proves hover doesn't hide the success color.
+    await expect(block.getByRole('button', { name: 'copied code' })).toHaveCSS('color', 'rgb(63, 185, 80)');
+    await expect(page.getByRole('status')).toHaveText('Code copied to clipboard');
+
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied.split('\n')).toHaveLength(3);
+    expect(copied).toContain("await page.getByLabel('Email address').fill('ada@example.com');");
+
+    await expect(block.getByRole('button', { name: 'copy code' })).toBeVisible();
+  });
+
   test('an unwritten chapter shows a pending placeholder', async ({ page }) => {
     await page.goto('/chapters/05-fixtures');
     await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();

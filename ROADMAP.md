@@ -21,7 +21,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] Create GitHub repo, push, set Pages source to "GitHub Actions", confirm first deploy: live at https://sourabhkejriwal.github.io/playwright-lab/
 - [x] Two-column layout: sticky chapter sidebar (desktop), collapsible drawer (mobile)
 - [x] Table of contents from headings on chapter pages (right rail on xl screens)
-- [ ] Code block polish: filename/title bar, copy button, line highlighting (`TerminalWindow` style)
+- [x] Code block polish: filename/title bar, copy button, line highlighting (`TerminalWindow` style)
 - [ ] MDX components: `<Callout type="tip|warn|gotcha">`, `<Kbd>`, `<ApiRef name="…">`
 - [ ] SEO: Open Graph image (terminal-style), meta per page, `robots.txt`
 - [ ] Custom favicon (terminal `$_` mark)

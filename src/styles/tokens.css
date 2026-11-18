@@ -36,6 +36,7 @@
   --astro-code-token-parameter: #ffa657;
   --astro-code-token-punctuation: var(--term-muted);
   --astro-code-token-link: var(--term-info);
+  --term-code-highlight: #1a2928; /* highlighted code line; comments switch to --term-muted on it for contrast */
 
   --term-radius: 6px;
   --header-h: 3.25rem; /* top bar height on desktop; the sidebar sticks below it */

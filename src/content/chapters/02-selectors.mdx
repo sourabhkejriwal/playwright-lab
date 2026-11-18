@@ -11,7 +11,7 @@ Playwright's `getBy*` locators find elements by what a user perceives: role, acc
 placeholder, or visible text. Tests written this way read like a description of the UI, and they survive
 class renames and layout refactors.
 
-```ts
+```ts title="profile.spec.ts" {1}
 await page.getByRole('button', { name: 'Save', exact: true }).click();
 await page.getByLabel('Email address').fill('ada@example.com');
 await expect(page.getByText('Profile updated')).toBeVisible();
@@ -29,7 +29,7 @@ A rough order of preference:
 CSS and XPath are still useful when there's no accessible hook, but keep them short and tied to stable
 attributes rather than page structure.
 
-```ts
+```ts {2}
 page.locator('input[type="password"]'); // fine: a stable attribute
 page.locator('div > div:nth-child(3) > span'); // brittle: encodes layout
 ```

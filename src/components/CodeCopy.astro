@@ -1,0 +1,42 @@
+---
+// Turns on the copy buttons that the code-frame Shiki transformer renders into each code block.
+---
+
+<p role="status" class="sr-only" data-code-copy-status></p>
+
+<script>
+  const status = document.querySelector<HTMLElement>('[data-code-copy-status]');
+  const timers = new WeakMap<HTMLButtonElement, number>();
+
+  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-code-copy]')) {
+    const label = button.querySelector<HTMLElement>('[data-code-copy-label]');
+    const code = button.closest('.code-frame')?.querySelector('code');
+    if (!label || !code) continue;
+
+    button.hidden = false;
+    button.addEventListener('click', async () => {
+      let copied = true;
+      try {
+        await navigator.clipboard.writeText(code.textContent ?? '');
+      } catch {
+        copied = false;
+      }
+
+      label.textContent = copied ? 'copied' : 'failed';
+      // Important: the pointer is still on the button, and its hover color must not hide the result.
+      button.classList.toggle('text-pass!', copied);
+      button.classList.toggle('text-fail!', !copied);
+      if (status) status.textContent = copied ? 'Code copied to clipboard' : 'Could not copy the code';
+
+      clearTimeout(timers.get(button));
+      timers.set(
+        button,
+        window.setTimeout(() => {
+          label.textContent = 'copy';
+          button.classList.remove('text-pass!', 'text-fail!');
+          if (status) status.textContent = '';
+        }, 2000),
+      );
+    });
+  }
+</script>

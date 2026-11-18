@@ -92,13 +92,34 @@
     border-radius: 4px;
     padding: 0.1em 0.35em;
   }
-  .prose-term pre {
-    font-size: 0.85rem;
-    line-height: 1.6;
-    padding: 1rem 1.1rem;
+  .code-frame {
+    margin: 0 0 1.1rem;
+    overflow: hidden;
     border: 1px solid var(--term-line);
     border-radius: var(--term-radius);
+  }
+  .code-frame pre {
+    margin: 0;
+    padding-block: 1rem;
+    font-size: 0.85rem;
+    line-height: 1.6;
     overflow-x: auto;
+  }
+  /* A grid drops the newlines between lines, so each line can be a full-width block. */
+  .code-frame code {
+    display: grid;
+    width: fit-content;
+    min-width: 100%;
+  }
+  .code-frame .line {
+    display: block;
+    min-height: 1lh;
+    padding-inline: 1.1rem;
+  }
+  .code-frame .line[data-highlighted] {
+    --astro-code-token-comment: var(--term-muted);
+    background: var(--term-code-highlight);
+    box-shadow: inset 2px 0 0 var(--term-pass);
   }
   .prose-term blockquote {
     border-left: 3px solid var(--term-pending);

@@ -50,7 +50,7 @@ src/
   lib/chapters.ts        getChapters(): joins the list with MDX entries → status passed/pending
   lib/url.ts             url(): base-path-aware internal links
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
-  components/            .astro UI: Sidebar, TableOfContents, TerminalWindow, StatusMark, TopBar, Footer, TestRunHero, ComingSoon
+  components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, TopBar, Footer, TestRunHero, ComingSoon
   islands/               (planned) React interactive components: Playground, Flashcards, Quiz, …
   layouts/BaseLayout.astro
   pages/                 routes; chapters/[slug].astro renders MDX or a "pending" placeholder
@@ -86,7 +86,8 @@ The site looks like a Playwright test run in a dark terminal.
   `readingMinutes`, optional `draft: true` (drafts show as pending).
 - Write **study notes in our own words**: summaries, our own short code examples, key APIs, gotchas,
   "interview angle". Do not paste source text or long listings verbatim.
-- Headings are `##`/`###` (h1 comes from the layout). Code fences use `ts`.
+- Headings are `##`/`###` (h1 comes from the layout). Code fences use `ts`, with optional filename and
+  highlighted lines: ` ```ts title="login.spec.ts" {1,3-5} ` (`src/lib/shiki-code-frame.mjs`).
 - A chapter becomes ✓ passed on the site as soon as its MDX exists and isn't a draft.
 - Flashcard and quiz data will live beside chapters (see ROADMAP phase 3/4).
 

@@ -4,6 +4,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import TerminalWindow from '../../components/TerminalWindow.astro';
 import StatusMark from '../../components/StatusMark.astro';
 import TableOfContents from '../../components/TableOfContents.astro';
+import CodeCopy from '../../components/CodeCopy.astro';
 import { getChapters, type ChapterWithStatus } from '../../lib/chapters';
 import { pad } from '../../data/chapters';
 import { url } from '../../lib/url';
@@ -52,6 +53,7 @@ const hasToc = tocHeadings.length >= 2;
         {Content ? (
           <div class="prose-term">
             <Content />
+            <CodeCopy />
           </div>
         ) : (
           <TerminalWindow title={`ch${pad(chapter.num)}.spec.ts`} class="max-w-2xl">
