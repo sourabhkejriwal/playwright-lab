@@ -100,6 +100,66 @@
       "id": "selectors/scoped-continue",
       "front": "Two buttons are named \"Continue\", one in the main page and one in a dialog. How do you click the main page one?",
       "back": "Scope the role locator to the container: `page.locator('main').getByRole('button', { name: 'Continue' }).click()`. The `main` element keeps the dialog's button out of the match."
+    },
+    {
+      "id": "selectors/wait-before-action",
+      "front": "Why do you start `page.waitForResponse()` before the click that triggers the request?",
+      "back": "A wait only sees events that happen after it starts. Store the promise, click, then await the promise, so a fast response can't be missed."
+    },
+    {
+      "id": "selectors/retired-waits",
+      "front": "What should replace `waitForNavigation()`, `waitForSelector()`, and `waitForTimeout()`?",
+      "back": "`waitForURL()` for navigation, locators and web-first assertions for elements, and a real signal instead of a fixed pause."
+    },
+    {
+      "id": "selectors/networkidle",
+      "front": "Why is `waitForLoadState('networkidle')` discouraged?",
+      "back": "Many apps keep the network busy, and an idle network doesn't prove the page is ready. Assert on what the user should see instead."
+    },
+    {
+      "id": "selectors/expect-poll",
+      "front": "When would you use `expect.poll()`?",
+      "back": "To retry a value that isn't on the page, such as a status from an API. It reruns an async function until the matcher passes or it times out."
+    },
+    {
+      "id": "selectors/dialog-no-listener",
+      "front": "What happens to a browser dialog when the test has no `dialog` listener?",
+      "back": "Playwright dismisses it automatically, so `confirm()` returns `false` and `prompt()` returns `null`."
+    },
+    {
+      "id": "selectors/dialog-stall",
+      "front": "Why can a `dialog` listener make a click hang?",
+      "back": "Once a listener exists, the dialog waits for your code. If nothing calls `accept()` or `dismiss()`, the click that opened it never finishes."
+    },
+    {
+      "id": "selectors/dialog-prompt-values",
+      "front": "What does `prompt()` return for `accept('Ada')`, `accept()`, and `dismiss()`?",
+      "back": "`Ada`, an empty string, and `null`. Calling `accept()` with no text does not use the prompt's default value."
+    },
+    {
+      "id": "selectors/frame-locator",
+      "front": "Why can't `page.getByRole()` find a button inside an iframe?",
+      "back": "An iframe holds a separate document. Enter it first with `page.frameLocator('#pay')`, then build locators from that."
+    },
+    {
+      "id": "selectors/nested-frames",
+      "front": "How do you reach an element inside an iframe within an iframe?",
+      "back": "Chain one frame locator per level: `page.frameLocator('#outer').frameLocator('#inner').getByRole('button')`."
+    },
+    {
+      "id": "selectors/frame-vs-frame-locator",
+      "front": "Why prefer `page.frameLocator()` over `page.frame()`?",
+      "back": "A frame locator retries until the iframe is there. `page.frame()` looks once and returns `null` if the frame isn't attached yet."
+    },
+    {
+      "id": "selectors/shadow-open",
+      "front": "What do you need to locate an element inside an open shadow root?",
+      "back": "Nothing special. CSS, text, and role locators pierce open shadow roots automatically, so the `>>>` combinator isn't needed."
+    },
+    {
+      "id": "selectors/shadow-limits",
+      "front": "What can't Playwright locators reach in shadow DOM?",
+      "back": "Anything in a closed shadow root, and anything in an open one when you use XPath. Only the host element of a closed root can be found."
     }
   ]
 }

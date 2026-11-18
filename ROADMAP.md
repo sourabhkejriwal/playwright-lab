@@ -53,7 +53,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 ## Phase 5 · Chapter notes (each ⇉ independent; source in `source/chapters/`)
 
 - [x] ⇉ 01 Quick setup refresher
-- [~] ⇉ 02 Advanced selectors: sample written; still needs dialogs, iframes, shadow DOM, custom waits
+- [x] ⇉ 02 Advanced selectors
 - [ ] ⇉ 03 Cross-browser testing
 - [ ] ⇉ 04 AI-powered test generation
 - [ ] ⇉ 05 Fixtures
@@ -174,3 +174,8 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   `tests/flashcards.spec.ts` now reads every deck, so new decks need no test changes. Each newly written chapter still has to update
   the ready and pending counts in `tests/chapter-progress.spec.ts`. Watch for flakiness: the playground's "explains invalid input" failed
   on mobile again in one full run, with the previous input still showing in the alert. It then passed 30 repeats and a full run.
+- 2026-11-18: Chapter 2 notes follow the installed Playwright (1.65) where the reference PDF differs: `page.waitForEvent('navigated')` is not
+  a real event, an unhandled dialog is dismissed automatically instead of blocking the test, `accept()` on a prompt returns an empty string
+  rather than the default, and `>>>` is unnecessary for open shadow roots. Every snippet was run on real Playwright in a throwaway project.
+  The quiz stays at 5 questions, so four of the sample questions gave way to custom waits, dialogs, iframes and shadow DOM. Existing
+  flashcard ids are unchanged. `tests/smoke.spec.ts` counts this chapter's table of contents links, so it changes when the headings do.

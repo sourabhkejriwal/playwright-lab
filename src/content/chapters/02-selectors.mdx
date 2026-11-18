@@ -1,8 +1,8 @@
 ---
 chapter: 2
 title: Advanced selectors and dynamic content
-summary: Find elements the way users do, fall back to CSS or XPath only when you must, and let auto-waiting handle dynamic pages.
-readingMinutes: 6
+summary: Find elements the way users do, wait for the right signal on dynamic pages, and handle dialogs, iframes, and shadow DOM.
+readingMinutes: 14
 ---
 
 ## Start with user-facing locators
@@ -39,6 +39,10 @@ page.locator('input[type="password"]'); // fine: a stable attribute
 page.locator('div > div:nth-child(3) > span'); // brittle: encodes layout
 ```
 
+`locator()` treats a selector starting with `//` or `..` as XPath, so `page.locator('//button[@type="submit"]')`
+works without a prefix. If you need a dedicated hook, `getByTestId()` reads `data-testid` by default, and the
+`testIdAttribute` config option points it at another attribute.
+
 <Callout type="warn">
   Locators are strict: an action throws if the locator matches more than one element. Narrow it down rather
   than reaching for `.first()`, which hides the ambiguity.
@@ -55,4 +59,163 @@ time out. That's why `page.waitForTimeout()` is almost never the right fix for a
   keeps retrying in the background while the test moves on.
 </Callout>
 
-> Coming next: dialogs, iframes with `frameLocator()`, and piercing shadow DOM.
+## Wait for what auto-waiting can't see
+
+Auto-waiting covers the element you're acting on. It knows nothing about a request finishing in the background
+or a value held in JavaScript. For those, wait for the specific signal, never for a length of time.
+
+### Catch network traffic
+
+<ApiRef name="page.waitForResponse()" /> and <ApiRef name="page.waitForRequest()" /> take a URL pattern or a
+predicate. Start waiting **before** the action that triggers the traffic, and await the promise after it.
+
+```ts title="orders.spec.ts" {1-3,5}
+const responsePromise = page.waitForResponse(
+  (response) => response.url().endsWith('/api/orders') && response.request().method() === 'POST',
+);
+await page.getByRole('button', { name: 'Place order' }).click();
+const response = await responsePromise;
+expect(response.status()).toBe(201);
+```
+
+<Callout type="gotcha" title="start the wait first">
+  These waits only see events that happen after they start. If the response arrives before the wait begins,
+  the test times out even though the app worked. The same applies to `page.waitForEvent('popup')`.
+</Callout>
+
+### Pick the right wait
+
+| Waiting for                     | Use                                                 |
+| ------------------------------- | --------------------------------------------------- |
+| an element to appear or go away | `expect(locator).toBeVisible()` or `toBeHidden()`   |
+| an element, with no assertion   | `locator.waitFor()`, visible unless `state` is set  |
+| the URL to change               | `expect(page).toHaveURL()` or `page.waitForURL()`   |
+| a request or response           | `page.waitForRequest()` or `page.waitForResponse()` |
+| a popup or download             | `page.waitForEvent('popup')` or `'download'`        |
+| a condition inside the page     | `page.waitForFunction()`                            |
+| a value from outside the page   | `expect.poll()`                                     |
+| several steps to pass together  | `expect(async () => { ... }).toPass()`              |
+
+<ApiRef name="page.waitForFunction()" /> runs in the browser. Its second argument is passed to your function,
+so options come third:
+
+```ts title="results.spec.ts"
+await page.waitForFunction((min) => document.querySelectorAll('.row').length >= min, 3, { timeout: 10_000 });
+```
+
+`expect.poll()` retries any async function, which suits state the page doesn't show:
+
+```ts title="shipping.spec.ts"
+await expect
+  .poll(async () => {
+    const response = await page.request.get('/api/orders/42');
+    return (await response.json()).status;
+  })
+  .toBe('shipped');
+```
+
+### Waits to retire
+
+- **`page.waitForTimeout()`** is for debugging only. A fixed pause is too short on a slow run and wasted time on
+  a fast one.
+- **`page.waitForNavigation()`** is deprecated because it is racy. Use `page.waitForURL()`.
+- **`page.waitForSelector()`** is replaced by locators and web-first assertions.
+- **`page.waitForLoadState('networkidle')`** is discouraged, because many apps never go quiet and an idle network
+  doesn't prove the page is ready. `page.goto()` already waits for the `load` event.
+
+## Handle browser dialogs
+
+`alert()`, `confirm()`, and `prompt()` open native dialogs that block the page's JavaScript. Playwright reports
+each one through the page's `dialog` event, and what happens next depends on whether you're listening.
+
+- **No listener:** Playwright dismisses the dialog automatically, so `confirm()` returns `false`.
+- **A listener:** your code must answer it, or the action that opened it never finishes.
+
+Register the listener before the action. `page.once()` answers one dialog, and `page.on()` answers all of them.
+
+```ts title="drafts.spec.ts" {1}
+page.once('dialog', (dialog) => dialog.accept());
+await page.getByRole('button', { name: 'Delete draft' }).click();
+await expect(page.getByText('Draft deleted')).toBeVisible();
+```
+
+To check the dialog itself, catch it as a promise. The click can't finish until the dialog is answered, so don't
+await the click until after <ApiRef name="dialog.accept()" />:
+
+```ts title="drafts-message.spec.ts" {2,7}
+const dialogPromise = page.waitForEvent('dialog');
+const click = page.getByRole('button', { name: 'Delete draft' }).click();
+const dialog = await dialogPromise;
+expect(dialog.type()).toBe('confirm');
+expect(dialog.message()).toBe('Delete this draft?');
+await dialog.accept();
+await click;
+```
+
+<Callout type="gotcha" title="accept() on a prompt">
+  `dialog.accept('Ada')` makes `prompt()` return `Ada`. Calling `accept()` with no text returns an empty
+  string, not the prompt's default value, and <ApiRef name="dialog.dismiss()" /> returns `null`. Read the
+  default with `dialog.defaultValue()`.
+</Callout>
+
+## Work inside iframes
+
+An iframe holds a separate document, so a locator on the page never finds what's inside it.
+
+<ApiRef name="page.frameLocator()" /> enters the frame, and every locator built from it stays inside.
+
+```ts title="checkout.spec.ts" {1}
+const checkout = page.frameLocator('iframe[title="Checkout"]');
+await checkout.getByLabel('Card number').fill('4242 4242 4242 4242');
+await checkout.getByRole('button', { name: 'Pay' }).click();
+await expect(page.getByText('Payment received')).toBeVisible();
+```
+
+Frame locators auto-wait, so an iframe added late is fine, and cross-origin frames work the same way. They are also
+strict: if the selector matches two iframes, the action throws.
+
+If you already have a locator for the iframe element, <ApiRef name="locator.contentFrame()" /> crosses into it, and
+
+<ApiRef name="frameLocator.owner()" /> goes back the other way. Nested frames chain one level at a time:
+
+```ts title="nested-frames.spec.ts"
+await page.getByTitle('Checkout').contentFrame().getByRole('button', { name: 'Pay' }).click();
+
+await page.frameLocator('#outer').frameLocator('#inner').getByRole('button', { name: 'Confirm' }).click();
+```
+
+<Callout type="warn" title="page.frame() doesn't wait">
+  `page.frame({ name: 'pay' })` returns the frame only if it's already attached, and `null` otherwise. Prefer a frame
+  locator, which retries.
+</Callout>
+
+## Reach into shadow DOM
+
+Web components hide their markup inside a shadow root. Playwright's locators pierce **open** shadow roots
+automatically, so you write the same locators as anywhere else. Scoping to the host element is optional, and it helps
+when a page has several copies of a component.
+
+```ts title="rating.spec.ts"
+const rating = page.locator('star-rating');
+await rating.getByRole('button', { name: 'Five stars' }).click();
+await expect(rating.getByRole('status')).toHaveText('5 of 5');
+```
+
+Older examples use the `>>>` combinator to cross the boundary. You don't need it: `star-rating button` already
+matches. Two limits remain:
+
+- **XPath doesn't pierce.** `page.locator('//button')` won't find a button inside a shadow root.
+- **Closed shadow roots are out of reach.** Locators can find the host element but nothing inside it. That is the
+  web platform's encapsulation at work, so ask the component's authors for an open root in test builds.
+
+## Interview angle
+
+- **Why not add a fixed wait?** It's slow when the app is fast and flaky when the app is slow. Wait for a signal the
+  app gives, such as a visible element, a URL, or a response.
+- **Why start `waitForResponse()` before the click?** A wait only sees events after it starts, so a fast response
+  could otherwise be missed.
+- **What happens to a dialog nobody handles?** With no listener it's dismissed automatically. With a listener that
+  never answers, the action that opened it stalls until it times out.
+- **How do you test inside an iframe?** Enter it with `frameLocator()`, chaining once per level of nesting.
+- **Does shadow DOM need special selectors?** Not for open roots. CSS, text, and role locators pierce them, while
+  XPath and closed roots remain out of reach.

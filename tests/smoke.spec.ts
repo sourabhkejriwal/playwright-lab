@@ -102,7 +102,7 @@ test.describe('chapters', () => {
     await page.goto('/chapters/02-selectors');
 
     const toc = page.getByRole('navigation', { name: 'On this page' });
-    await expect(toc.getByRole('link')).toHaveCount(3);
+    await expect(toc.getByRole('link')).toHaveCount(11);
 
     const link = toc.getByRole('link', { name: 'Fall back deliberately' });
     await link.click();
