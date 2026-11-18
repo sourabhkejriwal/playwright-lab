@@ -4,6 +4,7 @@
 //
 //   pnpm roadmap              run until the roadmap is finished or a task fails
 //   pnpm roadmap --max 3      run at most 3 tasks
+//   pnpm roadmap --model sonnet   use another model (default: opus)
 //   pnpm roadmap --dry-run    show the next task and exit
 //
 // To stop cleanly after the current task, create the stop file: touch .roadmap/stop
@@ -20,6 +21,7 @@ const LOG_DIR = path.join(RUN_DIR, 'logs');
 const STOP_FILE = path.join(RUN_DIR, 'stop');
 const TEST_PORT = 4322; // Playwright reuses a server on this port, which could serve a stale build.
 const CLAUDE_BIN = process.env.ROADMAP_CLAUDE_BIN ?? 'claude';
+const DEFAULT_MODEL = 'opus'; // Set explicitly: the CLI's own default model may need usage credits.
 
 const ALLOWED_TOOLS = [
   'Read',
@@ -126,7 +128,7 @@ function repoProblem() {
   return null;
 }
 
-async function runTask(task, number) {
+async function runTask(task, number, model) {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const logPath = path.join(LOG_DIR, `${stamp}-task-${number}.log`);
   const log = createWriteStream(logPath);
@@ -138,6 +140,8 @@ async function runTask(task, number) {
     [
       '-p',
       promptFor(task),
+      '--model',
+      model,
       '--permission-mode',
       'acceptEdits',
       '--allowedTools',
@@ -168,7 +172,11 @@ async function runTask(task, number) {
 
 async function main() {
   const { values } = parseArgs({
-    options: { max: { type: 'string' }, 'dry-run': { type: 'boolean', default: false } },
+    options: {
+      max: { type: 'string' },
+      model: { type: 'string', default: DEFAULT_MODEL },
+      'dry-run': { type: 'boolean', default: false },
+    },
   });
   const max = values.max === undefined ? Infinity : Number(values.max);
   if (!(max >= 1) || (max !== Infinity && !Number.isInteger(max))) {
@@ -205,8 +213,8 @@ async function main() {
       return 1;
     }
 
-    console.log(`\n[roadmap] task ${done + 1}: ${task}`);
-    const result = await runTask(task, done + 1);
+    console.log(`\n[roadmap] task ${done + 1} (${values.model}): ${task}`);
+    const result = await runTask(task, done + 1, values.model);
     if (!result.ok) {
       console.error(`\n[roadmap] stopped: ${result.reason}\n[roadmap] log: ${result.logPath}`);
       return 1;
