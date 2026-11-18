@@ -76,6 +76,18 @@ test.describe('chapters', () => {
     await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
   });
 
+  test('the fixtures chapter renders its notes and quiz', async ({ page }) => {
+    await page.goto('/chapters/05-fixtures');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Scalable tests with fixtures');
+    await expect(page.getByRole('heading', { level: 2, name: 'Scope and life cycle' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'console-guard.fixture.ts' })).toContainText('pageerror');
+    await expect(page.getByRole('link', { name: 'fixture graph explainer' })).toHaveAttribute(
+      'href',
+      /\/fixture-graph\/?$/,
+    );
+    await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
+  });
+
   test('code blocks show a title bar and highlighted lines', async ({ page }) => {
     await page.goto('/chapters/02-selectors');
 
@@ -107,7 +119,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter shows a pending placeholder', async ({ page }) => {
-    await page.goto('/chapters/05-fixtures');
+    await page.goto('/chapters/06-parallelization');
     await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();
   });
 
@@ -137,7 +149,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter has no table of contents', async ({ page }) => {
-    await page.goto('/chapters/05-fixtures');
+    await page.goto('/chapters/06-parallelization');
     await expect(page.locator('[data-toc]')).toHaveCount(0);
   });
 

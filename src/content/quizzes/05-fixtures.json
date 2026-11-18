@@ -1,0 +1,60 @@
+{
+  "chapter": 5,
+  "questions": [
+    {
+      "question": "How long does the built-in `browser` fixture live?",
+      "options": [
+        "One test",
+        "One test file",
+        "One worker process",
+        "The whole test run, across all workers"
+      ],
+      "answer": 2,
+      "explanation": "`browser` is worker-scoped. Tests in a worker share it, and each test gets its own `context` for isolation."
+    },
+    {
+      "question": "A fixture calls `use(value)` without `await`. What happens?",
+      "options": [
+        "The code after `use()` runs before the test body, and the test can still pass",
+        "Playwright refuses to load the test file",
+        "The fixture is set up twice",
+        "The test always times out"
+      ],
+      "answer": 0,
+      "explanation": "Nothing waits for the test to finish, so cleanup runs too early and no error is reported."
+    },
+    {
+      "question": "Why does a worker-scoped fixture that asks for `page` fail?",
+      "options": [
+        "Worker fixtures can't have dependencies",
+        "`page` only works inside `beforeEach`",
+        "It needs `{ auto: true }` as well",
+        "`page` is test-scoped, so it can't outlive a single test"
+      ],
+      "answer": 3,
+      "explanation": "A worker fixture can depend only on other worker fixtures. Build what you need from `browser` or `playwright` instead."
+    },
+    {
+      "question": "A fixture listens to `page.on('console')` for errors. What does it miss?",
+      "options": [
+        "Calls to `console.error()`",
+        "Uncaught exceptions, which fire `pageerror`",
+        "Errors logged during page load",
+        "Errors logged after the first navigation"
+      ],
+      "answer": 1,
+      "explanation": "An uncaught exception doesn't produce a console event. Listen to `pageerror` as well."
+    },
+    {
+      "question": "What does `{ auto: true }` do to a fixture?",
+      "options": [
+        "It shares the fixture across workers",
+        "It retries the fixture when setup fails",
+        "It runs the fixture for every test, even when no test asks for it",
+        "It lets `test.use()` override the fixture's value"
+      ],
+      "answer": 2,
+      "explanation": "Automatic fixtures suit checks that should always run. `option: true` is the setting that makes a value configurable."
+    }
+  ]
+}

@@ -27,10 +27,10 @@ test.describe('chapter progress', () => {
   test('a new visitor sees written chapters as ready, not read', async ({ page, isMobile }) => {
     await page.goto('/');
     await expect(heroRun(page).getByRole('link', { name: 'Chapter 2, Selectors: ready' })).toBeVisible();
-    await expect(heroRun(page).getByRole('link', { name: 'Chapter 5, Fixtures: pending' })).toBeVisible();
+    await expect(heroRun(page).getByRole('link', { name: 'Chapter 6, Parallel: pending' })).toBeVisible();
     await expect(page.getByText('0 read')).toBeVisible();
-    await expect(page.getByText('4 ready')).toBeVisible();
-    await expect(page.getByText('12 pending')).toBeVisible();
+    await expect(page.getByText('5 ready')).toBeVisible();
+    await expect(page.getByText('11 pending')).toBeVisible();
     await expect(page.getByRole('link', { name: 'ch01 Quick setup refresher' })).toBeVisible();
 
     const sidebar = await openSidebar(page, isMobile);
@@ -38,17 +38,17 @@ test.describe('chapter progress', () => {
   });
 
   test('read chapters show as read on the homepage', async ({ page, isMobile }) => {
-    await seed(page, savedProgress('setup', 'selectors', 'cross-browser', 'ai-test-generation'));
+    await seed(page, savedProgress('setup', 'selectors', 'cross-browser', 'ai-test-generation', 'fixtures'));
     await page.goto('/');
 
     await expect(heroRun(page).getByRole('link', { name: 'Chapter 2, Selectors: read' })).toBeVisible();
-    await expect(page.getByText('4 read')).toBeVisible();
+    await expect(page.getByText('5 read')).toBeVisible();
     await expect(page.getByText('0 ready')).toBeVisible();
     await expect(page.getByText('all written chapters read')).toBeVisible();
     await expect(page.getByText(/next up/)).toBeHidden();
 
     const sidebar = await openSidebar(page, isMobile);
-    await expect(sidebar.getByText('4/16')).toBeVisible();
+    await expect(sidebar.getByText('5/16')).toBeVisible();
     await expect(sidebar.getByRole('link', { name: 'read 02 Selectors' })).toBeVisible();
   });
 
@@ -68,9 +68,9 @@ test.describe('chapter progress', () => {
   });
 
   test('a saved entry for an unwritten chapter stays pending and is not counted', async ({ page }) => {
-    await seed(page, savedProgress('fixtures'));
+    await seed(page, savedProgress('parallelization'));
     await page.goto('/');
-    await expect(heroRun(page).getByRole('link', { name: 'Chapter 5, Fixtures: pending' })).toBeVisible();
+    await expect(heroRun(page).getByRole('link', { name: 'Chapter 6, Parallel: pending' })).toBeVisible();
     await expect(page.getByText('0 read')).toBeVisible();
     await expect(page.getByRole('link', { name: 'ch01 Quick setup refresher' })).toBeVisible();
   });
@@ -142,7 +142,7 @@ test.describe('chapter progress', () => {
     });
 
     test('an unwritten chapter has no control', async ({ page }) => {
-      await page.goto('/chapters/05-fixtures');
+      await page.goto('/chapters/06-parallelization');
       await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();
       await expect(doneButton(page)).toHaveCount(0);
     });

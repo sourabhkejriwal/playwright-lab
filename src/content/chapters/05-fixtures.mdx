@@ -1,0 +1,441 @@
+---
+chapter: 5
+title: Scalable tests with fixtures
+summary: Use built-in fixtures, write your own, choose the right scope, and compose them into a suite that stays easy to change.
+readingMinutes: 13
+---
+
+import { url as siteUrl } from '../../lib/url';
+
+## What a fixture does
+
+A fixture is a named piece of setup that a test asks for. You list it in the test's parameters, and the runner builds it,
+passes it in, and cleans it up afterwards.
+
+```ts title="home.spec.ts"
+import { test, expect } from '@playwright/test';
+
+test('shows the product name', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveTitle(/Acme/);
+});
+```
+
+This style is called **dependency injection**. The test says what it needs, and never how to create it. Compared with
+`beforeEach` hooks, fixtures have three advantages:
+
+- **On demand:** a fixture runs only when a test or another fixture asks for it.
+- **Setup and cleanup stay together:** both live in one function.
+- **Reusable:** one definition can serve every file in the project.
+
+## The built-in fixtures
+
+| Fixture       | Scope  | Gives you                                                      |
+| ------------- | ------ | -------------------------------------------------------------- |
+| `page`        | test   | A fresh tab in the test's own context                          |
+| `context`     | test   | The isolated browser profile that `page` belongs to            |
+| `request`     | test   | An `APIRequestContext` for HTTP calls without a page           |
+| `browser`     | worker | The browser shared by every test in the worker                 |
+| `browserName` | worker | `'chromium'`, `'firefox'`, or `'webkit'`                       |
+| `playwright`  | worker | The Playwright library, for lower-level APIs such as `request` |
+
+<Callout type="gotcha" title="the browser outlives the test">
+  Tests in one worker share a single `browser`. Isolation comes from the new `context` each test gets, so
+  launching a browser per test would only make the suite slower.
+</Callout>
+
+Use `context` when a test needs several tabs that share a session. Tabs in the same context share cookies and local storage.
+
+```ts title="tabs.spec.ts"
+test('tabs in one context share storage', async ({ context }) => {
+  const first = await context.newPage();
+  const second = await context.newPage();
+
+  await first.goto('/');
+  await first.evaluate(() => localStorage.setItem('seen', 'yes'));
+
+  await second.goto('/');
+  expect(await second.evaluate(() => localStorage.getItem('seen'))).toBe('yes');
+});
+```
+
+Use `browser` when a test needs a second, separate person. A context you create yourself is yours to close.
+
+```ts title="two-visitors.spec.ts" {5,10}
+test('a second visitor starts fresh', async ({ browser, page }) => {
+  await page.goto('/');
+  await page.evaluate(() => localStorage.setItem('seen', 'yes'));
+
+  const other = await browser.newContext();
+  const otherPage = await other.newPage();
+  await otherPage.goto('/');
+  expect(await otherPage.evaluate(() => localStorage.getItem('seen'))).toBeNull();
+
+  await other.close();
+});
+```
+
+## Write a custom fixture
+
+<ApiRef name="test.extend()" /> returns a new `test` function with your fixtures added. Each fixture has the
+same shape: setup, then `await use(value)`, then cleanup.
+
+```ts title="account.fixture.ts" {14,16,26}
+import { test as base, expect, type Page } from '@playwright/test';
+
+type Account = { id: string; email: string; password: string };
+type AccountFixtures = { account: Account; signedInPage: Page };
+
+export const test = base.extend<AccountFixtures>({
+  account: async ({ request }, use) => {
+    const email = `user-${crypto.randomUUID()}@example.com`;
+    const password = 'correct-horse';
+    const response = await request.post('/api/users', { data: { email, password } });
+    expect(response.ok()).toBeTruthy();
+    const { id } = await response.json();
+
+    await use({ id, email, password }); // the test runs here
+
+    await request.delete(`/api/users/${id}`);
+  },
+
+  signedInPage: async ({ page, account }, use) => {
+    await page.goto('/login');
+    await page.getByLabel('Email').fill(account.email);
+    await page.getByLabel('Password').fill(account.password);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.getByRole('heading', { name: 'Your account' })).toBeVisible();
+
+    await use(page);
+  },
+});
+
+export { expect };
+```
+
+Tests import `test` and `expect` from your file instead of from `@playwright/test`.
+
+```ts title="account.spec.ts"
+import { test, expect } from './account.fixture';
+
+test('shows the account page', async ({ signedInPage }) => {
+  await expect(signedInPage.getByRole('heading', { name: 'Your account' })).toBeVisible();
+});
+```
+
+Every test now gets its own unique account, so tests can run in parallel without colliding. The cleanup code runs even when
+the test fails.
+
+<Callout type="gotcha" title="always await use()">
+  Without the `await`, the code after `use()` runs _before_ the test body, and the test can still pass. Your
+  cleanup happens too early and nothing reports it. Never calling `use()` at all fails with `use() was not
+  called in fixture`.
+</Callout>
+
+<Callout type="gotcha" title="the first argument must be destructured">
+  Playwright reads that parameter to work out the dependencies. `async (args, use) =>` throws `First argument
+  must use the object destructuring pattern`. A fixture with no dependencies writes `async ({}, use) =>`.
+</Callout>
+
+## Scope and life cycle
+
+Scope decides how long a fixture lives and who shares it.
+
+|           | Test scope (default)        | Worker scope                                  |
+| --------- | --------------------------- | --------------------------------------------- |
+| Created   | Once per test that needs it | Once per worker process that needs it         |
+| Torn down | Right after that test       | When the worker shuts down                    |
+| Shared    | Never                       | By every test in that worker                  |
+| Good for  | Pages, per-test data        | Expensive resources: servers, seeded accounts |
+| Main risk | Slower when setup is costly | One test's changes can leak into the next     |
+
+### The order things run in
+
+Fixtures are set up in dependency order and torn down in reverse. Here is the real output of a test that asks for `b`, where
+`b` depends on `a`, `a` depends on the worker fixture `w`, and there is one automatic fixture and one set of hooks:
+
+```text
+auto setup
+beforeEach
+w setup
+a setup
+b setup
+test body
+afterEach
+b teardown
+a teardown
+auto teardown
+w teardown      (when the worker shuts down)
+```
+
+Try other combinations in the <a href={siteUrl('fixture-graph')}>fixture graph explainer</a>.
+
+### Worker-scoped fixtures
+
+Pass the worker types as the second generic, and set the scope in a tuple. The third argument, `workerInfo`, tells you which
+worker you are in.
+
+```ts title="shared-account.fixture.ts" {3,5,8,18}
+import { test as base } from '@playwright/test';
+
+export const test = base.extend<{}, { sharedAccount: Account }>({
+  sharedAccount: [
+    async ({ playwright }, use, workerInfo) => {
+      const baseURL = workerInfo.project.use.baseURL;
+      const request = await playwright.request.newContext({ baseURL });
+      const email = `worker-${workerInfo.parallelIndex}@example.com`;
+      const password = 'correct-horse';
+      const response = await request.post('/api/users', { data: { email, password } });
+      const { id } = await response.json();
+
+      await use({ id, email, password });
+
+      await request.delete(`/api/users/${id}`);
+      await request.dispose();
+    },
+    { scope: 'worker' },
+  ],
+});
+```
+
+<Callout type="gotcha" title="worker fixtures can't use test fixtures">
+  A worker fixture that asks for `page`, `context`, or `request` fails with an error saying it `cannot depend
+  on a test fixture`. That's why the example builds its own request context. To share a signed-in page, create
+  a context from `browser` inside the worker fixture.
+</Callout>
+
+- **A failed test restarts the worker.** Worker fixtures are torn down and set up again in the new process, so "once per
+  worker" doesn't mean once per run.
+- **`parallelIndex` is the stable one.** After a restart `workerIndex` goes up, while `parallelIndex` stays between 0 and
+  `workers - 1`. That makes it the right choice for naming a pool of accounts.
+- **`beforeAll` can't use `page` or `context`,** because those are created per test.
+
+### Timeouts
+
+Test-scoped fixtures share the test's timeout. A 2-second fixture and a 2-second test body fail a 3-second limit. Worker-scoped
+fixtures don't count against the test. Give a slow fixture its own budget with the `timeout` option.
+
+```ts title="slow.fixture.ts" {7}
+export const test = base.extend<{ seededShop: void }>({
+  seededShop: [
+    async ({ request }, use) => {
+      await request.post('/api/seed');
+      await use();
+    },
+    { timeout: 60_000 },
+  ],
+});
+```
+
+## Fixture options
+
+The tuple form accepts these settings:
+
+| Option    | Effect                                                |
+| --------- | ----------------------------------------------------- |
+| `scope`   | `'test'` (default) or `'worker'`                      |
+| `auto`    | Runs for every test, even if no test asks for it      |
+| `option`  | Lets `test.use()` or the config set the value         |
+| `timeout` | Gives the fixture its own time limit, in milliseconds |
+
+### Configurable fixtures
+
+Mark a value with `option: true`, and other fixtures can read it. <ApiRef name="test.use()" /> then changes it for a file or a
+`describe` block.
+
+```ts title="role.fixture.ts" {2}
+export const test = base.extend<{ role: 'member' | 'admin'; roleLabel: string }>({
+  role: ['member', { option: true }],
+  roleLabel: async ({ role }, use) => {
+    await use(`signed in as ${role}`);
+  },
+});
+
+test.describe('admin tools', () => {
+  test.use({ role: 'admin' });
+
+  test('labels the role', async ({ roleLabel }) => {
+    expect(roleLabel).toBe('signed in as admin');
+  });
+});
+```
+
+<Callout type="warn" title="worker options need a new worker">
+  `test.use()` for a worker-scoped option isn't allowed inside `describe`. Set it at the top of the file or in
+  the config.
+</Callout>
+
+## Compose fixtures
+
+### Fixtures that depend on fixtures
+
+Above, `signedInPage` asks for `account` and `page`. The runner works out the order, so each fixture can stay small.
+
+### Provide page objects
+
+A page object keeps locators and actions in one class. A fixture removes the `new AccountPage(page)` line from every test, and
+it can depend on the signed-in state too.
+
+```ts title="account-page.fixture.ts" {21-23}
+import { type Locator, type Page } from '@playwright/test';
+import { test as accountTest } from './account.fixture';
+
+class AccountPage {
+  readonly displayName: Locator;
+  readonly saveButton: Locator;
+  readonly status: Locator;
+
+  constructor(readonly page: Page) {
+    this.displayName = page.getByLabel('Display name');
+    this.saveButton = page.getByRole('button', { name: 'Save' });
+    this.status = page.getByRole('status');
+  }
+
+  async rename(name: string) {
+    await this.displayName.fill(name);
+    await this.saveButton.click();
+  }
+}
+
+export const test = accountTest.extend<{ accountPage: AccountPage }>({
+  accountPage: async ({ signedInPage }, use) => {
+    await use(new AccountPage(signedInPage));
+  },
+});
+```
+
+```ts title="rename.spec.ts"
+test('renames the account', async ({ accountPage }) => {
+  await accountPage.rename('Ada');
+  await expect(accountPage.status).toHaveText('Saved');
+});
+```
+
+Keep `page` public (`readonly`, not `private`) if tests need to reach it through the page object.
+
+### Merge fixture files
+
+`mergeTests` combines independent sets of fixtures, so no single file has to grow forever.
+
+```ts title="fixtures.ts"
+import { mergeTests } from '@playwright/test';
+import { test as accountTest } from './account.fixture';
+import { test as imageTest } from './images.fixture';
+
+export const test = mergeTests(accountTest, imageTest);
+```
+
+### Override a built-in
+
+A fixture with an existing name replaces it, and can still use the original. This one starts every test on the home page.
+
+```ts title="home.fixture.ts"
+export const test = base.extend({
+  page: async ({ page }, use) => {
+    await page.goto('/');
+    await use(page);
+  },
+});
+```
+
+## Practical fixtures
+
+### Report broken images
+
+This fixture hands the test a function. Each image gets two checks: the HTTP status, and whether the browser could decode it.
+A server can answer 200 with a corrupt file, and only `naturalWidth` shows that.
+
+```ts title="images.fixture.ts" {10-11}
+import { test as base, expect } from '@playwright/test';
+
+export const test = base.extend<{ checkImages: () => Promise<void> }>({
+  checkImages: async ({ page }, use) => {
+    await use(async () => {
+      const images = await page.locator('img').all();
+      const results = await Promise.all(
+        images.map(async (image) => {
+          const src = await image.evaluate((img: HTMLImageElement) => img.currentSrc);
+          const status = src.startsWith('http') ? (await page.request.get(src)).status() : 200;
+          const decoded = await image.evaluate(
+            (img: HTMLImageElement) => img.complete && img.naturalWidth > 0,
+          );
+          return { src, status, decoded };
+        }),
+      );
+
+      const broken = results.filter(({ status, decoded }) => status >= 400 || !decoded);
+      expect(broken, 'broken images').toEqual([]);
+    });
+  },
+});
+```
+
+<Callout type="gotcha" title="page.request can't fetch data: URLs">
+  `page.request.get()` throws `Protocol "data:" not supported`, so the fixture only requests `http` and
+  `https` images. Inline images still get the decode check.
+</Callout>
+
+### Fail on browser errors
+
+An automatic fixture can watch every test. Its assertion sits after `use()`, so it runs once the test body has finished.
+
+```ts title="console-guard.fixture.ts" {7,10,12}
+import { test as base, expect } from '@playwright/test';
+
+export const test = base.extend<{ consoleGuard: void }>({
+  consoleGuard: [
+    async ({ page }, use) => {
+      const problems: string[] = [];
+      page.on('console', (message) => {
+        if (message.type() === 'error') problems.push(message.text());
+      });
+      page.on('pageerror', (error) => problems.push(error.message));
+
+      await use();
+
+      expect(problems, 'errors in the browser console').toEqual([]);
+    },
+    { auto: true },
+  ],
+});
+```
+
+<Callout type="gotcha" title="console events miss uncaught exceptions">
+  A `throw` in page code fires `pageerror`, not `console`. Listen to both, or the worst errors slip through.
+</Callout>
+
+<Callout type="tip" title="auto fixtures have a cost">
+  Because this fixture depends on `page`, every test opens a page, even an API-only test. Keep automatic
+  fixtures cheap, and add an allow-list if your app logs errors you've accepted.
+</Callout>
+
+### Collect evidence on failure
+
+Fixtures receive `testInfo` as their third argument. After `use()`, it knows how the test ended.
+
+```ts title="evidence.fixture.ts" {5}
+export const test = base.extend<{ failureNote: void }>({
+  failureNote: [
+    async ({ page }, use, testInfo) => {
+      await use();
+      if (testInfo.status !== testInfo.expectedStatus) {
+        await testInfo.attach('url-at-failure', { body: page.url() });
+      }
+    },
+    { auto: true },
+  ],
+});
+```
+
+## Interview angle
+
+- **Fixtures or `beforeEach`?** Fixtures run on demand, keep setup next to cleanup, and can be shared across files. Hooks suit
+  short setup that belongs to one file.
+- **What's the difference between test and worker scope?** Test scope gives each test a new instance. Worker scope shares one
+  instance across the tests in a worker process, which is faster but risks leaking state.
+- **Is the browser launched for every test?** No. `browser` is worker-scoped, and each test gets a new context for isolation.
+- **Why can't a worker fixture use `page`?** `page` is created per test, so it doesn't exist for the lifetime of a worker.
+- **What happens to worker fixtures after a test fails?** The worker process is replaced, so they are torn down and set up
+  again.
+- **How do you fail a test on console errors everywhere?** Use an automatic fixture that listens to `console` and `pageerror`,
+  then asserts after `use()`.

@@ -150,12 +150,12 @@ test.describe('site search', () => {
   });
 
   test('leaves out listings, placeholders and the quiz', async ({ page }) => {
-    const dialog = await searchFor(page, 'fixtures');
+    const dialog = await searchFor(page, 'parallel');
     await expect(dialog.getByRole('status')).toHaveText(/result/);
     const hrefs = await dialog
       .getByRole('option')
       .evaluateAll((all) => all.map((a) => a.getAttribute('href')));
-    for (const href of hrefs) expect(href).not.toMatch(/\/chapters\/?$|\/chapters\/05-fixtures/);
+    for (const href of hrefs) expect(href).not.toMatch(/\/chapters\/?$|\/chapters\/06-parallelization/);
 
     await dialog.getByRole('combobox').fill('Chapter quiz');
     await expect(dialog.getByRole('status')).not.toHaveText(/type to search/);

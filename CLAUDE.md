@@ -151,6 +151,8 @@ Repo setting needed once: Settings → Pages → Source: **GitHub Actions**.
 
 ## Gotchas
 
+- **Don't import `url` by that name in an MDX chapter.** Astro's MDX output already exports a `url`, so the build fails with a parse error.
+  Use `import { url as siteUrl } from '../../lib/url';` for internal links.
 - **Search only works on a build.** Pagefind indexes `dist/` after `astro build`, so under `pnpm dev` the dialog says search isn't
   available. Pages are indexed through `BaseLayout`'s `searchable` prop; wrap anything that shouldn't be found in `data-pagefind-ignore`.
 - **Don't use `astro preview` in tests.** Astro 7 auto-backgrounds `dev`/`preview` when it detects an AI

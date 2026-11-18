@@ -12,8 +12,8 @@ const pages = [
     type: 'article',
   },
   {
-    path: '/chapters/05-fixtures/',
-    title: 'ch05 Scalable tests with fixtures · playwright-lab',
+    path: '/chapters/06-parallelization/',
+    title: 'ch06 Parallelization and performance · playwright-lab',
     type: 'website',
   },
   { path: '/playground/', title: 'playground · playwright-lab', type: 'website' },

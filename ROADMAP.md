@@ -56,7 +56,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ 02 Advanced selectors
 - [x] ⇉ 03 Cross-browser testing
 - [x] ⇉ 04 AI-powered test generation
-- [ ] ⇉ 05 Fixtures
+- [x] ⇉ 05 Fixtures
 - [ ] ⇉ 06 Parallelization and performance
 - [ ] ⇉ 07 CI/CD pipelines
 - [ ] ⇉ 08 Headless testing and debugging
@@ -192,3 +192,10 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   which hides a broken link. Runtime behaviour was checked in a throwaway spec on Chromium. CLI flags, agent definitions and the Copy prompt
   button were read from the installed package, because the unattended session could not run `npx`. Codegen, `init-agents` and the MCP server
   were not run, and the `@playwright/mcp` setup was not installed or tried.
+- 2026-11-18: Chapter 5 notes follow the installed Playwright (1.65) where the reference PDF differs: `browser` is worker-scoped rather than
+  launched per test, and a worker fixture can't depend on `page`, so a shared signed-in page has to be built from `browser`. Added from testing:
+  a missing `await` before `use()` passes silently with cleanup running first, uncaught exceptions fire `pageerror` rather than `console`,
+  `page.request` throws on `data:` images, and a failed test restarts the worker. Snippets ran on desktop Chromium in temporary specs against a
+  local server, since removed. Chapter 6 is now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so
+  whoever writes chapter 6 must move those to chapter 7. Avoid a lone `x` as a word in chapter text: with one in this chapter, Pagefind
+  returned a result for "xylophone" and `tests/search.spec.ts` failed until it was reworded.

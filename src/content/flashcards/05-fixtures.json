@@ -1,0 +1,110 @@
+{
+  "chapter": 5,
+  "cards": [
+    {
+      "id": "fixtures/what-is-a-fixture",
+      "front": "What is a Playwright fixture?",
+      "back": "Named setup that a test requests in its parameters. The runner builds it, passes it in, and cleans it up afterwards."
+    },
+    {
+      "id": "fixtures/vs-hooks",
+      "front": "What do fixtures offer over `beforeEach` hooks?",
+      "back": "They run only when requested, keep setup next to cleanup, and can be reused across files."
+    },
+    {
+      "id": "fixtures/builtin-scopes",
+      "front": "Which built-in fixtures are test-scoped, and which are worker-scoped?",
+      "back": "`page`, `context`, and `request` are test-scoped. `browser`, `browserName`, and `playwright` are worker-scoped."
+    },
+    {
+      "id": "fixtures/isolation",
+      "front": "If tests share a browser, where does their isolation come from?",
+      "back": "Each test gets a new browser context, with its own cookies and storage."
+    },
+    {
+      "id": "fixtures/extend",
+      "front": "How do you add a custom fixture?",
+      "back": "Call `base.extend({ name: async ({ deps }, use) => { ... } })` and import the returned `test` in your specs."
+    },
+    {
+      "id": "fixtures/use",
+      "front": "What does `await use(value)` do in a fixture?",
+      "back": "It hands the value to the test and waits for the test to finish. Code after it is the cleanup."
+    },
+    {
+      "id": "fixtures/missing-await",
+      "front": "What goes wrong if you forget `await` before `use()`?",
+      "back": "The cleanup code runs before the test body, and the test can still pass without any error."
+    },
+    {
+      "id": "fixtures/destructuring",
+      "front": "How does a fixture with no dependencies declare its first parameter?",
+      "back": "As `{}`, as in `async ({}, use) => { ... }`. Playwright requires the object destructuring pattern there."
+    },
+    {
+      "id": "fixtures/worker-syntax",
+      "front": "How do you declare a worker-scoped fixture?",
+      "back": "Use a tuple: `name: [async ({}, use) => { ... }, { scope: 'worker' }]`. Worker types go in the second generic of `extend`."
+    },
+    {
+      "id": "fixtures/worker-dependencies",
+      "front": "Can a worker-scoped fixture depend on `page` or `request`?",
+      "back": "No. Worker fixtures can depend only on worker fixtures, so build a context from `browser` or `playwright`."
+    },
+    {
+      "id": "fixtures/order",
+      "front": "In what order are fixtures set up and torn down?",
+      "back": "Set up in dependency order, and torn down in reverse."
+    },
+    {
+      "id": "fixtures/worker-restart",
+      "front": "What happens to worker fixtures when a test fails?",
+      "back": "The worker process is replaced, so its worker fixtures are torn down and set up again in the new one."
+    },
+    {
+      "id": "fixtures/parallel-index",
+      "front": "Why use `parallelIndex` instead of `workerIndex` to pick an account?",
+      "back": "`workerIndex` goes up after every restart. `parallelIndex` stays between 0 and `workers - 1`."
+    },
+    {
+      "id": "fixtures/before-all-page",
+      "front": "Why can't `beforeAll` use the `page` fixture?",
+      "back": "`page` and `context` are created per test, and `beforeAll` runs outside any single test."
+    },
+    {
+      "id": "fixtures/timeout",
+      "front": "How do you stop a slow fixture from using up the test's timeout?",
+      "back": "Give it its own limit: `[fn, { timeout: 60_000 }]`. Test-scoped fixtures otherwise share the test's timeout."
+    },
+    {
+      "id": "fixtures/auto",
+      "front": "What does `{ auto: true }` do?",
+      "back": "It runs the fixture for every test, even when no test asks for it."
+    },
+    {
+      "id": "fixtures/option",
+      "front": "How do you make a fixture value configurable per file or `describe` block?",
+      "back": "Define it as `['default', { option: true }]`, then change it with `test.use({ name: value })`."
+    },
+    {
+      "id": "fixtures/merge-tests",
+      "front": "How do you combine fixtures from several files?",
+      "back": "Call `mergeTests(testA, testB)` and export the result."
+    },
+    {
+      "id": "fixtures/override",
+      "front": "How do you override a built-in fixture such as `page`?",
+      "back": "Define a fixture with the same name in `extend`. It can request the original, as in `page: async ({ page }, use) => { ... }`."
+    },
+    {
+      "id": "fixtures/pageerror",
+      "front": "Why listen to `pageerror` as well as `console`?",
+      "back": "Uncaught exceptions fire `pageerror`, and they don't appear as console events."
+    },
+    {
+      "id": "fixtures/natural-width",
+      "front": "How can a test detect an image that returns 200 but is corrupt?",
+      "back": "Check that `img.complete` is true and `img.naturalWidth` is greater than 0 in the browser."
+    }
+  ]
+}
