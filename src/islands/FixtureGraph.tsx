@@ -373,7 +373,12 @@ export default function FixtureGraph() {
           <h2 id="fg-timeline" className={HEADING}>
             # run order
           </h2>
-          <ol ref={timeline} className="relative mt-3 grid max-h-[32rem] gap-1 overflow-y-auto">
+          <ol
+            ref={timeline}
+            tabIndex={0}
+            aria-labelledby="fg-timeline"
+            className="relative mt-3 grid max-h-[32rem] gap-1 overflow-y-auto"
+          >
             {steps.map(({ title, kind: stepKind, worker }, at) => (
               <li key={`${title}-${at}`}>
                 <button
