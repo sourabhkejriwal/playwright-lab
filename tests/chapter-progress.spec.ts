@@ -29,8 +29,8 @@ test.describe('chapter progress', () => {
     await expect(heroRun(page).getByRole('link', { name: 'Chapter 2, Selectors: ready' })).toBeVisible();
     await expect(heroRun(page).getByRole('link', { name: 'Chapter 5, Fixtures: pending' })).toBeVisible();
     await expect(page.getByText('0 read')).toBeVisible();
-    await expect(page.getByText('2 ready')).toBeVisible();
-    await expect(page.getByText('14 pending')).toBeVisible();
+    await expect(page.getByText('3 ready')).toBeVisible();
+    await expect(page.getByText('13 pending')).toBeVisible();
     await expect(page.getByRole('link', { name: 'ch01 Quick setup refresher' })).toBeVisible();
 
     const sidebar = await openSidebar(page, isMobile);
@@ -38,17 +38,17 @@ test.describe('chapter progress', () => {
   });
 
   test('read chapters show as read on the homepage', async ({ page, isMobile }) => {
-    await seed(page, savedProgress('setup', 'selectors'));
+    await seed(page, savedProgress('setup', 'selectors', 'cross-browser'));
     await page.goto('/');
 
     await expect(heroRun(page).getByRole('link', { name: 'Chapter 2, Selectors: read' })).toBeVisible();
-    await expect(page.getByText('2 read')).toBeVisible();
+    await expect(page.getByText('3 read')).toBeVisible();
     await expect(page.getByText('0 ready')).toBeVisible();
     await expect(page.getByText('all written chapters read')).toBeVisible();
     await expect(page.getByText(/next up/)).toBeHidden();
 
     const sidebar = await openSidebar(page, isMobile);
-    await expect(sidebar.getByText('2/16')).toBeVisible();
+    await expect(sidebar.getByText('3/16')).toBeVisible();
     await expect(sidebar.getByRole('link', { name: 'read 02 Selectors' })).toBeVisible();
   });
 

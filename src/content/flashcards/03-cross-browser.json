@@ -1,0 +1,105 @@
+{
+  "chapter": 3,
+  "cards": [
+    {
+      "id": "cross-browser/project",
+      "front": "What is a Playwright project?",
+      "back": "A named group of settings that tests run under. Define one per browser or device, and the same test files run once for each."
+    },
+    {
+      "id": "cross-browser/device-descriptor",
+      "front": "What does spreading `devices['iPhone 15']` into `use` set?",
+      "back": "Viewport, user agent, device scale factor, `isMobile`, `hasTouch`, and the browser engine to launch."
+    },
+    {
+      "id": "cross-browser/desktop-safari-scale",
+      "front": "Why are `Desktop Safari` screenshots larger than `Desktop Chrome` ones at the same viewport?",
+      "back": "`Desktop Safari` sets `deviceScaleFactor: 2`, while `Desktop Chrome` uses 1."
+    },
+    {
+      "id": "cross-browser/project-flag",
+      "front": "How do you run only the Chromium and Firefox projects?",
+      "back": "`npx playwright test --project=chromium --project=firefox`. Names match case-insensitively, and `*` works as a wildcard."
+    },
+    {
+      "id": "cross-browser/override-order",
+      "front": "Where do your overrides go when you spread a device descriptor?",
+      "back": "After the spread. Later properties win, so anything placed before it can be replaced by the device's value."
+    },
+    {
+      "id": "cross-browser/user-agent",
+      "front": "Does setting `userAgent` make Chromium behave like Safari?",
+      "back": "No. It only changes the reported string. The rendering engine stays the same."
+    },
+    {
+      "id": "cross-browser/is-mobile-touch",
+      "front": "Does `isMobile: true` enable touch?",
+      "back": "No. Set `hasTouch: true` too, or `locator.tap()` throws. Device descriptors set both."
+    },
+    {
+      "id": "cross-browser/firefox-permissions",
+      "front": "Why can a `permissions` setting pass in Chromium and fail in Firefox?",
+      "back": "Firefox accepts `geolocation` and `notifications` but throws `Unknown permission` on names such as `clipboard-read`. Set those per project."
+    },
+    {
+      "id": "cross-browser/webkit-permissions",
+      "front": "What does WebKit do with a misspelled permission name?",
+      "back": "It accepts it without an error, so a typo can go unnoticed there while Chromium and Firefox throw."
+    },
+    {
+      "id": "cross-browser/geolocation",
+      "front": "What two options does a test need to read a fake location?",
+      "back": "`geolocation` with the coordinates, and `permissions: ['geolocation']` so the page may read them."
+    },
+    {
+      "id": "cross-browser/storage-state",
+      "front": "What does `storageState` save by default, and what needs an extra option?",
+      "back": "Cookies and local storage. IndexedDB is included only with `storageState({ indexedDB: true })`."
+    },
+    {
+      "id": "cross-browser/channel",
+      "front": "How do you test on the real Microsoft Edge?",
+      "back": "Set `channel: 'msedge'` in the project's `use`. Edge must be on the machine, or be added with `npx playwright install msedge`."
+    },
+    {
+      "id": "cross-browser/test-use-device",
+      "front": "What's the catch with `test.use({ ...devices['iPhone 15'] })` at the top of a file?",
+      "back": "The descriptor includes the engine, so that file runs on WebKit in every project. Inside `test.describe()` the same call is an error."
+    },
+    {
+      "id": "cross-browser/new-context",
+      "front": "Does `browser.newContext()` in a test use the project's settings?",
+      "back": "Yes. It starts from the project's `use` options, and whatever you pass overrides them."
+    },
+    {
+      "id": "cross-browser/skip-fixme-fail",
+      "front": "How do `test.skip()`, `test.fixme()`, and `test.fail()` differ?",
+      "back": "`skip` doesn't run a test that doesn't apply. `fixme` doesn't run a test that needs fixing. `fail` runs the test and reports an error if it starts passing."
+    },
+    {
+      "id": "cross-browser/skip-group",
+      "front": "How do you skip a whole `describe` group on every browser except Chromium?",
+      "back": "Inside the group, call `test.skip(({ browserName }) => browserName !== 'chromium', 'reason')`."
+    },
+    {
+      "id": "cross-browser/portable-assertions",
+      "front": "What kind of assertion holds up best across browsers?",
+      "back": "One about what users notice, such as visible text, enabled state, or the URL. Exact styles and pixel positions often vary by engine."
+    },
+    {
+      "id": "cross-browser/page-pause",
+      "front": "Why might `page.pause()` seem to do nothing?",
+      "back": "It returns immediately in a headless run. Run with `--headed`, or use `--debug`."
+    },
+    {
+      "id": "cross-browser/slow-mo",
+      "front": "Where does the `slowMo` setting go in a project?",
+      "back": "Under `use.launchOptions`, as in `launchOptions: { slowMo: 500 }`, because it's a browser launch option."
+    },
+    {
+      "id": "cross-browser/debug-steps",
+      "front": "A test fails only in WebKit. What are your first steps?",
+      "back": "Run it alone on that project, capture a trace, watch it headed, and find the root cause before adding any browser-specific code."
+    }
+  ]
+}

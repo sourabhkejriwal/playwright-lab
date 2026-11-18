@@ -1,0 +1,342 @@
+---
+chapter: 3
+title: Cross-browser testing
+summary: Run one suite on Chromium, Firefox, and WebKit, emulate devices, and track down failures that only happen in one browser.
+readingMinutes: 13
+---
+
+## One suite, many projects
+
+A **project** is a named group of settings that your tests run under. List one project per browser and the same test
+files run once for each, with no duplicated code.
+
+```ts title="playwright.config.ts" {6-9}
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: 'mobile-safari', use: { ...devices['iPhone 15'] } },
+  ],
+});
+```
+
+Each entry in `devices` is a bundle of settings: viewport, user agent, device scale factor, `isMobile`, `hasTouch`, and
+the browser engine to launch. Spreading one into `use` applies them all.
+
+<Callout type="gotcha" title="desktop safari is high-DPI">
+  `Desktop Safari` sets `deviceScaleFactor: 2`, while `Desktop Chrome` and `Desktop Firefox` use 1.
+  Screenshots from WebKit are therefore twice the size in pixels, even at the same 1280×720 viewport.
+</Callout>
+
+### Choose projects on the command line
+
+With no flag, every project runs. `--project` narrows the run, and it combines with other filters.
+
+```bash
+npx playwright test --project=chromium
+npx playwright test --project=chromium --project=firefox
+npx playwright test --project="mobile-*"
+npx playwright test --project=webkit --grep "checkout"
+```
+
+Project names match case-insensitively, and `*` works as a wildcard. A name that matches nothing stops the run with an
+error listing the projects that exist.
+
+## Tune a project with `use`
+
+Anything in `use` applies to every test in that project.
+
+| Option              | What it controls                                             |
+| ------------------- | ------------------------------------------------------------ |
+| `viewport`          | Page size in CSS pixels                                      |
+| `deviceScaleFactor` | Physical pixels per CSS pixel                                |
+| `isMobile`          | Mobile layout rules, including the `meta viewport` tag       |
+| `hasTouch`          | Touch support, which `locator.tap()` needs                   |
+| `userAgent`         | The user agent string the browser reports                    |
+| `locale`            | Language and regional formats, such as `fr-FR`               |
+| `timezoneId`        | Time zone, such as `Europe/Paris`                            |
+| `colorScheme`       | The `prefers-color-scheme` value                             |
+| `geolocation`       | Reported position, which also needs the permission           |
+| `permissions`       | Browser permissions granted up front                         |
+| `storageState`      | Cookies and local storage to start with                      |
+| `javaScriptEnabled` | Turns JavaScript off when `false`                            |
+| `ignoreHTTPSErrors` | Accepts self-signed certificates, for test environments only |
+| `proxy`             | Routes browser traffic through a proxy server                |
+
+To change part of a device, spread it first and put your overrides after it:
+
+```ts title="playwright.config.ts" {4-5}
+{
+  name: 'pixel-dark-fr',
+  use: {
+    ...devices['Pixel 7'],
+    colorScheme: 'dark',
+    locale: 'fr-FR',
+  },
+},
+```
+
+<Callout type="warn" title="order matters">
+  Later properties win. If `viewport` comes before `...devices['Pixel 7']`, the device's viewport silently
+  replaces yours.
+</Callout>
+
+Three of these options do less than their names suggest:
+
+- **`userAgent` changes a string, not the engine.** A WebKit project that reports a Firefox user agent still renders
+  with WebKit.
+- **`isMobile` doesn't add touch.** Set `hasTouch: true` as well, or <ApiRef name="locator.tap()" /> throws. It doesn't
+  change the user agent either. Device descriptors set all three for you.
+- **A narrow `viewport` isn't a phone.** It tests responsive breakpoints, but the page still behaves like desktop.
+
+### Permissions differ by engine
+
+`permissions` grants access before the test starts, so no prompt gets in the way. Support is uneven, which makes this
+option a common source of browser-specific failures.
+
+| Engine   | What happens                                                                           |
+| -------- | -------------------------------------------------------------------------------------- |
+| Chromium | Accepts the standard names, and throws on an unknown one                               |
+| Firefox  | Accepts `geolocation` and `notifications`, and throws `Unknown permission` on the rest |
+| WebKit   | Accepts any name without complaint, even a misspelled one                              |
+
+So a global `permissions: ['clipboard-read']` breaks every Firefox test. Set it only on the projects that support it:
+
+```ts title="playwright.config.ts" {4}
+{
+  name: 'chromium',
+  use: {
+    ...devices['Desktop Chrome'],
+    permissions: ['clipboard-read', 'clipboard-write'],
+  },
+},
+```
+
+Geolocation needs both the position and the permission:
+
+```ts title="store-finder.spec.ts" {2}
+test.use({
+  geolocation: { latitude: 48.8566, longitude: 2.3522 },
+  permissions: ['geolocation'],
+});
+```
+
+<Callout type="gotcha" title="no permission is not the same as denied">
+  With `permissions: []`, a geolocation request is denied at once. If you leave the option out, the permission
+  stays at "prompt": headless Chromium and WebKit report an error, but headless Firefox leaves the request
+  waiting, so a test that depends on the answer can time out.
+</Callout>
+
+### Reuse a signed-in session
+
+<ApiRef name="context.storageState()" /> saves cookies and local storage to a file, and the `storageState`
+option loads them into a new context. Tests can then start signed in, without repeating the login form.
+
+```ts title="auth.setup.ts"
+await page.context().storageState({ path: 'playwright/.auth/user.json' });
+```
+
+```ts title="playwright.config.ts" {4}
+{
+  name: 'chromium-signed-in',
+  use: {
+    ...devices['Desktop Chrome'],
+    storageState: 'playwright/.auth/user.json',
+  },
+},
+```
+
+If your app keeps its tokens in IndexedDB, ask for it explicitly with `storageState({ path, indexedDB: true })`. It is
+left out by default. Keep these files out of git, because they hold live credentials. Chapter 14 builds this into a
+full setup project.
+
+### Proxies
+
+Pass credentials as separate fields, and read them from the environment:
+
+```ts title="playwright.config.ts" {5-7}
+{
+  name: 'chromium-proxy',
+  use: {
+    ...devices['Desktop Chrome'],
+    proxy: {
+      server: 'http://proxy.example.com:8080',
+      username: process.env.PROXY_USER,
+      password: process.env.PROXY_PASSWORD,
+    },
+  },
+},
+```
+
+### Branded browsers
+
+Playwright's default browsers are its own builds. To test the Chrome or Edge your users actually install, set `channel`:
+
+```ts title="playwright.config.ts" {3,7}
+{
+  name: 'edge',
+  use: { ...devices['Desktop Edge'], channel: 'msedge' },
+},
+{
+  name: 'chrome-beta',
+  use: { ...devices['Desktop Chrome'], channel: 'chrome-beta' },
+},
+```
+
+Channels are `chrome`, `msedge`, and their `-beta`, `-dev`, and `-canary` versions. Playwright doesn't download these
+with its default browsers: the browser must already be on the machine, or be added with a command such as
+`npx playwright install msedge`. If it's missing, the test fails with an error saying so.
+
+## Emulate a device in one file
+
+A project is the best home for a device, but a single spec file can set its own with <ApiRef name="test.use()" />:
+
+```ts title="checkout-mobile.spec.ts" {3}
+import { test, devices } from '@playwright/test';
+
+test.use({ ...devices['iPhone 15'], locale: 'es-ES' });
+
+test('shows the compact basket', async ({ page }) => {
+  await page.goto('/basket');
+});
+```
+
+<Callout type="gotcha" title="a device can pick the browser">
+  Descriptors include the engine, so this file runs on **WebKit in every project**, including `chromium` and
+  `firefox`. Inside `test.describe()` the same line is an error, because changing the browser needs a new
+  worker. Keep devices in projects unless a file really is device-specific.
+</Callout>
+
+When a test needs two different environments at once, create the contexts yourself. <ApiRef name="browser.newContext()" />
+starts from the project's `use` options, and anything you pass overrides them.
+
+```ts title="time-zones.spec.ts" {2-3}
+test('shows each user their local time', async ({ browser }) => {
+  const tokyo = await browser.newContext({ timezoneId: 'Asia/Tokyo', locale: 'ja-JP' });
+  const paris = await browser.newContext({ timezoneId: 'Europe/Paris', locale: 'fr-FR' });
+  // open a page in each context and compare
+  await tokyo.close();
+  await paris.close();
+});
+```
+
+## Write tests that travel
+
+The goal is one test that passes everywhere without knowing where it runs.
+
+- **Assert what users notice.** Visible text, enabled buttons, and the current URL hold across engines. Exact computed
+  styles and pixel positions often don't.
+- **Let web-first assertions absorb timing.** Engines run at different speeds, and `toBeVisible()` retries until the
+  page catches up.
+- **Keep differences in config.** A setting in a project is easier to find and change than an `if` in a test.
+- **Run every browser early.** A problem found while building a feature is far cheaper than one found just before
+  release.
+
+### When a browser really differs
+
+The `browserName` and `isMobile` fixtures tell a test where it's running. Use them for the rare case that needs them,
+and leave a comment explaining why.
+
+```ts title="menu.spec.ts" {2}
+test('opens account settings', async ({ page, isMobile }) => {
+  if (isMobile) await page.getByRole('button', { name: 'Menu' }).click(); // links collapse behind the menu
+  await page.getByRole('link', { name: 'Account' }).click();
+  await expect(page).toHaveURL(/account/);
+});
+```
+
+To exclude a browser, pass a condition and a reason. Each annotation says something different in the report:
+
+| Call                            | Runs the test? | Meaning                                        |
+| ------------------------------- | -------------- | ---------------------------------------------- |
+| `test.skip(condition, reason)`  | No             | Doesn't apply to this browser                  |
+| `test.fixme(condition, reason)` | No             | Should work, but is broken and needs fixing    |
+| `test.fail(condition, reason)`  | Yes            | Must fail, and reports an error once it passes |
+
+```ts title="clipboard.spec.ts" {2}
+test('copies the invite link', async ({ page, browserName }) => {
+  test.skip(browserName === 'firefox', 'Firefox cannot grant clipboard permissions');
+  await page.goto('/invite');
+});
+```
+
+To skip a whole group, call it inside `test.describe()` with a function that receives the fixtures:
+
+```ts title="performance.spec.ts" {2}
+test.describe('chrome devtools protocol', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium', 'CDP is Chromium only');
+
+  test('records metrics', async ({ page }) => {
+    const session = await page.context().newCDPSession(page);
+    await session.send('Performance.enable');
+  });
+});
+```
+
+<Callout type="tip" title="prefer test.fail for known bugs">
+  <ApiRef name="test.fail()" /> keeps running the test, so it tells you the day a browser bug is fixed. A skip
+  stays silent forever.
+</Callout>
+
+## Debug a failure in one browser
+
+Work from the narrowest reproduction outward.
+
+1. **Confirm it's browser-specific.** Run the one test on the failing project, then on another.
+2. **Capture a trace.** The trace shows each action with its DOM snapshot, console output, and network calls.
+3. **Watch it run.** Headed mode often reveals an overlay, a layout shift, or an element pushed off-screen.
+4. **Slow it down or step through it.** Use `slowMo` or the Inspector.
+5. **Find the cause before adding a workaround.** It may be an app bug, a missing feature, or an intended difference.
+
+```bash
+npx playwright test checkout.spec.ts --project=webkit
+npx playwright test checkout.spec.ts --project=webkit --trace=on
+npx playwright show-report
+npx playwright test checkout.spec.ts --project=webkit --headed
+npx playwright test checkout.spec.ts --project=webkit --debug
+```
+
+`--debug` opens the Inspector in a headed browser, with one worker and no timeout. To stop at a particular line, add
+
+<ApiRef name="page.pause()" /> there and run headed.
+
+<Callout type="gotcha" title="page.pause() needs a headed browser">
+  In a headless run, `page.pause()` returns immediately, so nothing stops. Remove it before you commit.
+</Callout>
+
+`slowMo` adds a delay to every browser operation. It's a launch option, so it goes under `launchOptions`:
+
+```ts title="playwright.config.ts" {4}
+{
+  name: 'webkit-slow',
+  use: {
+    ...devices['Desktop Safari'],
+    launchOptions: { slowMo: 500 },
+  },
+},
+```
+
+When the trace points at a missing feature, ask the browser directly:
+
+```ts title="backdrop.spec.ts"
+const supported = await page.evaluate(() => CSS.supports('backdrop-filter', 'blur(4px)'));
+```
+
+## Interview angle
+
+- **How do you run one suite on several browsers?** Define a project per browser in `playwright.config.ts`, usually by
+  spreading a descriptor from `devices`. The test files don't change.
+- **Does changing the user agent emulate Safari?** No. It only changes the reported string. The engine comes from the
+  project's browser setting.
+- **What's the difference between `isMobile` and `hasTouch`?** `isMobile` applies mobile layout rules, and `hasTouch`
+  enables touch input. Real phones need both, which device descriptors provide.
+- **Why might a permission work in Chromium and fail in Firefox?** Firefox accepts far fewer permission names and throws
+  on the others, so set permissions per project.
+- **`test.skip()` or `test.fail()` for a known browser bug?** `test.fail()`, when the test can run to completion, because
+  it alerts you once the bug is fixed.
+- **A test fails only in WebKit. What do you do?** Reproduce it on that project alone, read the trace, watch it headed,
+  and find the root cause before writing any browser-specific code.

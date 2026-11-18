@@ -54,7 +54,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 
 - [x] ⇉ 01 Quick setup refresher
 - [x] ⇉ 02 Advanced selectors
-- [ ] ⇉ 03 Cross-browser testing
+- [x] ⇉ 03 Cross-browser testing
 - [ ] ⇉ 04 AI-powered test generation
 - [ ] ⇉ 05 Fixtures
 - [ ] ⇉ 06 Parallelization and performance
@@ -179,3 +179,10 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   rather than the default, and `>>>` is unnecessary for open shadow roots. Every snippet was run on real Playwright in a throwaway project.
   The quiz stays at 5 questions, so four of the sample questions gave way to custom waits, dialogs, iframes and shadow DOM. Existing
   flashcard ids are unchanged. `tests/smoke.spec.ts` counts this chapter's table of contents links, so it changes when the headings do.
+- 2026-11-18: Chapter 3 notes follow the installed Playwright (1.65) where the reference PDF differs: `--project` names are case-insensitive
+  and accept `*`, `isMobile` adds neither touch nor a mobile user agent, IndexedDB is saved only with `indexedDB: true`, and proxy credentials
+  use separate fields. Added from testing on Chromium, Firefox and WebKit: Firefox throws on most permission names, WebKit accepts any name,
+  and a device in a file-level `test.use()` forces its engine in every project. Snippets ran in a throwaway project, except that branded
+  channels were only checked for their error when the browser is missing, and headed mode and the Inspector were not opened.
+  Watch for flakiness: the playground's "suggests a sturdier locator and can apply it" failed once on mobile in a full run. Its error wasn't
+  captured, and it then passed alone and in another full run.

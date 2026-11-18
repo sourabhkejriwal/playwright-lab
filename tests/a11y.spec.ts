@@ -6,6 +6,7 @@ const pages = [
   '/chapters',
   '/chapters/01-setup',
   '/chapters/02-selectors',
+  '/chapters/03-cross-browser',
   '/chapters/05-fixtures',
   '/playground',
   '/flashcards',

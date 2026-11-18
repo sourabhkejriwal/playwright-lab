@@ -1,0 +1,55 @@
+{
+  "chapter": 3,
+  "questions": [
+    {
+      "question": "What is the standard way to run one test suite on Chromium, Firefox, and WebKit?",
+      "options": [
+        "Copy the spec files into one folder per browser",
+        "Read an environment variable inside each test",
+        "Define one project per browser in `playwright.config.ts`",
+        "Launch each browser by hand in a `beforeAll` hook"
+      ],
+      "answer": 2,
+      "explanation": "Each project applies its own `use` settings to the same test files, so nothing is duplicated."
+    },
+    {
+      "question": "A WebKit project sets `userAgent` to a Firefox user agent string. Which engine renders the page?",
+      "options": ["WebKit", "Firefox", "Chromium", "Whichever engine matches the user agent"],
+      "answer": 0,
+      "explanation": "`userAgent` only changes the string the browser reports. The engine stays the same."
+    },
+    {
+      "question": "The config sets `permissions: ['clipboard-read']` at the top level. What happens in the Firefox project?",
+      "options": [
+        "Firefox shows a permission prompt",
+        "Tests fail with an `Unknown permission` error",
+        "The permission is ignored and tests carry on",
+        "Playwright switches that project to Chromium"
+      ],
+      "answer": 1,
+      "explanation": "Firefox accepts only a few permission names and throws on the others, so set this one only on projects that support it."
+    },
+    {
+      "question": "A spec file has `test.use({ ...devices['iPhone 15'] })` at the top level. Where do its tests run?",
+      "options": [
+        "In each project's own browser, at iPhone size",
+        "Only in projects named after an iPhone",
+        "Nowhere, because `test.use()` can't take a device",
+        "On WebKit, in every project"
+      ],
+      "answer": 3,
+      "explanation": "A device descriptor includes its browser engine, so the file overrides the project's browser and runs on WebKit each time."
+    },
+    {
+      "question": "A known Firefox bug breaks a test that can still run to the end. Which annotation tells you when the bug is fixed?",
+      "options": [
+        "`test.skip(browserName === 'firefox', 'bug 123')`",
+        "`test.fixme(browserName === 'firefox', 'bug 123')`",
+        "`test.fail(browserName === 'firefox', 'bug 123')`",
+        "`test.slow(browserName === 'firefox', 'bug 123')`"
+      ],
+      "answer": 2,
+      "explanation": "`test.fail()` runs the test and expects it to fail, so the run reports an error as soon as the test starts passing. Skipped tests never run."
+    }
+  ]
+}

@@ -60,6 +60,14 @@ test.describe('chapters', () => {
     await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
   });
 
+  test('the cross-browser chapter renders its notes and quiz', async ({ page }) => {
+    await page.goto('/chapters/03-cross-browser');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Cross-browser testing');
+    await expect(page.getByRole('heading', { level: 2, name: 'One suite, many projects' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'menu.spec.ts' })).toContainText('isMobile');
+    await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
+  });
+
   test('code blocks show a title bar and highlighted lines', async ({ page }) => {
     await page.goto('/chapters/02-selectors');
 
