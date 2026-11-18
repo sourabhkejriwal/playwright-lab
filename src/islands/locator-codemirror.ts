@@ -2,7 +2,7 @@
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { javascript } from '@codemirror/lang-javascript';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
-import { EditorState, StateEffect, StateField, type Range } from '@codemirror/state';
+import { EditorSelection, EditorState, StateEffect, StateField, type Range } from '@codemirror/state';
 import { Decoration, EditorView, keymap, type DecorationSet } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 
@@ -63,6 +63,21 @@ const errorField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
+/**
+ * The selection the browser shows right now. CodeMirror learns about a new selection from a later event, and any
+ * dispatch before that event discards it, so the next typed text would land at the old cursor.
+ */
+function browserSelection(view: EditorView) {
+  const selection = view.dom.ownerDocument.getSelection();
+  if (!view.hasFocus || view.composing || !selection?.anchorNode || !selection.focusNode) return undefined;
+  const { anchorNode, anchorOffset, focusNode, focusOffset } = selection;
+  if (!view.contentDOM.contains(anchorNode) || !view.contentDOM.contains(focusNode)) return undefined;
+  return EditorSelection.single(
+    view.posAtDOM(anchorNode, anchorOffset),
+    view.posAtDOM(focusNode, focusOffset),
+  );
+}
+
 export function createLocatorEditor(
   parent: HTMLElement,
   options: { value: string; label: string; onChange: (value: string) => void },
@@ -99,7 +114,8 @@ export function createLocatorEditor(
       if (current !== value) view.dispatch({ changes: { from: 0, to: current.length, insert: value } });
     },
     setError(range) {
-      view.dispatch({ effects: setErrorRange.of(range) });
+      if (!range && view.state.field(errorField).size === 0) return;
+      view.dispatch({ effects: setErrorRange.of(range), selection: browserSelection(view) });
     },
     destroy() {
       view.destroy();

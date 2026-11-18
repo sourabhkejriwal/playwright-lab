@@ -83,9 +83,32 @@ export class PlaygroundPage extends SitePage {
     return this.page.getByRole('region', { name });
   }
 
+  /**
+   * Selects the editor's text while keeping the browser's selectionchange event from CodeMirror until `release` runs.
+   * This holds open the moment between a visitor selecting text and the editor hearing about it.
+   */
+  async selectBeforeEditorNotices() {
+    await this.editorContent.evaluate((content) => {
+      const hold = (event: Event) => event.stopImmediatePropagation();
+      document.addEventListener('selectionchange', hold, { capture: true });
+      (window as Window & { releaseSelection?: () => void }).releaseSelection = () => {
+        document.removeEventListener('selectionchange', hold, { capture: true });
+        // The held event arrives late, as it would in a busy browser.
+        document.dispatchEvent(new Event('selectionchange'));
+      };
+      (content as HTMLElement).focus();
+      document.getSelection()?.selectAllChildren(content);
+    });
+    return {
+      release: () =>
+        this.page.evaluate(() => (window as Window & { releaseSelection?: () => void }).releaseSelection?.()),
+    };
+  }
+
   async enterLocator(code: string) {
-    // Not fill(): it types straight after selecting, and CodeMirror can still hold the old selection,
-    // which leaves the new text next to the old. Two frames give it time to read the new selection.
+    // Not fill(): it types straight after selecting. On Android, CodeMirror takes text through EditContext,
+    // whose selection only updates once CodeMirror has handled selectionchange, so the new text lands next
+    // to the old. Two frames give it time to read the new selection.
     await this.editor.selectText();
     await this.page.evaluate(
       () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))),

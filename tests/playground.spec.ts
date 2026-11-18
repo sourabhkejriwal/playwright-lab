@@ -66,6 +66,24 @@ test.describe('locator playground', () => {
     await expect(playground.result).toHaveText('✓ 1 match');
   });
 
+  test('an error arriving just after selecting text keeps the selection', async ({ playground, page }) => {
+    await playground.enterLocator("page.getByRol('button')");
+    await expect(playground.result).toHaveText('✗ invalid locator');
+    await playground.enterLocator("page.locator('#email')");
+    await expect(playground.result).toHaveText('✓ 1 match');
+
+    // Typing an error and selecting it before the delayed evaluation has reported that error.
+    await playground.enterLocator('page.nope()');
+    const selection = await playground.selectBeforeEditorNotices();
+    await expect(playground.result).toHaveText('✗ invalid locator');
+    await expect(playground.editorError).toBeVisible();
+    await selection.release();
+
+    await page.keyboard.insertText("page.locator('#password')");
+    await expect(playground.editorContent).toHaveText("page.locator('#password')");
+    await expect(playground.result).toHaveText('✓ 1 match');
+  });
+
   test('a challenge needs the right element and the right technique', async ({ playground }) => {
     await playground.challenge('filter by text').click();
     await expect(playground.highlightsIn('target')).toHaveCount(1);

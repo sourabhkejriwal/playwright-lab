@@ -179,7 +179,8 @@ Repo setting needed once: Settings → Pages → Source: **GitHub Actions**.
 - **`client:visible` islands don't hydrate off-screen.** A test must scroll to one first (`scrollIntoViewIfNeeded()`), or its controls never appear.
 - **A test that runs the Playwright CLI needs its own `package.json` in the temp project.** Otherwise the nested run uses this
   repo's `test-results/` as its output folder and empties it mid-run. `tsconfig.json` excludes `test-results` so these temp projects aren't type-checked.
-- **Don't call `fill()` on the playground's CodeMirror editor.** It can race CodeMirror's selection and leave the new text beside the old. Use `PlaygroundPage.enterLocator()`.
+- **Don't call `fill()` on the playground's CodeMirror editor.** On Android CodeMirror takes text through `EditContext`, whose selection lags the DOM's until `selectionchange` is handled, so `fill()` leaves the new text beside the old. Use `PlaygroundPage.enterLocator()`.
+- **Pass the browser's selection when dispatching into the locator editor.** A dispatch discards a selection CodeMirror hasn't read yet, so `setError` skips needless dispatches and sends `browserSelection()` with the rest.
 - **Changing the playground's sample page or engine?** Add the new cases to `expressions` in `tests/locator-engine.spec.ts`:
   real Playwright is the reference. Code touching the iframe must not use `instanceof` (its elements belong to another
   window), and the iframe needs `allow-scripts` in its sandbox or axe hangs.
