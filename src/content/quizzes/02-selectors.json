@@ -1,0 +1,60 @@
+{
+  "chapter": 2,
+  "questions": [
+    {
+      "question": "Which locator is the best first choice for a Save button?",
+      "options": [
+        "`page.locator('.btn-primary')`",
+        "`page.getByRole('button', { name: 'Save' })`",
+        "`page.getByTestId('save')`",
+        "`page.locator('//form/div[2]/button')`"
+      ],
+      "answer": 1,
+      "explanation": "Role and accessible name describe what a user perceives, so the locator keeps working when classes or layout change."
+    },
+    {
+      "question": "A locator matches three elements and the test calls `click()` on it. What happens?",
+      "options": [
+        "Playwright clicks the first match",
+        "Playwright clicks all three matches",
+        "The action throws a strict mode violation",
+        "The test waits until only one element matches, then passes"
+      ],
+      "answer": 2,
+      "explanation": "Locators are strict, so an action on an ambiguous locator throws. Narrow the locator so it matches one element."
+    },
+    {
+      "question": "Which CSS fallback is the least brittle?",
+      "options": [
+        "`input[type=\"password\"]`",
+        "`div > div:nth-child(3) > span`",
+        "`form > div:first-child > input`",
+        "`body > main > section > div > input`"
+      ],
+      "answer": 0,
+      "explanation": "A stable attribute says what the element is. The other selectors encode page structure, which breaks when the layout changes."
+    },
+    {
+      "question": "A test is flaky because a message appears after a slow request. What is the best fix?",
+      "options": [
+        "Add `page.waitForTimeout(5000)` before the check",
+        "Increase the number of retries",
+        "Read `isVisible()` in a loop",
+        "Use `await expect(locator).toBeVisible()`"
+      ],
+      "answer": 3,
+      "explanation": "Web-first assertions retry until they pass or time out, so the test waits only as long as the page needs."
+    },
+    {
+      "question": "When is `getByTestId()` the right choice?",
+      "options": [
+        "For every element, because test ids never change",
+        "When nothing user-facing is stable enough to locate by",
+        "Only for elements inside an iframe",
+        "When an element has a visible label"
+      ],
+      "answer": 1,
+      "explanation": "Test ids are a last resort among the `getBy*` locators, because users never see them and they say nothing about accessibility."
+    }
+  ]
+}

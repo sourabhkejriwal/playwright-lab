@@ -1,6 +1,7 @@
 import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
 import { z } from 'astro/zod';
+import { flashcardDeckSchema, quizSchema } from './lib/study-schema';
 
 // One MDX file per chapter: src/content/chapters/<NN>-<slug>.mdx
 const chapters = defineCollection({
@@ -14,4 +15,15 @@ const chapters = defineCollection({
   }),
 });
 
-export const collections = { chapters };
+// One JSON file per chapter, named like the chapter's MDX file.
+const flashcards = defineCollection({
+  loader: glob({ pattern: '**/*.json', base: './src/content/flashcards' }),
+  schema: flashcardDeckSchema,
+});
+
+const quizzes = defineCollection({
+  loader: glob({ pattern: '**/*.json', base: './src/content/quizzes' }),
+  schema: quizSchema,
+});
+
+export const collections = { chapters, flashcards, quizzes };

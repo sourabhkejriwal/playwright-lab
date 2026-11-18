@@ -59,7 +59,10 @@ src/
   data/chapters.ts       master list of 16 chapters (num, slug, title, short, blurb)
   lib/chapters.ts        getChapters(): joins the list with MDX entries → status ready/pending
   lib/url.ts             url(): base-path-aware internal links
+  lib/study-schema.ts    Zod schemas for flashcard decks and quizzes
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
+  content/flashcards/    NN-slug.json flashcard deck per chapter
+  content/quizzes/       NN-slug.json quiz per chapter
   components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, ChapterStatus, ChapterDone, ChapterProgressSync, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
   islands/               (planned) React interactive components: Playground, Flashcards, Quiz, …
   stores/progress.ts     visitor progress in localStorage: chapters read, flashcard reviews, quiz scores
@@ -108,7 +111,11 @@ The site looks like a Playwright test run in a dark terminal.
 - A chapter becomes ● ready on the site as soon as its MDX exists and isn't a draft. It shows ✓ read only for a visitor
   who has read it: static pages ship the unread state and `ChapterProgressSync` applies saved progress in the browser
   (use `<ChapterStatus>` for a chapter's mark, and the `data-if-read`/`data-if-unread` attributes for anything else).
-- Flashcard and quiz data will live beside chapters (see ROADMAP phase 3/4).
+- Flashcards and quizzes are JSON, one file per chapter, named like the chapter's MDX: `src/content/flashcards/NN-slug.json`
+  (`{ chapter, cards: [{ id, front, back }] }`) and `src/content/quizzes/NN-slug.json`
+  (`{ chapter, questions: [{ question, options, answer, explanation }] }`). Schemas are in `src/lib/study-schema.ts`.
+  Card ids are `<chapter-slug>/<name>` and key the visitor's saved progress, so don't rename them. `answer` is a 0-based index
+  into `options`. Aim for 5 questions per quiz. Text is plain, with code in `backticks`.
 
 ## Coding conventions
 

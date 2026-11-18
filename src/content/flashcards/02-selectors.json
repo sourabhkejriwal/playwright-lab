@@ -1,0 +1,25 @@
+{
+  "chapter": 2,
+  "cards": [
+    {
+      "id": "selectors/locator-preference",
+      "front": "Which locator should you reach for first on an interactive element?",
+      "back": "`getByRole()` with a `name`. It finds the element the way a user perceives it, so it survives class renames and layout changes."
+    },
+    {
+      "id": "selectors/strict-mode",
+      "front": "What happens when an action runs on a locator that matches several elements?",
+      "back": "It throws a strict mode violation. Narrow the locator instead of adding `.first()`, which only hides the ambiguity."
+    },
+    {
+      "id": "selectors/actionability",
+      "front": "What does `click()` wait for before acting?",
+      "back": "The element must be attached, visible, stable, enabled, and able to receive events."
+    },
+    {
+      "id": "selectors/await-assertions",
+      "front": "Why must a web-first assertion be awaited?",
+      "back": "Without `await` it keeps retrying in the background while the test moves on, so it can't fail the test."
+    }
+  ]
+}

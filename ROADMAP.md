@@ -32,7 +32,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] nanostores progress store in `localStorage`: chapter read state, flashcard state, quiz scores
 - [x] Hero and chapter list reflect the user's own progress (read ✓ vs content-ready)
 - [x] "Mark chapter as done" control at the end of each chapter
-- [ ] Data format for flashcards and quizzes (content collection, Zod schema) per chapter
+- [x] Data format for flashcards and quizzes (content collection, Zod schema) per chapter
 
 ## Phase 4 · Interactive features (each ⇉ independent)
 
@@ -97,3 +97,9 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - 2026-11-18: "Mark chapter as done" is one toggle button (`aria-pressed`, stable name) on written chapters only, so a
   visitor can undo it by clicking again. Chapters are marked read only by this button, never by scrolling. It is a small
   `.astro` script rather than a React island, and it stays hidden until that script runs, so it never appears dead.
+- 2026-11-18: Flashcards and quizzes are two JSON content collections with one file per chapter, named like the chapter's
+  MDX file, so a chapter's data loads with `getEntry('quizzes', '02-selectors')`. Card ids are written in full as
+  `<chapter-slug>/<name>` and are the progress keys, which keeps them unique across chapters. Quiz questions have exactly
+  one right answer, stored as an index into `options`; the quiz island does any shuffling. The schema requires at least
+  one question rather than exactly 5, because 5 is an authoring target and saved scores already handle quizzes changing
+  length. Chapter 2 has sample data. `tests/study-data.spec.ts` checks file names, which a Zod schema can't see.
