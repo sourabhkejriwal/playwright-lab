@@ -5,6 +5,7 @@ import TerminalWindow from '../../components/TerminalWindow.astro';
 import StatusMark from '../../components/StatusMark.astro';
 import TableOfContents from '../../components/TableOfContents.astro';
 import CodeCopy from '../../components/CodeCopy.astro';
+import { mdxComponents } from '../../components/mdx';
 import { getChapters, type ChapterWithStatus } from '../../lib/chapters';
 import { pad } from '../../data/chapters';
 import { url } from '../../lib/url';
@@ -52,7 +53,7 @@ const hasToc = tocHeadings.length >= 2;
       <div class="mt-10">
         {Content ? (
           <div class="prose-term">
-            <Content />
+            <Content components={mdxComponents} />
             <CodeCopy />
           </div>
         ) : (

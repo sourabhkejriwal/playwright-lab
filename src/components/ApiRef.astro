@@ -1,0 +1,14 @@
+---
+// Inline link to the official docs for a Playwright API: <ApiRef name="page.getByRole()" />
+import { apiRefHref } from '../lib/api-ref';
+
+interface Props {
+  name: string;
+}
+const { name } = Astro.props;
+---
+
+<a href={apiRefHref(name)} rel="noopener">
+  <code class="text-info">{name}</code>
+  <span class="sr-only"> (Playwright docs)</span>
+</a>

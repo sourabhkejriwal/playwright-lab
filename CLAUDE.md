@@ -50,7 +50,7 @@ src/
   lib/chapters.ts        getChapters(): joins the list with MDX entries → status passed/pending
   lib/url.ts             url(): base-path-aware internal links
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
-  components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, TopBar, Footer, TestRunHero, ComingSoon
+  components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef
   islands/               (planned) React interactive components: Playground, Flashcards, Quiz, …
   layouts/BaseLayout.astro
   pages/                 routes; chapters/[slug].astro renders MDX or a "pending" placeholder
@@ -88,6 +88,10 @@ The site looks like a Playwright test run in a dark terminal.
   "interview angle". Do not paste source text or long listings verbatim.
 - Headings are `##`/`###` (h1 comes from the layout). Code fences use `ts`, with optional filename and
   highlighted lines: ` ```ts title="login.spec.ts" {1,3-5} ` (`src/lib/shiki-code-frame.mjs`).
+- Chapters can use these components without importing them (registered in `src/components/mdx.ts`):
+  `<Callout type="tip|warn|gotcha" title="optional">`, `<Kbd>Ctrl</Kbd>`, and `<ApiRef name="page.getByRole()" />`.
+  `ApiRef` builds the Playwright docs link from the name (`src/lib/api-ref.ts`); an unknown receiver fails the build,
+  so add new classes to `RECEIVERS` there.
 - A chapter becomes ✓ passed on the site as soon as its MDX exists and isn't a draft.
 - Flashcard and quiz data will live beside chapters (see ROADMAP phase 3/4).
 

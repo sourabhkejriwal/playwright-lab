@@ -24,6 +24,11 @@ A rough order of preference:
 3. `getByPlaceholder()`, `getByText()`, `getByAltText()`, `getByTitle()`
 4. `getByTestId()` when nothing user-facing is stable
 
+<Callout type="tip" title="find the accessible name">
+  Open Chrome DevTools with <Kbd>Ctrl</Kbd>+<Kbd>Shift</Kbd>+<Kbd>I</Kbd> and check the Accessibility pane.
+  The computed name there is what <ApiRef name="page.getByRole()" /> matches against.
+</Callout>
+
 ## Fall back deliberately
 
 CSS and XPath are still useful when there's no accessible hook, but keep them short and tied to stable
@@ -34,10 +39,20 @@ page.locator('input[type="password"]'); // fine: a stable attribute
 page.locator('div > div:nth-child(3) > span'); // brittle: encodes layout
 ```
 
+<Callout type="warn">
+  Locators are strict: an action throws if the locator matches more than one element. Narrow it down rather
+  than reaching for `.first()`, which hides the ambiguity.
+</Callout>
+
 ## Let auto-waiting do its job
 
 Actions like `click()` and `fill()` wait for the element to be attached, visible, stable, enabled, and
 able to receive events before acting. Web-first assertions such as `toBeVisible()` retry until they pass or
 time out. That's why `page.waitForTimeout()` is almost never the right fix for a flaky test.
+
+<Callout type="gotcha" title="await the assertion">
+  Without `await`, <ApiRef name="expect(locator).toBeVisible()" /> never gets the chance to fail the test: it
+  keeps retrying in the background while the test moves on.
+</Callout>
 
 > Coming next: dialogs, iframes with `frameLocator()`, and piercing shadow DOM.

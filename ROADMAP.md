@@ -22,7 +22,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] Two-column layout: sticky chapter sidebar (desktop), collapsible drawer (mobile)
 - [x] Table of contents from headings on chapter pages (right rail on xl screens)
 - [x] Code block polish: filename/title bar, copy button, line highlighting (`TerminalWindow` style)
-- [ ] MDX components: `<Callout type="tip|warn|gotcha">`, `<Kbd>`, `<ApiRef name="…">`
+- [x] MDX components: `<Callout type="tip|warn|gotcha">`, `<Kbd>`, `<ApiRef name="…">`
 - [ ] SEO: Open Graph image (terminal-style), meta per page, `robots.txt`
 - [ ] Custom favicon (terminal `$_` mark)
 - [ ] Optional light theme (override tokens under `[data-theme='light']`) and toggle

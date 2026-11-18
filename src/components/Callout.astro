@@ -1,0 +1,35 @@
+---
+// Aside for chapter notes: <Callout type="gotcha" title="optional">markdown…</Callout>
+type CalloutType = 'tip' | 'warn' | 'gotcha';
+interface Props {
+  type?: CalloutType;
+  title?: string;
+}
+const { type = 'tip', title } = Astro.props;
+
+const variants = {
+  tip: { glyph: '✓', border: 'border-l-pass', color: 'text-pass' },
+  warn: { glyph: '!', border: 'border-l-pending', color: 'text-pending' },
+  gotcha: { glyph: '✗', border: 'border-l-fail', color: 'text-fail' },
+};
+const variant = variants[type];
+// MDX props aren't type-checked, so catch a bad type at build time.
+if (!variant) throw new Error(`<Callout type="${type}">: expected tip, warn, or gotcha`);
+---
+
+<div
+  role="note"
+  aria-label={title ? `${type}: ${title}` : type}
+  class={`my-6 rounded-term border border-l-2 border-line bg-surface px-4 py-3 ${variant.border}`}
+>
+  <p class="mb-1! flex flex-wrap gap-x-2 font-mono text-sm font-semibold">
+    <span class={variant.color}>
+      <span aria-hidden="true">{variant.glyph} </span>
+      {type}
+    </span>
+    {title && <span class="text-bright">{title}</span>}
+  </p>
+  <div class="[&>:last-child]:mb-0">
+    <slot />
+  </div>
+</div>
