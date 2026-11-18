@@ -12,8 +12,8 @@ const pages = [
     type: 'article',
   },
   {
-    path: '/chapters/08-headless-debugging/',
-    title: 'ch08 Headless testing and debugging · playwright-lab',
+    path: '/chapters/09-accessibility/',
+    title: 'ch09 Accessibility testing with axe-core · playwright-lab',
     type: 'website',
   },
   { path: '/playground/', title: 'playground · playwright-lab', type: 'website' },

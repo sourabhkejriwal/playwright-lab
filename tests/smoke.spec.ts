@@ -113,6 +113,17 @@ test.describe('chapters', () => {
     await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
   });
 
+  test('the debugging chapter renders its notes and quiz', async ({ page }) => {
+    await page.goto('/chapters/08-headless-debugging');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Headless testing and debugging');
+    await expect(page.getByRole('heading', { level: 2, name: 'Playwright Inspector' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'login.spec.ts' })).toContainText('#email-input');
+    await expect(
+      page.getByRole('main').getByRole('link', { name: 'auto-waiting timeline', exact: true }),
+    ).toHaveAttribute('href', /\/auto-waiting\/?$/);
+    await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
+  });
+
   test('code blocks show a title bar and highlighted lines', async ({ page }) => {
     await page.goto('/chapters/02-selectors');
 
@@ -144,7 +155,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter shows a pending placeholder', async ({ page }) => {
-    await page.goto('/chapters/08-headless-debugging');
+    await page.goto('/chapters/09-accessibility');
     await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();
   });
 
@@ -174,7 +185,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter has no table of contents', async ({ page }) => {
-    await page.goto('/chapters/08-headless-debugging');
+    await page.goto('/chapters/09-accessibility');
     await expect(page.locator('[data-toc]')).toHaveCount(0);
   });
 

@@ -12,6 +12,7 @@ const pages = [
   '/chapters/06-parallelization',
   '/chapters/07-ci-cd',
   '/chapters/08-headless-debugging',
+  '/chapters/09-accessibility',
   '/playground',
   '/flashcards',
   '/config',

@@ -1,0 +1,130 @@
+{
+  "chapter": 8,
+  "cards": [
+    {
+      "id": "headless-debugging/default-mode",
+      "front": "Does Playwright Test run headless or headed by default?",
+      "back": "Headless. Add `--headed` to watch a run."
+    },
+    {
+      "id": "headless-debugging/no-headless-flag",
+      "front": "What happens if you run `npx playwright test --headless`?",
+      "back": "It fails with an unknown option error. The test runner only has `--headed`."
+    },
+    {
+      "id": "headless-debugging/ci-display",
+      "front": "Why do headed browsers usually fail on CI?",
+      "back": "CI machines normally have no display. On Linux, `xvfb-run` can provide a virtual one."
+    },
+    {
+      "id": "headless-debugging/slowmo",
+      "front": "Where does `slowMo` go in a Playwright Test config?",
+      "back": "In `use.launchOptions`, for example `launchOptions: { slowMo: 500 }`."
+    },
+    {
+      "id": "headless-debugging/debug-flag",
+      "front": "Which settings does `--debug` combine?",
+      "back": "`PWDEBUG=1`, `--headed`, `--workers=1`, `--timeout=0` and `--max-failures=1`."
+    },
+    {
+      "id": "headless-debugging/debug-line",
+      "front": "How do you debug only the test at line 10 of a file?",
+      "back": "`npx playwright test login.spec.ts:10 --debug`."
+    },
+    {
+      "id": "headless-debugging/inspector-shortcuts",
+      "front": "What are the Inspector's keyboard shortcuts for resume and step over?",
+      "back": "F8 resumes and F10 steps over."
+    },
+    {
+      "id": "headless-debugging/pick-locator",
+      "front": "What does Pick locator do in the Inspector?",
+      "back": "You click an element and get a suggested locator, which you can edit while its matches are highlighted."
+    },
+    {
+      "id": "headless-debugging/pause-headless",
+      "front": "What does `page.pause()` do in a headless run?",
+      "back": "It returns immediately. It only stops the test in a headed browser."
+    },
+    {
+      "id": "headless-debugging/ui-mode",
+      "front": "How do you start UI Mode?",
+      "back": "`npx playwright test --ui`."
+    },
+    {
+      "id": "headless-debugging/ui-watch",
+      "front": "How does watch work in UI Mode?",
+      "back": "Click the eye icon on a test or file. Only those are rerun when you save a change."
+    },
+    {
+      "id": "headless-debugging/inspector-vs-ui",
+      "front": "What can UI Mode do that the Inspector can't?",
+      "back": "Look back through a finished run, using a timeline with DOM snapshots before and after each action."
+    },
+    {
+      "id": "headless-debugging/show-trace",
+      "front": "How do you open a trace file locally?",
+      "back": "`npx playwright show-trace path/to/trace.zip`, or follow the link in the HTML report."
+    },
+    {
+      "id": "headless-debugging/screenshot-modes",
+      "front": "What are the four screenshot modes?",
+      "back": "`off`, `on`, `only-on-failure` and `on-first-failure`."
+    },
+    {
+      "id": "headless-debugging/first-failure",
+      "front": "How do `only-on-failure` and `on-first-failure` differ?",
+      "back": "`only-on-failure` captures every failed attempt. `on-first-failure` captures the first one and skips retries."
+    },
+    {
+      "id": "headless-debugging/screenshot-names",
+      "front": "What are automatic screenshots called?",
+      "back": "`test-failed-1.png` after a failure and `test-finished-1.png` after a pass, in the test's folder under `test-results/`."
+    },
+    {
+      "id": "headless-debugging/error-context",
+      "front": "What is `error-context.md`?",
+      "back": "A file written for a failed test, with the error, an accessibility snapshot of the page, and the test source."
+    },
+    {
+      "id": "headless-debugging/locator-screenshot",
+      "front": "Which `page.screenshot()` options does `locator.screenshot()` lack?",
+      "back": "`fullPage` and `clip`, because the image is already limited to the element."
+    },
+    {
+      "id": "headless-debugging/png-quality",
+      "front": "What happens if you pass `quality` for a PNG screenshot?",
+      "back": "Playwright throws an error, because `quality` only applies to JPEG."
+    },
+    {
+      "id": "headless-debugging/attach-screenshot",
+      "front": "How do you make a manual screenshot appear in the HTML report?",
+      "back": "Pass it to `testInfo.attach()` with `body` and `contentType: 'image/png'`."
+    },
+    {
+      "id": "headless-debugging/video-retain",
+      "front": "What does `video: 'retain-on-failure'` do?",
+      "back": "It records every attempt and keeps only the videos of attempts that failed."
+    },
+    {
+      "id": "headless-debugging/video-first-retry",
+      "front": "What does `video: 'on-first-retry'` record?",
+      "back": "Only the first retry, so tests that pass the first time cost nothing."
+    },
+    {
+      "id": "headless-debugging/video-dir",
+      "front": "Does `contextOptions.recordVideo.dir` change where the `video` option saves files?",
+      "back": "No, it is ignored. Use `outputDir` to move test output."
+    },
+    {
+      "id": "headless-debugging/video-path",
+      "front": "Why is `page.video().path()` unreliable during a test?",
+      "back": "It points to a temporary file. To keep a copy, close the page and call `page.video()?.saveAs()`."
+    },
+    {
+      "id": "headless-debugging/script-video",
+      "front": "When is a video from a `recordVideo` context finished?",
+      "back": "When the context closes, so call `context.close()` in a `finally` block."
+    }
+  ]
+}

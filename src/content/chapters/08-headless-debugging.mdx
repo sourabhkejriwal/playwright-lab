@@ -1,0 +1,381 @@
+---
+chapter: 8
+title: Headless testing and debugging
+summary: Choose between headless and headed runs, step through tests with the Inspector and UI Mode, and keep the screenshots, videos and traces that explain a failure.
+readingMinutes: 12
+---
+
+import { url as siteUrl } from '../../lib/url';
+
+## Headless or headed
+
+A **headless** browser runs without a window. A **headed** browser (also called headful) opens one, so you can watch the test.
+
+|                 | Headless                       | Headed                               |
+| --------------- | ------------------------------ | ------------------------------------ |
+| Window          | None                           | Visible on your screen               |
+| Resource use    | Lower, so more workers fit     | Higher, because it draws the full UI |
+| Needs a display | No                             | Yes                                  |
+| Best for        | CI, large suites, routine runs | Writing tests and watching a failure |
+
+Playwright Test runs headless by default. Add `--headed` when you want to watch a run.
+
+```bash
+npx playwright test --headed
+npx playwright test login.spec.ts --headed --project=chromium
+```
+
+<Callout type="gotcha" title="there is no --headless flag">
+  `npx playwright test --headless` stops with `unknown option '--headless'`. Headless is the default, so the
+  test runner only offers `--headed`. If your config sets `headless: false`, change the config to go back.
+</Callout>
+
+### Set it in the config
+
+Set `headless` under `use`, for the whole suite or for one project.
+
+```ts title="playwright.config.ts" {6,12}
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  use: {
+    // Headed on a laptop, headless on CI
+    headless: !!process.env.CI,
+  },
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'firefox-debug',
+      use: { ...devices['Desktop Firefox'], headless: false },
+    },
+  ],
+});
+```
+
+The `CI` toggle works, but it opens a window for every local run. Most teams keep the default and reach for `--headed` when they need it.
+
+CI machines usually have no display, so a headed browser fails to start there. If a test really must run headed on Linux CI, give it a virtual display with `xvfb-run npx playwright test --headed`.
+
+<Callout type="tip" title="headless Chromium is a separate build">
+  By default, headless runs use Chromium's lightweight headless shell. If a bug shows up only in headless
+  runs, try `channel: 'chromium'`, which opts in to the new headless mode, built from the full browser.
+</Callout>
+
+### Slow a run down
+
+Headed tests often finish too fast to follow. `slowMo` adds a delay to each browser operation, and it belongs in `launchOptions`.
+
+```ts title="playwright.config.ts"
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  use: {
+    launchOptions: { slowMo: 500 },
+  },
+});
+```
+
+Keep this out of the committed config, because it slows every test.
+
+### Scripts outside the test runner
+
+The `playwright` library drives a browser from plain Node.js, which suits scraping and one-off automation. You get no fixtures, assertions, retries or reports, so use Playwright Test for real tests.
+
+```ts title="script.ts"
+import { chromium } from 'playwright';
+
+const browser = await chromium.launch({ headless: false, slowMo: 50 });
+const page = await browser.newPage();
+
+await page.goto('https://playwright.dev/');
+await page.screenshot({ path: 'home.png' });
+
+await browser.close();
+```
+
+Node 24 runs TypeScript directly, so in a package with `"type": "module"` you can start this with `node script.ts` and skip `ts-node`.
+
+The `devtools` launch option has been removed from Playwright's types. To open DevTools in Chromium, pass `args: ['--auto-open-devtools-for-tabs']`.
+
+## Pick the right tool
+
+| What you need to know                       | Reach for    |
+| ------------------------------------------- | ------------ |
+| Why does this action fail right now?        | Inspector    |
+| I'm writing tests and want quick feedback   | UI Mode      |
+| What happened in that CI run?               | Trace Viewer |
+| What did the page look like when it failed? | Screenshot   |
+| How did the page move or animate over time? | Video        |
+
+## Playwright Inspector
+
+The **Inspector** is a window that runs your test one step at a time, next to a live browser.
+
+```bash
+npx playwright test --debug                  # every test
+npx playwright test login.spec.ts --debug    # one file
+npx playwright test login.spec.ts:10 --debug # the test at line 10
+```
+
+`--debug` is a shortcut for four settings and one environment variable.
+
+| Setting            | Why it helps                                           |
+| ------------------ | ------------------------------------------------------ |
+| `PWDEBUG=1`        | Opens the Inspector and pauses before the first action |
+| `--headed`         | Shows the browser                                      |
+| `--timeout=0`      | The test can't time out while you think                |
+| `--workers=1`      | Runs one test at a time                                |
+| `--max-failures=1` | Stops at the first failure                             |
+
+Setting `PWDEBUG=1` yourself also opens the Inspector, shows the browser and removes timeouts, but it keeps your usual workers. Prefer `--debug`, unless you need to pass the variable through another script.
+
+```bash
+PWDEBUG=1 npx playwright test             # macOS and Linux
+$env:PWDEBUG=1; npx playwright test       # PowerShell
+```
+
+### What's in the window
+
+| Control      | What it does                                                  |
+| ------------ | ------------------------------------------------------------- |
+| Resume       | Runs until the next pause or the end. Shortcut: <Kbd>F8</Kbd> |
+| Step over    | Runs one action, then stops. Shortcut: <Kbd>F10</Kbd>         |
+| Pick locator | Click an element to get a suggested locator                   |
+| Record       | Turns what you do in the browser into code                    |
+| Locator box  | Edit a locator and see its matches highlighted live           |
+| Call log     | Shows each actionability check and why an action is waiting   |
+
+The call log often answers the question by itself. It tells you whether the element was hidden, disabled, moving, or covered by something else. The <a href={siteUrl('auto-waiting')}>auto-waiting timeline</a> walks through those checks.
+
+### Fix a broken locator
+
+This test times out because the field's `id` isn't what the test expects.
+
+```ts title="login.spec.ts" {5}
+import { test, expect } from '@playwright/test';
+
+test('signs in', async ({ page }) => {
+  await page.goto('/login');
+  await page.locator('#email-input').fill('ada@example.com');
+  await page.getByLabel('Password').fill('correct-horse');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page).toHaveURL(/dashboard/);
+});
+```
+
+1. Run `npx playwright test login.spec.ts --debug`.
+2. Step with <Kbd>F10</Kbd> until the `fill` call is highlighted. The call log shows it waiting for `#email-input`.
+3. Click **Pick locator**, then click the email field in the browser.
+4. Check the suggestion in the locator box, such as `getByLabel('Email')`. The browser highlights what it matches.
+5. Copy it into the test, then run the test again without `--debug`.
+
+### Pause at one spot
+
+<ApiRef name="page.pause()" /> stops the test at a chosen line and opens the Inspector, so you don't have to
+step through everything before it.
+
+```ts {3}
+test('checkout total', async ({ page }) => {
+  await page.goto('/cart');
+  await page.pause();
+  await page.getByRole('button', { name: 'Checkout' }).click();
+});
+```
+
+<Callout type="gotcha" title="page.pause() does nothing when headless">
+  In a headless run, `page.pause()` returns immediately and the test carries on. Run with `--headed` or
+  `--debug` to make it stop, and delete the line before you commit.
+</Callout>
+
+## UI Mode
+
+**UI Mode** is a test explorer for everyday work. It lists your tests, runs them on demand, and records each run so you can look back through it.
+
+```bash
+npx playwright test --ui
+```
+
+It opens in its own window. Pass `--ui-port=8080` or `--ui-host=0.0.0.0` to serve it in a browser tab instead, which helps inside a container.
+
+- **Timeline.** Hover over it to scrub through the run.
+- **Actions list.** Select a step to see the page **before** and **after** it, as a DOM snapshot you can inspect.
+- **Detail tabs.** Locator, source, call log, errors, console, network, and attachments.
+- **Pick locator.** Choose an element in a snapshot to get a locator for it.
+- **Watch.** Click the eye icon on a test or file, and it reruns when you save a change.
+
+<Callout type="tip" title="watch is opt-in">
+  UI Mode doesn't rerun everything on save. Only the tests or files you turn the eye icon on for are watched.
+</Callout>
+
+| Tool         | Runs the test live | Look back through a run | Best moment                |
+| ------------ | ------------------ | ----------------------- | -------------------------- |
+| Inspector    | Yes, step by step  | No                      | Investigating one action   |
+| UI Mode      | Yes                | Yes                     | Writing and fixing locally |
+| Trace Viewer | No                 | Yes                     | Studying a finished run    |
+
+### Trace Viewer for CI failures
+
+You can't open a window on a CI machine, so record a **trace** and open it later. It holds the same timeline, snapshots, console and network data that UI Mode shows.
+
+```ts title="playwright.config.ts"
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  retries: process.env.CI ? 2 : 0,
+  use: { trace: 'on-first-retry' },
+});
+```
+
+```bash
+npx playwright show-trace test-results/login-signs-in-chromium-retry1/trace.zip
+```
+
+The HTML report links each trace too, so downloading the report from CI is usually enough. Traces can contain typed values and tokens, so treat them as sensitive.
+
+## Screenshots on failure
+
+A screenshot shows the state of the page at the moment a test ended. Turn it on in the config.
+
+```ts title="playwright.config.ts"
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  use: {
+    screenshot: { mode: 'only-on-failure', fullPage: true },
+  },
+});
+```
+
+| Mode                 | Takes a screenshot                                         |
+| -------------------- | ---------------------------------------------------------- |
+| `'off'`              | Never. This is the default                                 |
+| `'on'`               | After every test                                           |
+| `'only-on-failure'`  | After every failed attempt, including retries              |
+| `'on-first-failure'` | After a test's first failed attempt, but not after retries |
+
+<Callout type="gotcha" title="'on-first-retry' is not a screenshot mode">
+  Video and trace have `'on-first-retry'`, but screenshots don't. In a JavaScript config, or anywhere the type
+  check doesn't run, the wrong value gives you no error and no screenshots.
+</Callout>
+
+Files land in the test's folder under `test-results/`, named `test-failed-1.png` for a failure and `test-finished-1.png` for a pass. The HTML report shows them with the test, and `npx playwright show-report` opens it.
+
+Each failure also writes `error-context.md` beside them. It holds the error, an accessibility snapshot of the page, and the test source, which makes it handy to paste into an AI assistant.
+
+### Take one yourself
+
+Use <ApiRef name="page.screenshot()" /> or <ApiRef name="locator.screenshot()" /> for a specific moment. Attach the image with <ApiRef name="testInfo.attach()" /> so it appears in the report.
+
+```ts title="receipt.spec.ts" {5-8}
+import { test, expect } from '@playwright/test';
+
+test('shows the receipt', async ({ page }, testInfo) => {
+  await page.goto('/receipt/42');
+  await testInfo.attach('receipt', {
+    body: await page.getByRole('article').screenshot(),
+    contentType: 'image/png',
+  });
+  await expect(page.getByRole('heading', { name: 'Paid' })).toBeVisible();
+});
+```
+
+| Option           | `page` | `locator` | Notes                                    |
+| ---------------- | ------ | --------- | ---------------------------------------- |
+| `path`           | Yes    | Yes       | The extension also sets the image type   |
+| `type`           | Yes    | Yes       | `'png'` or `'jpeg'`                      |
+| `quality`        | Yes    | Yes       | JPEG only. It throws an error for PNG    |
+| `omitBackground` | Yes    | Yes       | Makes the default white background clear |
+| `fullPage`       | Yes    | No        | Captures the whole scrollable page       |
+| `clip`           | Yes    | No        | Captures one rectangle of the page       |
+
+<Callout type="tip" title="skip the try/catch">
+  You don't need to catch an assertion, take a screenshot and rethrow. `only-on-failure` already captures the
+  page, with less code and no risk of swallowing the error.
+</Callout>
+
+## Videos of test runs
+
+A video shows the steps that led to a failure, which helps with timing bugs and animations.
+
+```ts title="playwright.config.ts"
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  use: {
+    video: {
+      mode: 'retain-on-failure',
+      size: { width: 1280, height: 720 },
+    },
+  },
+});
+```
+
+| Mode                              | Records           | Keeps                        |
+| --------------------------------- | ----------------- | ---------------------------- |
+| `'off'`                           | Nothing           | Nothing. This is the default |
+| `'on'`                            | Every attempt     | Everything                   |
+| `'retain-on-failure'`             | Every attempt     | Failed attempts              |
+| `'on-first-retry'`                | The first retry   | That retry                   |
+| `'on-all-retries'`                | Every retry       | Every retry                  |
+| `'retain-on-first-failure'`       | The first attempt | That attempt, if it failed   |
+| `'retain-on-failure-and-retries'` | Every attempt     | Failed attempts and retries  |
+
+`retain-on-failure` is a good default when runs are short. On a large suite, `on-first-retry` records nothing until a test has already failed once. Trace accepts the same modes.
+
+Without a `size`, the video is the viewport scaled to fit 800 by 800, which gives 800 by 450 at the default viewport. Videos are WebM files saved as `video.webm` in the test's folder under `test-results/`, and the HTML report embeds them.
+
+<Callout type="gotcha" title="contextOptions.recordVideo.dir is ignored">
+  When the `video` option is on, Playwright Test decides where the file goes, and `recordVideo.dir` has no
+  effect. Use the top-level `outputDir` option to move all test output.
+</Callout>
+
+Playwright empties the output folder at the start of each run, so old videos don't pile up there. Copy anything you want to keep, or upload it as a CI artifact.
+
+### Save a video from a test
+
+`page.video()?.path()` is a temporary location while the test runs, because the file is only moved into place afterwards. To keep a copy while `video` is on, close the page and call `saveAs`.
+
+```ts title="video.spec.ts" {5-6}
+import { test } from '@playwright/test';
+
+test('keeps a copy of the video', async ({ page }, testInfo) => {
+  await page.goto('/');
+  await page.close();
+  await page.video()?.saveAs(testInfo.outputPath('home.webm'));
+});
+```
+
+### Videos in a script
+
+Outside the test runner, turn recording on for a context. The file is only finished when the context closes, so close it even if a step throws.
+
+```ts title="record.ts" {5,11}
+import { chromium } from 'playwright';
+
+const browser = await chromium.launch();
+const context = await browser.newContext({
+  recordVideo: { dir: 'videos/', size: { width: 1280, height: 720 } },
+});
+
+try {
+  const page = await context.newPage();
+  await page.goto('https://playwright.dev/');
+} finally {
+  await context.close();
+  await browser.close();
+}
+```
+
+Want to practise reading failures? Try the <a href={siteUrl('flaky')}>spot the flaky test</a> challenges.
+
+## Interview angle
+
+- **Why run headless on CI?** CI machines usually have no display, and headless uses fewer resources.
+- **How do you run one test in the Inspector?** Use `npx playwright test file.spec.ts:10 --debug`.
+- **What does `--debug` change?** It opens the Inspector and sets headed mode, one worker, no timeout, and a stop at the first failure.
+- **Why might `page.pause()` not stop a test?** It only pauses in headed mode, and it returns immediately when headless.
+- **Inspector or UI Mode?** The Inspector steps through one live run. UI Mode explores the suite and lets you look back through each run.
+- **How do you debug a failure that only happens on CI?** Record traces on the first retry, upload the report as an artifact, and open the trace locally.
+- **Which screenshot mode skips retries?** `on-first-failure`. `only-on-failure` captures every failed attempt.
+- **What's the difference between `retain-on-failure` and `on-first-retry` for video?** The first records every attempt and deletes passing ones. The second records only the first retry, so it costs nothing until a test fails.
+- **Why can `page.video().path()` mislead you?** During a test it points to a temporary file, and the final video is written later.

@@ -1,0 +1,60 @@
+{
+  "chapter": 8,
+  "questions": [
+    {
+      "question": "A test calls `await page.pause()`, but a normal `npx playwright test` run doesn't stop there. Why?",
+      "options": [
+        "`page.pause()` only works inside `test.step()`",
+        "The test needs `PWDEBUG=console`",
+        "Tests run headless by default, and `page.pause()` needs a headed browser",
+        "The call must come before `page.goto()`"
+      ],
+      "answer": 2,
+      "explanation": "In a headless run `page.pause()` returns immediately. Run with `--headed` or `--debug` to make it stop."
+    },
+    {
+      "question": "What does `npx playwright test --debug` do besides opening the Inspector?",
+      "options": [
+        "Runs headed with one worker, no test timeout, and a stop at the first failure",
+        "Records a trace and a video of every test",
+        "Runs every project in parallel with retries turned off",
+        "Keeps the browser headless and prints each action to the terminal"
+      ],
+      "answer": 0,
+      "explanation": "`--debug` is a shortcut for `PWDEBUG=1` with `--headed`, `--workers=1`, `--timeout=0` and `--max-failures=1`."
+    },
+    {
+      "question": "You want one screenshot when a test first fails, and none from its retries. Which setting does that?",
+      "options": [
+        "`screenshot: 'on-first-retry'`",
+        "`screenshot: 'only-on-failure'`",
+        "`screenshot: 'retain-on-failure'`",
+        "`screenshot: 'on-first-failure'`"
+      ],
+      "answer": 3,
+      "explanation": "`on-first-failure` skips retries. `only-on-failure` captures every failed attempt, and the other two values aren't screenshot modes."
+    },
+    {
+      "question": "A test fails on CI but passes on your laptop. Which setup gives you the most to investigate afterwards?",
+      "options": [
+        "Add `page.pause()` before the failing step",
+        "Set `trace: 'on-first-retry'` and download the report from the run",
+        "Run the CI job with `--headed`",
+        "Set `slowMo` in `launchOptions`"
+      ],
+      "answer": 1,
+      "explanation": "A trace records the timeline, DOM snapshots, console and network, and you can open it after the run has finished."
+    },
+    {
+      "question": "With `video: 'retain-on-failure'` and one retry, a test fails once and then passes. Which attempts keep a video?",
+      "options": [
+        "Neither, because the test ended up passing",
+        "Only the retry that passed",
+        "Only the first attempt that failed",
+        "Both attempts"
+      ],
+      "answer": 2,
+      "explanation": "Every attempt is recorded, and a video is kept only for attempts that failed, even when a later retry passes."
+    }
+  ]
+}

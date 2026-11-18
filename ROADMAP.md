@@ -59,7 +59,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ 05 Fixtures
 - [x] ⇉ 06 Parallelization and performance
 - [x] ⇉ 07 CI/CD pipelines
-- [ ] ⇉ 08 Headless testing and debugging
+- [x] ⇉ 08 Headless testing and debugging
 - [ ] ⇉ 09 Accessibility testing with axe-core
 - [ ] ⇉ 10 Visual regression testing
 - [ ] ⇉ 11 Mobile web
@@ -216,3 +216,12 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   (loaded and type-checked). Every YAML snippet was parsed. **Not run:** the workflows on GitHub, `actionlint`, and all Docker commands, because
   Docker wasn't available to the unattended session, so the `v1.65.1-noble` tag is still unpulled. Chapter 8 is now the "unwritten chapter" example in
   the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 8 must move those to chapter 9.
+- 2026-11-18: Chapter 8 notes follow the installed Playwright (1.65) where the reference PDF differs: `playwright test` has no `--headless` flag,
+  `page.pause()` returns immediately when headless, `'on-first-retry'` is not a screenshot mode (the real one is `'on-first-failure'`, and the wrong
+  value silently gives no screenshots), `contextOptions.recordVideo.dir` is ignored while `video` is on, `page.video().path()` is a temporary path
+  during a test, `locator.screenshot()` has no `fullPage` or `clip`, the `devtools` launch option is gone from the types, and Node 24 runs TypeScript
+  without `ts-node`. Trace Viewer was added because it is the tool for CI failures. Checked in a throwaway project on desktop Chromium, since removed: the
+  flag error, every screenshot mode, the video modes in the notes except `on-all-retries` and `retain-on-failure-and-retries`, file names, `saveAs`, `attach`, and a
+  script run with `node`. **Not run:** anything needing a window (Inspector, UI Mode, `--headed`, `show-trace`), `xvfb-run`, `channel: 'chromium'` and
+  `--auto-open-devtools-for-tabs`. Their descriptions come from the installed CLI help, types and bundled UI. Chapter 9 is now the "unwritten chapter"
+  example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 9 must move those to chapter 10.
