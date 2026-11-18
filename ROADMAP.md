@@ -36,7 +36,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 
 ## Phase 4 · Interactive features (each ⇉ independent)
 
-- [ ] ⇉ **Locator playground**: sample page in an iframe, CodeMirror input, locator engine for
+- [x] ⇉ **Locator playground**: sample page in an iframe, CodeMirror input, locator engine for
       `getByRole/Text/Label/Placeholder/TestId`, CSS, XPath, chaining, `filter`, `nth`; highlights matches,
       strict-mode violation message, suggestion of a better locator; preset challenges
 - [ ] ⇉ **Flashcards**: seed from `../pdf/advanced-selectors-interview-questions.md`; reveal, again/good/easy
@@ -103,3 +103,12 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   one right answer, stored as an index into `options`; the quiz island does any shuffling. The schema requires at least
   one question rather than exactly 5, because 5 is an authoring target and saved scores already handle quizzes changing
   length. Chapter 2 has sample data. `tests/study-data.spec.ts` checks file names, which a Zod schema can't see.
+- 2026-11-18: The locator playground parses input with its own reader (`src/lib/locator/parser.ts`) and never evaluates it,
+  because a static site can't run Playwright and visitor input shouldn't be executed. `tests/locator-engine.spec.ts` replays
+  each expression on real Playwright and requires the same elements in the same order, so the engine can't drift unnoticed;
+  `esbuild` is a dev dependency only to bundle the engine for that test. The sample page is an iframe `srcdoc` that embeds
+  `tokens.css`, so it needs no extra route and follows the site's themes. Its sandbox includes `allow-scripts` because axe
+  hangs without it, which logs a harmless browser warning; the page's content is our own static HTML. Suggestions rank role,
+  label, placeholder, alt text, text, then test id. Solved challenges last for the visit only, to keep the saved progress
+  format unchanged. Follow-up: save solved challenges if visitors ask for it. Watch for flakiness: "flags hidden matches"
+  failed once on mobile in a full run, its error wasn't captured, and it then passed 300 repeats under load.

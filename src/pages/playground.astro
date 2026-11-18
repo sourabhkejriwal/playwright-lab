@@ -1,15 +1,22 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import ComingSoon from '../components/ComingSoon.astro';
+import Playground from '../islands/Playground';
 ---
 
 <BaseLayout
   title="playground"
   description="Type a Playwright locator and see what it matches on a sample page, with strict-mode errors and suggestions."
 >
-  <ComingSoon
-    cmd="locator --try"
-    title="Locator playground"
-    description="Type a Playwright locator and watch it highlight matches on a sample page, with strict-mode errors and suggestions."
-  />
+  <p class="text-sm text-dim">
+    <span class="text-pass">$</span> locator --try
+  </p>
+  <h1 class="mt-3 text-2xl font-semibold text-bright">Locator playground</h1>
+  <p class="mt-3 max-w-prose font-prose text-lg text-muted">
+    Type a Playwright locator and watch it highlight matches on a sample page, with strict-mode errors and
+    suggestions.
+  </p>
+  <noscript>
+    <p class="mt-6 text-sm text-pending">The playground runs in your browser, so it needs JavaScript.</p>
+  </noscript>
+  <Playground client:visible />
 </BaseLayout>

@@ -47,8 +47,8 @@ Logs go to `.roadmap/logs/`. Work is committed to local `main` and pushing is di
 ## Stack
 
 Astro 7 (static output) · React 19 islands · MDX content collections · Tailwind CSS 4 · Shiki
-(`css-variables` theme) · nanostores for client state · Playwright + @axe-core/playwright · pnpm · Node 24.
-Planned: CodeMirror 6 (playground), Pagefind (search), Motion (explainers).
+(`css-variables` theme) · nanostores for client state · CodeMirror 6 (playground) · Playwright +
+@axe-core/playwright · pnpm · Node 24. Planned: Pagefind (search), Motion (explainers).
 
 ## Layout
 
@@ -57,6 +57,8 @@ src/
   styles/tokens.css      design tokens (ONLY place for raw colors)
   styles/global.css      Tailwind import, token → utility mapping, .prose-term chapter styles
   data/chapters.ts       master list of 16 chapters (num, slug, title, short, blurb)
+  data/playground-*.ts   the playground's sample page and preset challenges
+  lib/locator/           locator playground engine: parser, aria (roles and names), engine, analyze (strict errors, suggestions)
   lib/chapters.ts        getChapters(): joins the list with MDX entries → status ready/pending
   lib/url.ts             url(): base-path-aware internal links
   lib/study-schema.ts    Zod schemas for flashcard decks and quizzes
@@ -64,14 +66,14 @@ src/
   content/flashcards/    NN-slug.json flashcard deck per chapter
   content/quizzes/       NN-slug.json quiz per chapter
   components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, ChapterStatus, ChapterDone, ChapterProgressSync, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
-  islands/               (planned) React interactive components: Playground, Flashcards, Quiz, …
+  islands/               React interactive components: Playground, LocatorEditor (planned: Flashcards, Quiz, …)
   stores/progress.ts     visitor progress in localStorage: chapters read, flashcard reviews, quiz scores
   layouts/BaseLayout.astro
   pages/                 routes; chapters/[slug].astro renders MDX or a "pending" placeholder
 scripts/
   extract-chapters.mjs   PDF → source/chapters/NN-slug.txt (gitignored)
   serve-dist.mjs         tiny static server for tests (see gotchas)
-tests/                   smoke.spec.ts, a11y.spec.ts (more to come: visual, mobile, playground)
+tests/                   smoke, a11y, playground, locator-engine (compares the engine with real Playwright), and more
 source/chapters/         raw reference text per chapter + INDEX.tsv: reference only, NEVER committed
 ```
 
@@ -147,3 +149,6 @@ Repo setting needed once: Settings → Pages → Source: **GitHub Actions**.
 - Never put a `//` comment inside a one-line object in `astro.config.mjs`: it swallows the closing brace.
 - **`robots.txt` is only honoured at a domain root.** Under the `/playwright-lab/` project path crawlers ignore it, so
   it takes effect only with a custom domain or a user site. Page-level `noindex` works either way.
+- **Changing the playground's sample page or engine?** Add the new cases to `expressions` in `tests/locator-engine.spec.ts`:
+  real Playwright is the reference. Code touching the iframe must not use `instanceof` (its elements belong to another
+  window), and the iframe needs `allow-scripts` in its sandbox or axe hangs.
