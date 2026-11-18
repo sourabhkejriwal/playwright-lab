@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
-import { test, expect, type Page, type TestInfo } from '@playwright/test';
+import type { TestInfo } from '@playwright/test';
+import { test, expect } from './pages/fixtures';
 import {
   SUITES,
   buildJobs,
@@ -194,90 +195,77 @@ test.describe('the simulator model', () => {
 });
 
 test.describe('the parallel simulator page', () => {
-  const slider = (page: Page, name: string) => page.getByRole('slider', { name });
-  const stat = (page: Page, label: string) =>
-    page.getByRole('term').filter({ hasText: label }).locator('xpath=following-sibling::dd[1]');
-  const lessons = (page: Page) => page.getByRole('list', { name: 'What these settings show' });
-
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/parallel');
-    await slider(page, 'workers per shard').scrollIntoViewIfNeeded();
-    await expect(slider(page, 'workers per shard')).toBeEnabled();
+  test.beforeEach(async ({ parallelSimulator }) => {
+    await parallelSimulator.goto();
   });
 
-  test('shows the default run', async ({ page }) => {
+  test('shows the default run', async ({ parallelSimulator }) => {
     const suite = suiteById('balanced');
     const result = simulate(suite, { workers: 2, shards: 1, fullyParallel: false });
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Parallel and shard simulator' })).toBeVisible();
-    await expect(stat(page, 'pipeline time')).toHaveText(formatSeconds(result.wallClock));
-    await expect(page.getByRole('region', { name: 'Commands' })).toHaveText(
-      'npx playwright test --workers=2',
-    );
+    await expect(parallelSimulator.h1Named('Parallel and shard simulator')).toBeVisible();
+    await expect(parallelSimulator.stat('pipeline time')).toHaveText(formatSeconds(result.wallClock));
+    await expect(parallelSimulator.commands).toHaveText('npx playwright test --workers=2');
   });
 
-  test('more workers shorten the pipeline', async ({ page }) => {
+  test('more workers shorten the pipeline', async ({ parallelSimulator }) => {
     const suite = suiteById('balanced');
-    await slider(page, 'workers per shard').fill('4');
+    await parallelSimulator.workers.fill('4');
 
     const expected = simulate(suite, { workers: 4, shards: 1, fullyParallel: false }).wallClock;
-    await expect(stat(page, 'pipeline time')).toHaveText(formatSeconds(expected));
-    await expect(page.getByRole('status')).toContainText(formatSeconds(expected));
+    await expect(parallelSimulator.stat('pipeline time')).toHaveText(formatSeconds(expected));
+    await expect(parallelSimulator.status).toContainText(formatSeconds(expected));
   });
 
-  test('shards add one command and one timeline each', async ({ page }) => {
-    await slider(page, 'shards').fill('3');
+  test('shards add one command and one timeline each', async ({ parallelSimulator }) => {
+    await parallelSimulator.shards.fill('3');
 
-    await expect(page.getByRole('heading', { level: 3, name: /shard \d of 3/ })).toHaveCount(3);
+    await expect(parallelSimulator.shardHeadings(3)).toHaveCount(3);
     const settings: Settings = { workers: 2, shards: 3, fullyParallel: false };
-    await expect(page.getByRole('region', { name: 'Commands' })).toHaveText(commands(settings).join('\n'));
+    await expect(parallelSimulator.commands).toHaveText(commands(settings).join('\n'));
   });
 
-  test('fullyParallel breaks up the slow file', async ({ page }) => {
+  test('fullyParallel breaks up the slow file', async ({ parallelSimulator }) => {
     const suite = suiteById('slow-file');
-    await page.getByLabel('test suite').selectOption({ label: 'one slow file' });
-    await slider(page, 'workers per shard').fill('4');
-    await expect(lessons(page)).toContainText('checkout.spec.ts');
+    await parallelSimulator.chooseSuite('one slow file');
+    await parallelSimulator.workers.fill('4');
+    await expect(parallelSimulator.lessons).toContainText('checkout.spec.ts');
 
-    await page.getByRole('checkbox', { name: 'fullyParallel' }).check();
+    await parallelSimulator.fullyParallel.check();
 
     const expected = simulate(suite, { workers: 4, shards: 1, fullyParallel: true }).wallClock;
-    await expect(stat(page, 'pipeline time')).toHaveText(formatSeconds(expected));
-    await expect(lessons(page)).not.toContainText('one worker has to run it');
-    await expect(page.getByRole('region', { name: 'Commands' })).toContainText('--fully-parallel');
+    await expect(parallelSimulator.stat('pipeline time')).toHaveText(formatSeconds(expected));
+    await expect(parallelSimulator.lessons).not.toContainText('one worker has to run it');
+    await expect(parallelSimulator.commands).toContainText('--fully-parallel');
   });
 
-  test('warns about a shard with no tests', async ({ page }) => {
-    await page.getByLabel('test suite').selectOption({ label: 'one file with many tests' });
-    await slider(page, 'shards').fill('4');
+  test('warns about a shard with no tests', async ({ parallelSimulator, page }) => {
+    await parallelSimulator.chooseSuite('one file with many tests');
+    await parallelSimulator.shards.fill('4');
 
-    await expect(lessons(page)).toContainText('Shards 2, 3 got no tests');
-    await page.getByText('what each worker ran').nth(1).click();
+    await expect(parallelSimulator.lessons).toContainText('Shards 2, 3 got no tests');
+    await parallelSimulator.workerDetails.nth(1).click();
     await expect(page.getByText('This shard has no tests to run.').first()).toBeVisible();
   });
 
-  test('lists what each worker ran in words', async ({ page }) => {
-    await slider(page, 'workers per shard').fill('8');
-    await page.getByText('what each worker ran').click();
+  test('lists what each worker ran in words', async ({ parallelSimulator }) => {
+    await parallelSimulator.workers.fill('8');
+    await parallelSimulator.workerDetails.click();
 
-    const workers = page.getByRole('list', { name: 'shard 1 workers' }).getByRole('listitem');
+    const workers = parallelSimulator.workersOfShard(1);
     await expect(workers).toHaveCount(8);
     await expect(workers.first()).toHaveText('worker 0: 4 tests from account.spec.ts');
     await expect(workers.last()).toHaveText('worker 7: never started');
   });
 
-  test('fits a 375px page with the largest settings', async ({ page }) => {
+  test('fits a 375px page with the largest settings', async ({ parallelSimulator, page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
-    await page.getByLabel('test suite').selectOption({ label: 'one slow file' });
-    await slider(page, 'workers per shard').fill('8');
-    await slider(page, 'shards').fill('6');
-    await page.getByRole('checkbox', { name: 'fullyParallel' }).check();
+    await parallelSimulator.chooseSuite('one slow file');
+    await parallelSimulator.workers.fill('8');
+    await parallelSimulator.shards.fill('6');
+    await parallelSimulator.fullyParallel.check();
 
-    await expect(page.getByRole('heading', { level: 3, name: /shard \d of 6/ })).toHaveCount(6);
-    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }));
-    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+    await expect(parallelSimulator.shardHeadings(6)).toHaveCount(6);
+    expect(await parallelSimulator.horizontalOverflow()).toBeLessThanOrEqual(0);
   });
 });

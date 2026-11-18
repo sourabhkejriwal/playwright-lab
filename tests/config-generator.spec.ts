@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { test, expect, devices, type Page, type TestInfo } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { devices, type TestInfo } from '@playwright/test';
+import { test, expect } from './pages/fixtures';
 import * as prettier from 'prettier';
 import {
   BROWSERS,
@@ -183,43 +183,37 @@ test.describe('generated config', () => {
 });
 
 test.describe('config generator page', () => {
-  const output = (page: Page) => page.getByRole('region', { name: 'playwright.config.ts' });
-  const group = (page: Page, name: string) => page.getByRole('group', { name });
-  const choice = (page: Page, section: string, name: string) =>
-    group(page, section).getByRole('checkbox', { name, exact: true });
-
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/config');
-    // The controls stay disabled until the island can respond to them.
-    await expect(choice(page, '# browsers', 'chromium')).toBeEnabled();
+  test.beforeEach(async ({ configGenerator }) => {
+    await configGenerator.goto();
   });
 
-  test('starts with a working default config', async ({ page }) => {
-    await expect(page.getByRole('heading', { level: 1, name: 'Config generator' })).toBeVisible();
+  test('starts with a working default config', async ({ configGenerator, page }) => {
+    await expect(configGenerator.h1Named('Config generator')).toBeVisible();
     await expect(page.getByText('copy the finished playwright.config.ts into')).toBeVisible();
-    await expect(output(page)).toHaveText(generateConfig(DEFAULT_OPTIONS));
-    await expect(page.getByRole('status')).toHaveText('3 projects · 1 reporter · trace on-first-retry');
+    await expect(configGenerator.output).toHaveText(generateConfig(DEFAULT_OPTIONS));
+    await expect(configGenerator.status).toHaveText('3 projects · 1 reporter · trace on-first-retry');
     await expect(page.getByText('npx playwright install chromium firefox webkit')).toBeVisible();
   });
 
-  test('each choice updates the config', async ({ page }) => {
-    await choice(page, '# browsers', 'firefox').uncheck();
-    await expect(output(page)).not.toContainText("name: 'firefox'");
+  test('each choice updates the config', async ({ configGenerator }) => {
+    const { output } = configGenerator;
+    await configGenerator.checkbox('# browsers', 'firefox').uncheck();
+    await expect(output).not.toContainText("name: 'firefox'");
 
-    await choice(page, '# devices', 'iPhone 15').check();
-    await expect(output(page)).toContainText("{ name: 'iPhone 15', use: { ...devices['iPhone 15'] } }");
+    await configGenerator.checkbox('# devices', 'iPhone 15').check();
+    await expect(output).toContainText("{ name: 'iPhone 15', use: { ...devices['iPhone 15'] } }");
 
-    await page.getByRole('combobox', { name: 'on CI' }).selectOption('4');
-    await page.getByRole('combobox', { name: 'locally' }).selectOption('1');
-    await expect(output(page)).toContainText('retries: process.env.CI ? 4 : 1,');
+    await configGenerator.select('on CI').selectOption('4');
+    await configGenerator.select('locally').selectOption('1');
+    await expect(output).toContainText('retries: process.env.CI ? 4 : 1,');
 
-    await choice(page, '# reporters', 'junit').check();
-    await expect(output(page)).toContainText("['junit', { outputFile: 'reports/junit.xml' }]");
+    await configGenerator.checkbox('# reporters', 'junit').check();
+    await expect(output).toContainText("['junit', { outputFile: 'reports/junit.xml' }]");
 
-    await group(page, '# trace').getByRole('radio', { name: 'retain-on-failure', exact: true }).check();
-    await expect(output(page)).toContainText("trace: 'retain-on-failure',");
+    await configGenerator.radio('# trace', 'retain-on-failure').check();
+    await expect(output).toContainText("trace: 'retain-on-failure',");
 
-    await expect(output(page)).toHaveText(
+    await expect(output).toHaveText(
       generateConfig({
         browsers: ['chromium', 'webkit'],
         devices: ['iPhone 15'],
@@ -229,58 +223,52 @@ test.describe('config generator page', () => {
         trace: 'retain-on-failure',
       }),
     );
-    await expect(page.getByRole('status')).toHaveText('3 projects · 2 reporters · trace retain-on-failure');
+    await expect(configGenerator.status).toHaveText('3 projects · 2 reporters · trace retain-on-failure');
   });
 
-  test('warns when the trace setting can never record', async ({ page }) => {
-    const notes = page.getByRole('list', { name: 'Notes on this config' });
+  test('warns when the trace setting can never record', async ({ configGenerator }) => {
+    const { notes } = configGenerator;
     await expect(notes).toBeHidden();
-    await page.getByRole('combobox', { name: 'on CI' }).selectOption('0');
+    await configGenerator.select('on CI').selectOption('0');
     await expect(notes).toContainText('no trace is ever saved');
-    await page.getByRole('combobox', { name: 'on CI' }).selectOption('1');
+    await configGenerator.select('on CI').selectOption('1');
     await expect(notes).toBeHidden();
   });
 
-  test('copies the config to the clipboard', async ({ page, context }) => {
+  test('copies the config to the clipboard', async ({ configGenerator, page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-    await page.getByRole('button', { name: 'copy', exact: true }).click();
-    await expect(page.getByRole('status')).toHaveText('config copied to clipboard');
-    await expect(page.getByRole('button', { name: 'copied', exact: true })).toBeVisible();
+    await configGenerator.copyButton.click();
+    await expect(configGenerator.status).toHaveText('config copied to clipboard');
+    await expect(configGenerator.copiedButton).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(generateConfig(DEFAULT_OPTIONS));
   });
 
-  test('downloads the config as playwright.config.ts', async ({ page }) => {
-    const downloading = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'download' }).click();
-    const download = await downloading;
+  test('downloads the config as playwright.config.ts', async ({ configGenerator }) => {
+    const download = await configGenerator.download();
     expect(download.suggestedFilename()).toBe('playwright.config.ts');
     expect(readFileSync(await download.path(), 'utf8')).toBe(generateConfig(DEFAULT_OPTIONS));
   });
 
-  test('fits a 375px page with every option on', async ({ page }) => {
+  test('fits a 375px page with every option on', async ({ configGenerator, page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
-    for (const { name } of REPORTERS) await choice(page, '# reporters', name).check();
-    await choice(page, '# devices', 'iPhone 15 Pro Max').check();
-    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }));
-    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+    for (const { name } of REPORTERS) await configGenerator.checkbox('# reporters', name).check();
+    await configGenerator.checkbox('# devices', 'iPhone 15 Pro Max').check();
+    expect(await configGenerator.horizontalOverflow()).toBeLessThanOrEqual(0);
   });
 
   test.describe('accessibility', () => {
     test.use({ reducedMotion: 'reduce' });
 
-    for (const theme of ['dark', 'light']) {
-      test(`no detectable a11y violations with notes showing in the ${theme} theme`, async ({ page }) => {
-        await page.evaluate((value) => localStorage.setItem('playwright-lab:theme', value), theme);
-        await page.reload();
-        await expect(choice(page, '# browsers', 'chromium')).toBeEnabled();
-        await page.getByRole('combobox', { name: 'on CI' }).selectOption('0');
-        await choice(page, '# reporters', 'html').uncheck();
-        await expect(page.getByRole('list', { name: 'Notes on this config' })).toBeVisible();
-        const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
-        expect(results.violations).toEqual([]);
+    for (const theme of ['dark', 'light'] as const) {
+      test(`no detectable a11y violations with notes showing in the ${theme} theme`, async ({
+        configGenerator,
+      }) => {
+        await configGenerator.saveThemeAndReload(theme);
+        await configGenerator.waitUntilReady();
+        await configGenerator.select('on CI').selectOption('0');
+        await configGenerator.checkbox('# reporters', 'html').uncheck();
+        await expect(configGenerator.notes).toBeVisible();
+        expect(await configGenerator.a11yViolations()).toEqual([]);
       });
     }
   });

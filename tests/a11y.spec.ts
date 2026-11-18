@@ -1,5 +1,4 @@
-import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { test, expect } from './pages/fixtures';
 
 // axe tags are exact: each one selects only the rules added at that WCAG version and level.
 const wcagTags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
@@ -39,17 +38,15 @@ const pages = [
 test.use({ reducedMotion: 'reduce' });
 
 for (const path of pages) {
-  test(`no detectable a11y violations on ${path}`, async ({ page }) => {
-    await page.goto(path);
-    const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
-    expect(results.violations).toEqual([]);
+  test(`no detectable a11y violations on ${path}`, async ({ site }) => {
+    await site.visit(path);
+    expect(await site.a11yViolations({ tags: wcagTags })).toEqual([]);
   });
 
-  test(`no detectable a11y violations on ${path} in the light theme`, async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem('playwright-lab:theme', 'light'));
-    await page.goto(path);
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-    const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
-    expect(results.violations).toEqual([]);
+  test(`no detectable a11y violations on ${path} in the light theme`, async ({ site }) => {
+    await site.presetTheme('light');
+    await site.visit(path);
+    await expect(site.html).toHaveAttribute('data-theme', 'light');
+    expect(await site.a11yViolations({ tags: wcagTags })).toEqual([]);
   });
 }

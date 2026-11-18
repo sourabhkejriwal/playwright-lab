@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { test, expect, type Page, type TestInfo } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import type { TestInfo } from '@playwright/test';
+import { test, expect } from './pages/fixtures';
 import * as prettier from 'prettier';
 import { parse } from 'yaml';
 import {
@@ -297,50 +297,42 @@ test.describe('generated workflow', () => {
 });
 
 test.describe('ci builder page', () => {
-  const output = (page: Page) => page.getByRole('region', { name: 'playwright.yml' });
-  const group = (page: Page, name: string) => page.getByRole('group', { name });
-  const choice = (page: Page, section: string, name: string) =>
-    group(page, section).getByRole('checkbox', { name, exact: true });
-
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/ci');
-    // The controls stay disabled until the island can respond to them.
-    await expect(choice(page, '# triggers', 'push')).toBeEnabled();
+  test.beforeEach(async ({ ciBuilder }) => {
+    await ciBuilder.goto();
   });
 
-  test('starts with a working default workflow', async ({ page }) => {
-    await expect(page.getByRole('heading', { level: 1, name: 'CI pipeline builder' })).toBeVisible();
-    await expect(
-      page.getByRole('heading', { level: 2, name: '.github/workflows/playwright.yml' }),
-    ).toBeVisible();
-    await expect(output(page)).toHaveText(generateWorkflow(DEFAULT_OPTIONS));
-    await expect(page.getByRole('status')).toHaveText('1 test job · single report · kept 14 days');
+  test('starts with a working default workflow', async ({ ciBuilder }) => {
+    await expect(ciBuilder.h1Named('CI pipeline builder')).toBeVisible();
+    await expect(ciBuilder.h2('.github/workflows/playwright.yml')).toBeVisible();
+    await expect(ciBuilder.output).toHaveText(generateWorkflow(DEFAULT_OPTIONS));
+    await expect(ciBuilder.status).toHaveText('1 test job · single report · kept 14 days');
   });
 
-  test('each choice updates the workflow', async ({ page }) => {
-    await choice(page, '# triggers', 'schedule').check();
-    await expect(output(page)).toContainText("cron: '0 3 * * *'");
+  test('each choice updates the workflow', async ({ ciBuilder }) => {
+    const { output } = ciBuilder;
+    await ciBuilder.checkbox('# triggers', 'schedule').check();
+    await expect(output).toContainText("cron: '0 3 * * *'");
 
-    await choice(page, '# browsers', 'firefox').uncheck();
-    await expect(output(page)).not.toContainText('--project=firefox');
+    await ciBuilder.checkbox('# browsers', 'firefox').uncheck();
+    await expect(output).not.toContainText('--project=firefox');
 
-    await page.getByRole('combobox', { name: 'shards' }).selectOption('4');
-    await expect(output(page)).toContainText('shardIndex: [1, 2, 3, 4]');
-    await expect(output(page)).toContainText('merge-reports:');
+    await ciBuilder.select('shards').selectOption('4');
+    await expect(output).toContainText('shardIndex: [1, 2, 3, 4]');
+    await expect(output).toContainText('merge-reports:');
 
-    await choice(page, '# jobs', 'one job per browser').check();
-    await expect(output(page)).toContainText('project: [chromium, webkit]');
+    await ciBuilder.checkbox('# jobs', 'one job per browser').check();
+    await expect(output).toContainText('project: [chromium, webkit]');
 
-    await choice(page, '# jobs', 'cancel older runs').uncheck();
-    await expect(output(page)).not.toContainText('concurrency:');
+    await ciBuilder.checkbox('# jobs', 'cancel older runs').uncheck();
+    await expect(output).not.toContainText('concurrency:');
 
-    await group(page, '# browser setup').getByRole('radio', { name: 'container', exact: true }).check();
-    await group(page, '# package manager').getByRole('radio', { name: 'pnpm', exact: true }).check();
-    await page.getByRole('combobox', { name: 'node version' }).selectOption('.nvmrc');
-    await page.getByRole('combobox', { name: 'timeout (minutes)' }).selectOption('60');
-    await page.getByRole('combobox', { name: 'keep for (days)' }).selectOption('30');
+    await ciBuilder.radio('# browser setup', 'container').check();
+    await ciBuilder.radio('# package manager', 'pnpm').check();
+    await ciBuilder.select('node version').selectOption('.nvmrc');
+    await ciBuilder.select('timeout (minutes)').selectOption('60');
+    await ciBuilder.select('keep for (days)').selectOption('30');
 
-    await expect(output(page)).toHaveText(
+    await expect(output).toHaveText(
       generateWorkflow({
         triggers: ['push', 'pull_request', 'schedule'],
         packageManager: 'pnpm',
@@ -354,59 +346,53 @@ test.describe('ci builder page', () => {
         cancelOldRuns: false,
       }),
     );
-    await expect(page.getByRole('status')).toHaveText('8 test jobs · merged report · kept 30 days');
+    await expect(ciBuilder.status).toHaveText('8 test jobs · merged report · kept 30 days');
   });
 
-  test('notes appear for choices that need something from the project', async ({ page }) => {
-    const notes = page.getByRole('list', { name: 'Notes on this workflow' });
+  test('notes appear for choices that need something from the project', async ({ ciBuilder }) => {
+    const { notes } = ciBuilder;
     await expect(notes).toBeHidden();
-    await page.getByRole('combobox', { name: 'shards' }).selectOption('2');
+    await ciBuilder.select('shards').selectOption('2');
     await expect(notes).toContainText('fullyParallel: true');
-    await page.getByRole('combobox', { name: 'shards' }).selectOption('1');
+    await ciBuilder.select('shards').selectOption('1');
     await expect(notes).toBeHidden();
   });
 
-  test('copies the workflow to the clipboard', async ({ page, context }) => {
+  test('copies the workflow to the clipboard', async ({ ciBuilder, page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-    await page.getByRole('button', { name: 'copy', exact: true }).click();
-    await expect(page.getByRole('status')).toHaveText('workflow copied to clipboard');
-    await expect(page.getByRole('button', { name: 'copied', exact: true })).toBeVisible();
+    await ciBuilder.copyButton.click();
+    await expect(ciBuilder.status).toHaveText('workflow copied to clipboard');
+    await expect(ciBuilder.copiedButton).toBeVisible();
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(generateWorkflow(DEFAULT_OPTIONS));
   });
 
-  test('downloads the workflow as playwright.yml', async ({ page }) => {
-    const downloading = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'download' }).click();
-    const download = await downloading;
+  test('downloads the workflow as playwright.yml', async ({ ciBuilder }) => {
+    const download = await ciBuilder.download();
     expect(download.suggestedFilename()).toBe('playwright.yml');
     expect(readFileSync(await download.path(), 'utf8')).toBe(generateWorkflow(DEFAULT_OPTIONS));
   });
 
-  test('fits a 375px page with the longest workflow', async ({ page }) => {
+  test('fits a 375px page with the longest workflow', async ({ ciBuilder, page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
-    await page.getByRole('combobox', { name: 'shards' }).selectOption('8');
-    await choice(page, '# jobs', 'one job per browser').check();
-    await expect(page.getByRole('status')).toContainText('24 test jobs');
-    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }));
-    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+    await ciBuilder.select('shards').selectOption('8');
+    await ciBuilder.checkbox('# jobs', 'one job per browser').check();
+    await expect(ciBuilder.status).toContainText('24 test jobs');
+    expect(await ciBuilder.horizontalOverflow()).toBeLessThanOrEqual(0);
   });
 
   test.describe('accessibility', () => {
     test.use({ reducedMotion: 'reduce' });
 
-    for (const theme of ['dark', 'light']) {
-      test(`no detectable a11y violations with notes showing in the ${theme} theme`, async ({ page }) => {
-        await page.evaluate((value) => localStorage.setItem('playwright-lab:theme', value), theme);
-        await page.reload();
-        await expect(choice(page, '# triggers', 'push')).toBeEnabled();
-        await page.getByRole('combobox', { name: 'shards' }).selectOption('8');
-        await choice(page, '# jobs', 'one job per browser').check();
-        await expect(page.getByRole('list', { name: 'Notes on this workflow' })).toBeVisible();
-        const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
-        expect(results.violations).toEqual([]);
+    for (const theme of ['dark', 'light'] as const) {
+      test(`no detectable a11y violations with notes showing in the ${theme} theme`, async ({
+        ciBuilder,
+      }) => {
+        await ciBuilder.saveThemeAndReload(theme);
+        await ciBuilder.waitUntilReady();
+        await ciBuilder.select('shards').selectOption('8');
+        await ciBuilder.checkbox('# jobs', 'one job per browser').check();
+        await expect(ciBuilder.notes).toBeVisible();
+        expect(await ciBuilder.a11yViolations()).toEqual([]);
       });
     }
   });

@@ -3,7 +3,8 @@ import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
-import { test, expect, type Page, type TestInfo } from '@playwright/test';
+import type { TestInfo } from '@playwright/test';
+import { test, expect } from './pages/fixtures';
 import { CHALLENGES, fixedLines, grade, type FlakyChallenge } from '../src/lib/flaky-challenges';
 
 const run = promisify(execFile);
@@ -108,90 +109,72 @@ test.describe('challenge data', () => {
 
 test.describe('the challenges page', () => {
   const [first, second] = CHALLENGES;
-  const lineOption = (page: Page, line: number) =>
-    page.getByRole('radio', { name: new RegExp(`^line ${line}\\b`) });
-  const causeOption = (page: Page, challenge: FlakyChallenge, at: number) =>
-    page
-      .getByRole('group', { name: /Why does it fail/ })
-      .getByRole('radio', { name: challenge.causes[at].replaceAll('`', ''), exact: true });
+  const rightCause = (challenge: FlakyChallenge) => challenge.causes[challenge.answer];
 
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/flaky');
-    await expect(page.getByRole('heading', { level: 2, name: first.title })).toBeVisible();
+  test.beforeEach(async ({ flakyChallenges }) => {
+    await flakyChallenges.goto(first.title);
   });
 
-  test('solving a challenge shows the fix and counts it', async ({ page }) => {
-    const check = page.getByRole('button', { name: 'check answer' });
-    await expect(check).toBeDisabled();
+  test('solving a challenge shows the fix and counts it', async ({ flakyChallenges }) => {
+    const { result } = flakyChallenges;
+    await expect(flakyChallenges.checkButton).toBeDisabled();
 
-    await lineOption(page, first.culprit[0]).check();
-    await causeOption(page, first, first.answer).check();
-    await check.click();
+    await flakyChallenges.submit(first.culprit[0], rightCause(first));
 
-    const result = page.getByRole('group', { name: 'Result' });
     await expect(result).toBeFocused();
     await expect(result).toContainText('solved');
     await expect(result).toContainText("await expect(page.getByRole('status')).toHaveText('Saved');");
-    await expect(page.getByText(`1 of ${CHALLENGES.length} solved`)).toBeVisible();
+    await expect(flakyChallenges.solvedCount(1, CHALLENGES.length)).toBeVisible();
 
-    await result.getByRole('button', { name: 'next challenge' }).click();
-    await expect(page.getByRole('heading', { level: 2, name: second.title })).toBeFocused();
-    await expect(page.getByRole('button', { name: 'Challenge 1, solved' })).toBeVisible();
+    await flakyChallenges.resultButton('next challenge').click();
+    await expect(flakyChallenges.h2(second.title)).toBeFocused();
+    await expect(flakyChallenges.challenge('Challenge 1, solved')).toBeVisible();
   });
 
-  test('a wrong answer says which part is wrong and can be retried', async ({ page }) => {
-    await lineOption(page, 2).check();
-    await causeOption(page, first, first.answer).check();
-    await page.getByRole('button', { name: 'check answer' }).click();
+  test('a wrong answer says which part is wrong and can be retried', async ({ flakyChallenges }) => {
+    const { result } = flakyChallenges;
+    await flakyChallenges.submit(2, rightCause(first));
 
-    const result = page.getByRole('group', { name: 'Result' });
     await expect(result).toContainText('not quite');
     await expect(result).toContainText('The line is wrong.');
     await expect(result).toContainText('The cause is right.');
     await expect(result).not.toContainText('the fix');
 
-    await result.getByRole('button', { name: 'try again' }).click();
-    await expect(lineOption(page, 2)).not.toBeChecked();
-    await expect(page.getByRole('button', { name: 'check answer' })).toBeDisabled();
+    await flakyChallenges.resultButton('try again').click();
+    await expect(flakyChallenges.line(2)).not.toBeChecked();
+    await expect(flakyChallenges.checkButton).toBeDisabled();
   });
 
-  test('revealing the answer shows the fix without counting as solved', async ({ page }) => {
-    await lineOption(page, 2).check();
-    await causeOption(page, first, first.answer).check();
-    await page.getByRole('button', { name: 'check answer' }).click();
+  test('revealing the answer shows the fix without counting as solved', async ({ flakyChallenges }) => {
+    await flakyChallenges.submit(2, rightCause(first));
 
-    const result = page.getByRole('group', { name: 'Result' });
-    await result.getByRole('button', { name: 'show the answer' }).click();
-    await expect(result).toContainText('the fix');
-    await expect(page.getByText(`0 of ${CHALLENGES.length} solved`)).toBeVisible();
+    await flakyChallenges.resultButton('show the answer').click();
+    await expect(flakyChallenges.result).toContainText('the fix');
+    await expect(flakyChallenges.solvedCount(0, CHALLENGES.length)).toBeVisible();
   });
 
-  test('the numbered buttons open any challenge and keep its answer', async ({ page }) => {
-    await lineOption(page, 3).check();
-    await page.getByRole('button', { name: 'Challenge 3' }).click();
-    await expect(page.getByRole('heading', { level: 2, name: CHALLENGES[2].title })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Challenge 3' })).toHaveAttribute('aria-current', 'step');
+  test('the numbered buttons open any challenge and keep its answer', async ({ flakyChallenges }) => {
+    await flakyChallenges.line(3).check();
+    await flakyChallenges.challenge('Challenge 3').click();
+    await expect(flakyChallenges.h2(CHALLENGES[2].title)).toBeVisible();
+    await expect(flakyChallenges.challenge('Challenge 3')).toHaveAttribute('aria-current', 'step');
 
-    await page.getByRole('button', { name: 'Challenge 1' }).click();
-    await expect(lineOption(page, 3)).toBeChecked();
+    await flakyChallenges.challenge('Challenge 1').click();
+    await expect(flakyChallenges.line(3)).toBeChecked();
   });
 
-  test('no challenge or solution scrolls sideways at 375px', async ({ page }) => {
+  test('no challenge or solution scrolls sideways at 375px', async ({ flakyChallenges, page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
-    const overflow = () =>
-      page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
     for (const [at, challenge] of CHALLENGES.entries()) {
-      await page.getByRole('button', { name: `Challenge ${at + 1}`, exact: true }).click();
-      await expect(page.getByRole('heading', { level: 2, name: challenge.title })).toBeVisible();
-      expect(await overflow(), challenge.id).toBeLessThanOrEqual(0);
+      await flakyChallenges.challenge(`Challenge ${at + 1}`, { exact: true }).click();
+      await expect(flakyChallenges.h2(challenge.title)).toBeVisible();
+      expect(await flakyChallenges.horizontalOverflow(), challenge.id).toBeLessThanOrEqual(0);
 
-      await lineOption(page, challenge.culprit[0]).check();
-      await causeOption(page, challenge, challenge.answer).check();
-      await page.getByRole('button', { name: 'check answer' }).click();
-      await expect(page.getByRole('group', { name: 'Result' })).toContainText('the fix');
-      expect(await overflow(), `${challenge.id} solution`).toBeLessThanOrEqual(0);
+      await flakyChallenges.submit(challenge.culprit[0], rightCause(challenge));
+      await expect(flakyChallenges.result).toContainText('the fix');
+      expect(await flakyChallenges.horizontalOverflow(), `${challenge.id} solution`).toBeLessThanOrEqual(0);
     }
-    await expect(page.getByText(`${CHALLENGES.length} of ${CHALLENGES.length} solved`)).toBeVisible();
+    await expect(flakyChallenges.solvedCount(CHALLENGES.length, CHALLENGES.length)).toBeVisible();
   });
 });

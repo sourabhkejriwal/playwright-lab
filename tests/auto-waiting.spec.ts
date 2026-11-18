@@ -1,4 +1,5 @@
-import { test, expect, type Locator, type Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { test, expect } from './pages/fixtures';
 import {
   ACTIONS,
   CHECKS,
@@ -132,76 +133,59 @@ test.describe('the explainer matches real Playwright', () => {
 });
 
 test.describe('the timeline', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/auto-waiting');
-    await page.getByRole('button', { name: 'next', exact: true }).scrollIntoViewIfNeeded();
-    await expect(page.getByRole('button', { name: 'next', exact: true })).toBeEnabled();
+  test.beforeEach(async ({ autoWaiting }) => {
+    await autoWaiting.goto();
   });
 
-  const checkRow = (page: Page, name: string) =>
-    page
-      .getByRole('list', { name: '# actionability checks' })
-      .getByRole('listitem')
-      .filter({ hasText: name });
+  test('steps through a blocked click until it passes', async ({ autoWaiting }) => {
+    const { nextButton, callLog } = autoWaiting;
 
-  test('steps through a blocked click until it passes', async ({ page }) => {
-    const next = page.getByRole('button', { name: 'next', exact: true });
-    const log = page.getByRole('region', { name: 'Call log', exact: true });
+    await expect(autoWaiting.backButton).toBeDisabled();
+    await expect(callLog).toContainText("waiting for locator('#save')");
 
-    await expect(page.getByRole('button', { name: 'back', exact: true })).toBeDisabled();
-    await expect(log).toContainText("waiting for locator('#save')");
-
-    await next.click();
-    await expect(page.getByRole('heading', { level: 2, name: 'Check: enabled' })).toBeVisible();
-    await expect(log).toContainText('element is not enabled');
-    await expect(checkRow(page, 'visible')).toContainText('passed');
-    await expect(checkRow(page, 'enabled')).toContainText('blocked');
-    await expect(checkRow(page, 'stable')).toContainText('not yet');
+    await nextButton.click();
+    await expect(autoWaiting.h2('Check: enabled')).toBeVisible();
+    await expect(callLog).toContainText('element is not enabled');
+    await expect(autoWaiting.checkRow('visible')).toContainText('passed');
+    await expect(autoWaiting.checkRow('enabled')).toContainText('blocked');
+    await expect(autoWaiting.checkRow('stable')).toContainText('not yet');
 
     const steps = buildSteps(SCENARIOS.find(({ id }) => id === 'disabled')!);
-    for (let at = 2; at < steps.length; at += 1) await next.click();
+    for (let at = 2; at < steps.length; at += 1) await nextButton.click();
 
-    await expect(page.getByRole('heading', { level: 2, name: 'Perform the click' })).toBeVisible();
-    await expect(log).toContainText('click action done');
-    await expect(checkRow(page, 'receives events')).toContainText('passed');
-    await expect(next).toBeDisabled();
+    await expect(autoWaiting.h2('Perform the click')).toBeVisible();
+    await expect(callLog).toContainText('click action done');
+    await expect(autoWaiting.checkRow('receives events')).toContainText('passed');
+    await expect(nextButton).toBeDisabled();
   });
 
-  test('a scenario that never clears ends in a timeout', async ({ page }) => {
-    await page.getByLabel('scenario').selectOption({ label: 'never enabled (timeout)' });
-    await page.getByRole('button', { name: /^\d+\. Timeout/ }).click();
+  test('a scenario that never clears ends in a timeout', async ({ autoWaiting }) => {
+    await autoWaiting.chooseScenario('never enabled (timeout)');
+    await autoWaiting.goToStep(/^\d+\. Timeout/);
 
-    await expect(page.getByRole('heading', { level: 2, name: 'Timeout' })).toBeVisible();
-    await expect(page.getByText('failed', { exact: true })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Call log', exact: true })).toContainText(
-      'locator.click: Timeout 5000ms exceeded.',
-    );
+    await expect(autoWaiting.h2('Timeout')).toBeVisible();
+    await expect(autoWaiting.failedBadge).toBeVisible();
+    await expect(autoWaiting.callLog).toContainText('locator.click: Timeout 5000ms exceeded.');
   });
 
-  test('changing scenario starts again from the first step', async ({ page }) => {
-    await page.getByRole('button', { name: 'next', exact: true }).click();
-    await page.getByLabel('scenario').selectOption({ label: 'read-only input' });
+  test('changing scenario starts again from the first step', async ({ autoWaiting }) => {
+    await autoWaiting.nextButton.click();
+    await autoWaiting.chooseScenario('read-only input');
 
-    await expect(page.getByRole('button', { name: '1. Find the element' })).toHaveAttribute(
-      'aria-current',
-      'step',
-    );
-    await expect(page.getByRole('region', { name: 'Test code' })).toContainText(".fill('Ada')");
-    await expect(checkRow(page, 'editable')).toContainText('not yet');
+    await expect(autoWaiting.step('1. Find the element')).toHaveAttribute('aria-current', 'step');
+    await expect(autoWaiting.testCode).toContainText(".fill('Ada')");
+    await expect(autoWaiting.checkRow('editable')).toContainText('not yet');
   });
 
-  test('play advances on its own and pause stops it', async ({ page }) => {
-    await page.getByRole('button', { name: 'play', exact: true }).click();
-    await expect(page.getByRole('button', { name: '2. Check: enabled' })).toHaveAttribute(
-      'aria-current',
-      'step',
-    );
-    await page.getByRole('button', { name: 'pause', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'play', exact: true })).toBeVisible();
+  test('play advances on its own and pause stops it', async ({ autoWaiting }) => {
+    await autoWaiting.playButton.click();
+    await expect(autoWaiting.step('2. Check: enabled')).toHaveAttribute('aria-current', 'step');
+    await autoWaiting.pauseButton.click();
+    await expect(autoWaiting.playButton).toBeVisible();
   });
 
-  test('lists what every action waits for', async ({ page }) => {
-    const table = page.getByRole('table');
+  test('lists what every action waits for', async ({ autoWaiting }) => {
+    const table = autoWaiting.actionTable;
     await expect(table.getByRole('row')).toHaveCount(ACTIONS.length + 1);
     const fill = table.getByRole('row', { name: /^fill\(\)/ });
     await expect(fill.getByRole('cell')).toContainText([

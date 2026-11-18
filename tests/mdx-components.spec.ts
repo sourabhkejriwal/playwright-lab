@@ -1,22 +1,19 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './pages/fixtures';
 import { apiRefHref } from '../src/lib/api-ref';
 
 test.describe('chapter MDX components', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/chapters/02-selectors');
+  test.beforeEach(async ({ chapter }) => {
+    await chapter.goto('02-selectors');
   });
 
-  test('callouts expose their type and title', async ({ page }) => {
-    await expect(page.getByRole('note', { name: 'tip: find the accessible name' })).toBeVisible();
-    await expect(page.getByRole('note', { name: 'warn', exact: true })).toContainText('Locators are strict');
-    await expect(page.getByRole('note', { name: 'gotcha: await the assertion' })).toContainText(
-      'Without await',
-    );
+  test('callouts expose their type and title', async ({ chapter }) => {
+    await expect(chapter.note('tip: find the accessible name')).toBeVisible();
+    await expect(chapter.note('warn', { exact: true })).toContainText('Locators are strict');
+    await expect(chapter.note('gotcha: await the assertion')).toContainText('Without await');
   });
 
-  test('keys render as keyboard elements', async ({ page }) => {
-    const keys = page.getByRole('note', { name: /^tip/ }).locator('kbd');
-    await expect(keys).toHaveText(['Ctrl', 'Shift', 'I']);
+  test('keys render as keyboard elements', async ({ chapter }) => {
+    await expect(chapter.note(/^tip/).locator('kbd')).toHaveText(['Ctrl', 'Shift', 'I']);
   });
 
   test('api references link to the Playwright docs', async ({ page }) => {

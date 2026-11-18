@@ -1,46 +1,28 @@
-import { test, expect, type Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
-import { PROGRESS_STORAGE_KEY as KEY } from '../src/stores/progress';
+import { test, expect } from './pages/fixtures';
+import { SitePage, statusMark } from './pages/site-page';
+import { savedProgress } from './support/saved-progress';
 
 const readAt = '2026-11-01T00:00:00.000Z';
-const savedProgress = (...slugs: string[]) =>
-  JSON.stringify({
-    version: 1,
-    chapters: Object.fromEntries(slugs.map((slug) => [slug, { readAt }])),
-    flashcards: {},
-    quizzes: {},
-  });
-
-async function seed(page: Page, value: string) {
-  await page.addInitScript(([key, raw]) => localStorage.setItem(key, raw), [KEY, value]);
-}
-
-const heroRun = (page: Page) => page.getByRole('list', { name: 'Chapter progress' });
-const chapterRow = (page: Page) => page.getByRole('main').getByRole('link', { name: /Advanced selectors/ });
-
-async function openSidebar(page: Page, isMobile: boolean) {
-  if (isMobile) await page.getByText('browse chapters').click();
-  return page.getByRole('navigation', { name: 'Chapters' });
-}
+const chaptersRead = (...slugs: string[]) =>
+  savedProgress({ chapters: Object.fromEntries(slugs.map((slug) => [slug, { readAt }])) });
 
 test.describe('chapter progress', () => {
-  test('a new visitor sees written chapters as ready, not read', async ({ page, isMobile }) => {
-    await page.goto('/');
-    await expect(heroRun(page).getByRole('link', { name: 'Chapter 2, Selectors: ready' })).toBeVisible();
-    await expect(heroRun(page).getByRole('link', { name: 'Chapter 16, E-commerce: ready' })).toBeVisible();
-    await expect(page.getByText('0 read', { exact: true })).toBeVisible();
-    await expect(page.getByText('16 ready')).toBeVisible();
-    await expect(page.getByText(/\d+ pending/)).toBeHidden();
-    await expect(page.getByRole('link', { name: 'ch01 Quick setup refresher' })).toBeVisible();
+  test('a new visitor sees written chapters as ready, not read', async ({ home, isMobile }) => {
+    await home.goto();
+    await expect(home.runLink('Chapter 2, Selectors: ready')).toBeVisible();
+    await expect(home.runLink('Chapter 16, E-commerce: ready')).toBeVisible();
+    await expect(home.readCount(0)).toBeVisible();
+    await expect(home.readyCount(16)).toBeVisible();
+    await expect(home.pendingCount).toBeHidden();
+    await expect(home.firstChapterLink).toBeVisible();
 
-    const sidebar = await openSidebar(page, isMobile);
-    await expect(sidebar.getByText('0/16')).toBeVisible();
+    await home.sidebar.open(isMobile);
+    await expect(home.sidebar.nav.getByText('0/16')).toBeVisible();
   });
 
-  test('read chapters show as read on the homepage', async ({ page, isMobile }) => {
-    await seed(
-      page,
-      savedProgress(
+  test('read chapters show as read on the homepage', async ({ home, isMobile }) => {
+    await home.seedProgress(
+      chaptersRead(
         'setup',
         'selectors',
         'cross-browser',
@@ -59,115 +41,115 @@ test.describe('chapter progress', () => {
         'ecommerce-project',
       ),
     );
-    await page.goto('/');
+    await home.goto();
 
-    await expect(heroRun(page).getByRole('link', { name: 'Chapter 2, Selectors: read' })).toBeVisible();
-    await expect(page.getByText('16 read')).toBeVisible();
-    await expect(page.getByText('0 ready')).toBeVisible();
-    await expect(page.getByText('all written chapters read')).toBeVisible();
-    await expect(page.getByText(/next up/)).toBeHidden();
+    await expect(home.runLink('Chapter 2, Selectors: read')).toBeVisible();
+    await expect(home.readCount(16)).toBeVisible();
+    await expect(home.readyCount(0)).toBeVisible();
+    await expect(home.allRead).toBeVisible();
+    await expect(home.nextUp).toBeHidden();
 
-    const sidebar = await openSidebar(page, isMobile);
-    await expect(sidebar.getByText('16/16')).toBeVisible();
-    await expect(sidebar.getByRole('link', { name: 'read 02 Selectors' })).toBeVisible();
+    await home.sidebar.open(isMobile);
+    await expect(home.sidebar.nav.getByText('16/16')).toBeVisible();
+    await expect(home.sidebar.link('read 02 Selectors')).toBeVisible();
   });
 
-  test('the chapter list and chapter page show the read mark', async ({ page }) => {
-    await page.goto('/chapters');
-    await expect(chapterRow(page).locator('[data-status="ready"]')).toBeAttached();
-    await expect(chapterRow(page).locator('[data-status="read"]')).toBeHidden();
+  test('the chapter list and chapter page show the read mark', async ({ chapterList, chapter, page }) => {
+    const row = chapterList.row(/Advanced selectors/);
+    await chapterList.goto();
+    await expect(statusMark(row, 'ready')).toBeAttached();
+    await expect(statusMark(row, 'read')).toBeHidden();
 
-    await page.evaluate(([key, raw]) => localStorage.setItem(key, raw), [KEY, savedProgress('selectors')]);
+    await chapterList.writeProgress(chaptersRead('selectors'));
     await page.reload();
-    await expect(chapterRow(page).locator('[data-status="read"]')).toBeVisible();
-    await expect(chapterRow(page).locator('[data-status="ready"]')).toBeHidden();
+    await expect(statusMark(row, 'read')).toBeVisible();
+    await expect(statusMark(row, 'ready')).toBeHidden();
 
-    await page.goto('/chapters/02-selectors');
-    const heading = page.getByRole('heading', { level: 1 });
-    await expect(heading.locator('[data-status="read"]')).toBeVisible();
+    await chapter.goto('02-selectors');
+    await expect(statusMark(chapter.h1, 'read')).toBeVisible();
   });
 
-  test('a saved entry for an unknown chapter is not counted', async ({ page }) => {
-    await seed(page, savedProgress('retired-chapter'));
-    await page.goto('/');
-    await expect(heroRun(page).getByRole('link', { name: 'Chapter 16, E-commerce: ready' })).toBeVisible();
-    await expect(page.getByText('0 read', { exact: true })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'ch01 Quick setup refresher' })).toBeVisible();
+  test('a saved entry for an unknown chapter is not counted', async ({ home }) => {
+    await home.seedProgress(chaptersRead('retired-chapter'));
+    await home.goto();
+    await expect(home.runLink('Chapter 16, E-commerce: ready')).toBeVisible();
+    await expect(home.readCount(0)).toBeVisible();
+    await expect(home.firstChapterLink).toBeVisible();
   });
 
-  test('progress saved in another tab appears without a reload', async ({ page, context }) => {
-    await page.goto('/');
-    await expect(page.getByText('0 read', { exact: true })).toBeVisible();
+  test('progress saved in another tab appears without a reload', async ({ home, context }) => {
+    await home.goto();
+    await expect(home.readCount(0)).toBeVisible();
 
-    const other = await context.newPage();
-    await other.goto('/about');
-    await other.evaluate(([key, raw]) => localStorage.setItem(key, raw), [KEY, savedProgress('selectors')]);
+    const otherTab = new SitePage(await context.newPage());
+    await otherTab.visit('/about');
+    await otherTab.writeProgress(chaptersRead('selectors'));
 
-    await expect(page.getByText('1 read', { exact: true })).toBeVisible();
-    await expect(heroRun(page).getByRole('link', { name: 'Chapter 2, Selectors: read' })).toBeVisible();
+    await expect(home.readCount(1)).toBeVisible();
+    await expect(home.runLink('Chapter 2, Selectors: read')).toBeVisible();
   });
 
-  test('damaged saved progress falls back to the unread state', async ({ page }) => {
-    await seed(page, '{oops');
-    await page.goto('/');
-    await expect(heroRun(page).getByRole('link', { name: 'Chapter 2, Selectors: ready' })).toBeVisible();
-    await expect(page.getByText('0 read', { exact: true })).toBeVisible();
+  test('damaged saved progress falls back to the unread state', async ({ home }) => {
+    await home.seedProgress('{oops');
+    await home.goto();
+    await expect(home.runLink('Chapter 2, Selectors: ready')).toBeVisible();
+    await expect(home.readCount(0)).toBeVisible();
   });
 
   test.describe('mark chapter as done', () => {
-    const doneButton = (page: Page) => page.getByRole('button', { name: 'mark chapter as done' });
+    test('marking a chapter done updates the page and survives a reload', async ({
+      chapter,
+      page,
+      isMobile,
+    }) => {
+      await chapter.goto('02-selectors');
+      await expect(chapter.doneButton).toHaveAttribute('aria-pressed', 'false');
+      await expect(statusMark(chapter.h1, 'ready')).toBeVisible();
 
-    test('marking a chapter done updates the page and survives a reload', async ({ page, isMobile }) => {
-      await page.goto('/chapters/02-selectors');
-      const heading = page.getByRole('heading', { level: 1 });
-      await expect(doneButton(page)).toHaveAttribute('aria-pressed', 'false');
-      await expect(heading.locator('[data-status="ready"]')).toBeVisible();
+      await chapter.doneButton.click();
 
-      await doneButton(page).click();
-
-      await expect(doneButton(page)).toHaveAttribute('aria-pressed', 'true');
-      await expect(heading.locator('[data-status="read"]')).toBeVisible();
+      await expect(chapter.doneButton).toHaveAttribute('aria-pressed', 'true');
+      await expect(statusMark(chapter.h1, 'read')).toBeVisible();
       await expect(page.getByText('chapter done. click again to mark it unread.')).toBeVisible();
-      const sidebar = await openSidebar(page, isMobile);
-      await expect(sidebar.getByText('1/16')).toBeVisible();
+      await chapter.sidebar.open(isMobile);
+      await expect(chapter.sidebar.nav.getByText('1/16')).toBeVisible();
 
       await page.reload();
-      await expect(doneButton(page)).toHaveAttribute('aria-pressed', 'true');
-      await expect(heading.locator('[data-status="read"]')).toBeVisible();
+      await expect(chapter.doneButton).toHaveAttribute('aria-pressed', 'true');
+      await expect(statusMark(chapter.h1, 'read')).toBeVisible();
     });
 
-    test('clicking again marks the chapter unread', async ({ page }) => {
-      await seed(page, savedProgress('selectors'));
-      await page.goto('/chapters/02-selectors');
-      await expect(doneButton(page)).toHaveAttribute('aria-pressed', 'true');
+    test('clicking again marks the chapter unread', async ({ chapter, page }) => {
+      await chapter.seedProgress(chaptersRead('selectors'));
+      await chapter.goto('02-selectors');
+      await expect(chapter.doneButton).toHaveAttribute('aria-pressed', 'true');
 
-      await doneButton(page).click();
+      await chapter.doneButton.click();
 
-      await expect(doneButton(page)).toHaveAttribute('aria-pressed', 'false');
-      await expect(page.getByRole('heading', { level: 1 }).locator('[data-status="ready"]')).toBeVisible();
+      await expect(chapter.doneButton).toHaveAttribute('aria-pressed', 'false');
+      await expect(statusMark(chapter.h1, 'ready')).toBeVisible();
       await expect(page.getByText('finished these notes?')).toBeVisible();
-      const saved = await page.evaluate((key) => localStorage.getItem(key), KEY);
-      expect(JSON.parse(saved ?? '{}').chapters).toEqual({});
+      expect((await chapter.savedProgress()).chapters).toEqual({});
     });
 
-    test('follows a change made in another tab', async ({ page, context }) => {
-      await page.goto('/chapters/02-selectors');
-      await expect(doneButton(page)).toHaveAttribute('aria-pressed', 'false');
+    test('follows a change made in another tab', async ({ chapter, context }) => {
+      await chapter.goto('02-selectors');
+      await expect(chapter.doneButton).toHaveAttribute('aria-pressed', 'false');
 
-      const other = await context.newPage();
-      await other.goto('/about');
-      await other.evaluate(([key, raw]) => localStorage.setItem(key, raw), [KEY, savedProgress('selectors')]);
+      const otherTab = new SitePage(await context.newPage());
+      await otherTab.visit('/about');
+      await otherTab.writeProgress(chaptersRead('selectors'));
 
-      await expect(doneButton(page)).toHaveAttribute('aria-pressed', 'true');
+      await expect(chapter.doneButton).toHaveAttribute('aria-pressed', 'true');
     });
 
     test.describe('without JavaScript', () => {
       test.use({ javaScriptEnabled: false });
 
-      test('the control stays hidden', async ({ page }) => {
-        await page.goto('/chapters/02-selectors');
-        await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-        await expect(doneButton(page)).toHaveCount(0);
+      test('the control stays hidden', async ({ chapter }) => {
+        await chapter.goto('02-selectors');
+        await expect(chapter.h1).toBeVisible();
+        await expect(chapter.doneButton).toHaveCount(0);
       });
     });
 
@@ -176,15 +158,12 @@ test.describe('chapter progress', () => {
 
       for (const theme of ['dark', 'light']) {
         for (const state of ['unread', 'done']) {
-          test(`no detectable a11y violations when ${state} in the ${theme} theme`, async ({ page }) => {
-            if (state === 'done') await seed(page, savedProgress('selectors'));
-            await page.addInitScript((value) => localStorage.setItem('playwright-lab:theme', value), theme);
-            await page.goto('/chapters/02-selectors');
-            await expect(doneButton(page)).toHaveAttribute('aria-pressed', String(state === 'done'));
-            const results = await new AxeBuilder({ page })
-              .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
-              .analyze();
-            expect(results.violations).toEqual([]);
+          test(`no detectable a11y violations when ${state} in the ${theme} theme`, async ({ chapter }) => {
+            if (state === 'done') await chapter.seedProgress(chaptersRead('selectors'));
+            await chapter.presetTheme(theme);
+            await chapter.goto('02-selectors');
+            await expect(chapter.doneButton).toHaveAttribute('aria-pressed', String(state === 'done'));
+            expect(await chapter.a11yViolations()).toEqual([]);
           });
         }
       }
@@ -196,16 +175,13 @@ test.describe('chapter progress', () => {
 
     for (const theme of ['dark', 'light']) {
       for (const path of ['/', '/chapters', '/chapters/02-selectors']) {
-        test(`no detectable a11y violations on ${path} in the ${theme} theme`, async ({ page }) => {
-          await seed(page, savedProgress('selectors'));
-          await page.addInitScript((value) => localStorage.setItem('playwright-lab:theme', value), theme);
-          await page.goto(path);
+        test(`no detectable a11y violations on ${path} in the ${theme} theme`, async ({ site, page }) => {
+          await site.seedProgress(chaptersRead('selectors'));
+          await site.presetTheme(theme);
+          await site.visit(path);
           // The homepage has no visible mark on mobile (the sidebar is closed), but its hero segment counts.
           await expect(page.locator('[data-if-read]:visible').first()).toBeVisible();
-          const results = await new AxeBuilder({ page })
-            .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
-            .analyze();
-          expect(results.violations).toEqual([]);
+          expect(await site.a11yViolations()).toEqual([]);
         });
       }
     }

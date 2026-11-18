@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { test, expect, type Page } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
+import { test, expect } from './pages/fixtures';
+import type { FlashcardsPage } from './pages/flashcards-page';
+import { savedProgress } from './support/saved-progress';
 import { chapters, pad } from '../src/data/chapters';
 import {
   ALL_CHAPTERS,
@@ -12,7 +13,7 @@ import {
   scheduleReview,
   upcoming,
 } from '../src/lib/flashcards';
-import { PROGRESS_STORAGE_KEY as KEY, type FlashcardProgress } from '../src/stores/progress';
+import type { FlashcardProgress } from '../src/stores/progress';
 
 interface Deck {
   chapter: number;
@@ -94,146 +95,131 @@ test.describe('scheduler', () => {
 });
 
 test.describe('flashcards page', () => {
-  const flashcard = (page: Page) => page.getByRole('article', { name: 'Flashcard' });
-  const question = (page: Page) => flashcard(page).getByRole('heading', { level: 2 });
-  const reveal = (page: Page) => page.getByRole('button', { name: 'reveal answer' });
-  const gradeButton = (page: Page, name: string) =>
-    page.getByRole('button', { name: new RegExp(`^${name}\\b`) });
-  const status = (page: Page) => page.getByRole('status');
+  const plain = (text: string) => text.replaceAll('`', '');
+  const seedCards = (flashcards: FlashcardsPage, cards: Record<string, FlashcardProgress>) =>
+    flashcards.seedProgress(savedProgress({ flashcards: cards }));
 
-  async function seed(page: Page, flashcards: Record<string, FlashcardProgress>) {
-    const raw = JSON.stringify({ version: 1, chapters: {}, flashcards, quizzes: {} });
-    await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [KEY, raw]);
-  }
+  test('the answer stays hidden until it is revealed', async ({ flashcards }) => {
+    await flashcards.goto();
+    await expect(flashcards.question).toHaveText(plain(first.front));
+    await expect(flashcards.status).toHaveText(`${total} to review · 0 scheduled`);
+    await expect(flashcards.answer).toBeHidden();
+    await expect(flashcards.gradeButton('good')).toBeHidden();
 
-  test('the answer stays hidden until it is revealed', async ({ page }) => {
-    await page.goto('/flashcards');
-    await expect(question(page)).toHaveText(first.front.replaceAll('`', ''));
-    await expect(status(page)).toHaveText(`${total} to review · 0 scheduled`);
-    await expect(page.getByRole('group', { name: 'Answer' })).toBeHidden();
-    await expect(gradeButton(page, 'good')).toBeHidden();
-
-    await reveal(page).click();
-    await expect(page.getByRole('group', { name: 'Answer' })).toHaveText(first.back.replaceAll('`', ''));
-    await expect(gradeButton(page, 'again')).toContainText('now');
-    await expect(gradeButton(page, 'good')).toContainText('1 day');
-    await expect(gradeButton(page, 'easy')).toContainText('4 days');
+    await flashcards.revealButton.click();
+    await expect(flashcards.answer).toHaveText(plain(first.back));
+    await expect(flashcards.gradeButton('again')).toContainText('now');
+    await expect(flashcards.gradeButton('good')).toContainText('1 day');
+    await expect(flashcards.gradeButton('easy')).toContainText('4 days');
   });
 
-  test('code in backticks renders as code', async ({ page }) => {
-    await page.goto('/flashcards');
-    await reveal(page).click();
+  test('code in backticks renders as code', async ({ flashcards }) => {
+    await flashcards.goto();
+    await flashcards.revealButton.click();
     const code = first.back.match(/`([^`]+)`/)?.[1] ?? '';
-    await expect(page.getByRole('group', { name: 'Answer' }).locator('code').first()).toHaveText(code);
+    await expect(flashcards.answer.locator('code').first()).toHaveText(code);
   });
 
-  test('a graded card is saved and stays away after a reload', async ({ page }) => {
-    await page.goto('/flashcards');
-    await reveal(page).click();
-    await gradeButton(page, 'good').click();
+  test('a graded card is saved and stays away after a reload', async ({ flashcards, page }) => {
+    await flashcards.goto();
+    await flashcards.review('good');
 
-    await expect(question(page)).toHaveText(second.front.replaceAll('`', ''));
-    await expect(status(page)).toHaveText(`${total - 1} to review · 1 scheduled`);
+    await expect(flashcards.question).toHaveText(plain(second.front));
+    await expect(flashcards.status).toHaveText(`${total - 1} to review · 1 scheduled`);
 
     await page.reload();
-    await expect(question(page)).toHaveText(second.front.replaceAll('`', ''));
-    const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '{}'), KEY);
+    await expect(flashcards.question).toHaveText(plain(second.front));
+    const saved = await flashcards.savedProgress();
     expect(saved.flashcards[first.id]).toMatchObject({ grade: 'good', intervalDays: 1, reviews: 1 });
   });
 
-  test('again sends the card to the back of the queue', async ({ page }) => {
+  test('again sends the card to the back of the queue', async ({ flashcards, page }) => {
     const others = deck.cards.slice(2).map(({ id }) => [id, savedCard(FUTURE)]);
-    await seed(page, Object.fromEntries(others));
-    await page.goto('/flashcards');
-    await expect(status(page)).toHaveText(`2 to review · ${total - 2} scheduled`);
+    await seedCards(flashcards, Object.fromEntries(others));
+    await flashcards.goto();
+    await expect(flashcards.status).toHaveText(`2 to review · ${total - 2} scheduled`);
 
-    await reveal(page).click();
-    await gradeButton(page, 'again').click();
-    await expect(question(page)).toHaveText(second.front.replaceAll('`', ''));
-    await expect(status(page)).toHaveText(`2 to review · ${total - 2} scheduled`);
+    await flashcards.review('again');
+    await expect(flashcards.question).toHaveText(plain(second.front));
+    await expect(flashcards.status).toHaveText(`2 to review · ${total - 2} scheduled`);
 
-    await reveal(page).click();
-    await gradeButton(page, 'easy').click();
-    await expect(question(page)).toHaveText(first.front.replaceAll('`', ''));
+    await flashcards.review('easy');
+    await expect(flashcards.question).toHaveText(plain(first.front));
 
-    await reveal(page).click();
-    await gradeButton(page, 'good').click();
-    await expect(page.getByRole('heading', { name: 'all caught up' })).toBeFocused();
+    await flashcards.review('good');
+    await expect(flashcards.caughtUp).toBeFocused();
     await expect(page.getByText('3 reviews this session. Next card due tomorrow.')).toBeVisible();
   });
 
-  test('a card that is due comes before new cards', async ({ page }) => {
-    await seed(page, { [second.id]: savedCard(PAST) });
-    await page.goto('/flashcards');
-    await expect(question(page)).toHaveText(second.front.replaceAll('`', ''));
-    await reveal(page).click();
-    await expect(gradeButton(page, 'good')).toContainText('8 days');
+  test('a card that is due comes before new cards', async ({ flashcards }) => {
+    await seedCards(flashcards, { [second.id]: savedCard(PAST) });
+    await flashcards.goto();
+    await expect(flashcards.question).toHaveText(plain(second.front));
+    await flashcards.revealButton.click();
+    await expect(flashcards.gradeButton('good')).toContainText('8 days');
   });
 
-  test('a visitor with nothing due sees when to come back', async ({ page }) => {
-    await seed(page, Object.fromEntries(deck.cards.map(({ id }) => [id, savedCard(FUTURE)])));
-    await page.goto('/flashcards');
-    await expect(page.getByRole('heading', { name: 'all caught up' })).toBeVisible();
-    await expect(status(page)).toHaveText(`0 to review · ${total} scheduled`);
-    await expect(flashcard(page)).toBeHidden();
+  test('a visitor with nothing due sees when to come back', async ({ flashcards }) => {
+    await seedCards(flashcards, Object.fromEntries(deck.cards.map(({ id }) => [id, savedCard(FUTURE)])));
+    await flashcards.goto();
+    await expect(flashcards.caughtUp).toBeVisible();
+    await expect(flashcards.status).toHaveText(`0 to review · ${total} scheduled`);
+    await expect(flashcards.card).toBeHidden();
   });
 
-  test('choosing a chapter starts a new session for it', async ({ page }) => {
-    await page.goto('/flashcards');
-    const chapter = page.getByRole('combobox', { name: 'chapter' });
-    await expect(chapter.getByRole('option')).toHaveText([
+  test('choosing a chapter starts a new session for it', async ({ flashcards }) => {
+    await flashcards.goto();
+    const { chapterFilter } = flashcards;
+    await expect(chapterFilter.getByRole('option')).toHaveText([
       `all chapters (${total})`,
       ...decks.map(deckOption),
     ]);
 
-    await reveal(page).click();
-    await chapter.focus();
-    await chapter.selectOption({ label: deckOption(decks[decks.length - 1]) });
-    await expect(reveal(page)).toBeVisible();
-    await expect(page.getByRole('group', { name: 'Answer' })).toBeHidden();
-    await expect(chapter).toBeFocused();
+    await flashcards.revealButton.click();
+    await chapterFilter.focus();
+    await chapterFilter.selectOption({ label: deckOption(decks[decks.length - 1]) });
+    await expect(flashcards.revealButton).toBeVisible();
+    await expect(flashcards.answer).toBeHidden();
+    await expect(chapterFilter).toBeFocused();
   });
 
-  test('long code wraps instead of widening a 375px page', async ({ page }) => {
+  test('long code wraps instead of widening a 375px page', async ({ flashcards, page }) => {
     await page.setViewportSize({ width: 375, height: 800 });
     const longest = 'selectors/scoped-continue';
     const others = deck.cards.filter(({ id }) => id !== longest).map(({ id }) => [id, savedCard(FUTURE)]);
-    await seed(page, Object.fromEntries(others));
-    await page.goto('/flashcards');
-    await reveal(page).click();
-    await expect(gradeButton(page, 'easy')).toBeVisible();
-
-    const { scrollWidth, clientWidth } = await page.evaluate(() => ({
-      scrollWidth: document.documentElement.scrollWidth,
-      clientWidth: document.documentElement.clientWidth,
-    }));
-    expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+    await seedCards(flashcards, Object.fromEntries(others));
+    await flashcards.goto();
+    await flashcards.revealButton.click();
+    await expect(flashcards.gradeButton('easy')).toBeVisible();
+    expect(await flashcards.horizontalOverflow()).toBeLessThanOrEqual(0);
   });
 
-  test('a keyboard user can work through a card', async ({ page, isMobile }) => {
+  test('a keyboard user can work through a card', async ({ flashcards, page, isMobile }) => {
     test.skip(isMobile, 'covers keyboard use only');
-    await page.goto('/flashcards');
-    await reveal(page).focus();
+    await flashcards.goto();
+    await flashcards.revealButton.focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('group', { name: 'Answer' })).toBeFocused();
+    await expect(flashcards.answer).toBeFocused();
 
     await page.keyboard.press('Tab');
-    await expect(gradeButton(page, 'again')).toBeFocused();
+    await expect(flashcards.gradeButton('again')).toBeFocused();
     await page.keyboard.press('Tab');
     await page.keyboard.press('Enter');
-    await expect(question(page)).toBeFocused();
-    await expect(question(page)).toHaveText(second.front.replaceAll('`', ''));
+    await expect(flashcards.question).toBeFocused();
+    await expect(flashcards.question).toHaveText(plain(second.front));
   });
 
   for (const theme of ['dark', 'light']) {
-    test(`a revealed card has no detectable a11y violations in the ${theme} theme`, async ({ page }) => {
+    test(`a revealed card has no detectable a11y violations in the ${theme} theme`, async ({
+      flashcards,
+      page,
+    }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      await page.addInitScript((value) => localStorage.setItem('playwright-lab:theme', value), theme);
-      await page.goto('/flashcards');
-      await reveal(page).click();
-      await expect(gradeButton(page, 'good')).toBeVisible();
-      const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
-      expect(results.violations).toEqual([]);
+      await flashcards.presetTheme(theme);
+      await flashcards.goto();
+      await flashcards.revealButton.click();
+      await expect(flashcards.gradeButton('good')).toBeVisible();
+      expect(await flashcards.a11yViolations()).toEqual([]);
     });
   }
 });

@@ -83,6 +83,11 @@ scripts/
   extract-chapters.mjs   PDF → source/chapters/NN-slug.txt (gitignored)
   serve-dist.mjs         tiny static server for tests (see gotchas)
 tests/                   smoke, a11y, playground, locator-engine (compares the engine with real Playwright), and more
+  pages/fixtures.ts      the `test` and `expect` browser specs import; gives each test its page objects as fixtures
+  pages/site-page.ts     SitePage, the base page object: layout, saved theme and progress, overflow and axe checks
+  pages/site-chrome.ts   TopBar, Sidebar and SearchDialog, which every page holds
+  pages/*-page(s).ts     one page object per page; the quiz is QuizPanel in chapter-pages.ts
+  support/saved-progress.ts  builds the localStorage text that seeds a visitor's progress
   support/flaky-world.ts the app the flaky challenges run against, with kind and hostile timing
 source/chapters/         raw reference text per chapter + INDEX.tsv: reference only, NEVER committed
 ```
@@ -142,6 +147,9 @@ The site looks like a Playwright test run in a dark terminal.
   keep accessible names stable.
 - Tests: user-facing locators (`getByRole`, `getByLabel`, `getByText`), web-first assertions, no
   `waitForTimeout`. Every new page gets a smoke test and an entry in `tests/a11y.spec.ts`.
+- Page objects: browser specs import `test` and `expect` from `tests/pages/fixtures.ts` and reach the page through a page object.
+  A new page gets a class in `tests/pages/` and a fixture. Page objects hold locators and actions and return locators; the checks a
+  test exists to make stay in the spec, and the only `expect` allowed in a page object is waiting for an island to be ready.
 
 ## Deploy
 
