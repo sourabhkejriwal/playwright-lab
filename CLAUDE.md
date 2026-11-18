@@ -164,8 +164,9 @@ The site looks like a Playwright test run in a dark terminal.
 
 ## Deploy
 
-`.github/workflows/deploy.yml`: on PRs runs format check, `astro check` and Playwright; on `main` it also
-builds with `SITE_URL`/`BASE_PATH` from `actions/configure-pages` and deploys to GitHub Pages.
+`.github/workflows/deploy.yml`: on PRs runs format check, lint, `astro check` and Playwright; on `main` it also
+builds with `SITE_URL`/`BASE_PATH` from `actions/configure-pages`, runs the smoke tests on that build under its base
+path (`TEST_PREBUILT` skips the rebuild), and deploys those same files to GitHub Pages.
 Repo setting needed once: Settings → Pages → Source: **GitHub Actions**.
 
 ## Gotchas

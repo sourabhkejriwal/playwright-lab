@@ -11,7 +11,8 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only pull requests: cancelling a run on main could stop a deploy halfway.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   checks:
@@ -26,6 +27,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        timeout-minutes: 5
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm check
@@ -33,7 +35,8 @@ jobs:
   test:
     name: Test on ${{ matrix.browser }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Room for every step limit below, so a stuck test run still uploads its report.
+    timeout-minutes: 50
     strategy:
       # Let every browser finish, so one failure doesn't hide the others.
       fail-fast: false
@@ -53,26 +56,29 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        timeout-minutes: 5
       - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+        timeout-minutes: 10
+      # Just over timeouts.ciRun in config/app.ts, so Playwright stops first and writes its report.
       - run: pnpm test ${{ matrix.projects }}
+        timeout-minutes: 26
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
+        timeout-minutes: 3
         with:
           name: playwright-report-${{ matrix.browser }}
           path: playwright-report/
           retention-days: 14
 
-  deploy:
-    name: Deploy to GitHub Pages
+  build:
+    name: Build and smoke test the release
     needs: [checks, test]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: read
+      pages: read
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -81,14 +87,50 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        timeout-minutes: 5
       - id: pages
         uses: actions/configure-pages@v5
+        timeout-minutes: 2
       - run: pnpm build
+        timeout-minutes: 5
         env:
           SITE_URL: ${{ steps.pages.outputs.origin }}
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
+      - run: pnpm exec playwright install --with-deps chromium
+        timeout-minutes: 10
+      # Serves the build above under its real base path, without rebuilding it.
+      - run: pnpm test:smoke --project=desktop --global-timeout=480000
+        timeout-minutes: 10
+        env:
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          TEST_PREBUILT: 'true'
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        timeout-minutes: 3
+        with:
+          name: playwright-report-release
+          path: playwright-report/
+          retention-days: 14
       - uses: actions/upload-pages-artifact@v4
+        timeout-minutes: 3
         with:
           path: dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+        timeout-minutes: 6
+        with:
+          # In milliseconds: how long to wait for Pages to finish. Under the step limit above.
+          timeout: 300000

@@ -3,6 +3,7 @@
 // Why not `astro preview`? Astro 7 auto-backgrounds preview when it detects an AI agent
 // (AI_AGENT / CLAUDECODE env), which makes Playwright think the server exited.
 // Mirrors GitHub Pages: /path → /path/index.html, unknown routes → 404.html with status 404.
+// Set BASE_PATH to serve the site under that path, as Pages does for a project site.
 
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
@@ -10,6 +11,7 @@ import { extname, join, normalize, resolve } from 'node:path';
 
 const root = resolve('dist');
 const port = Number(process.argv[2] ?? process.env.PORT ?? 4322);
+const base = (process.env.BASE_PATH ?? '').replace(/\/$/, '');
 const types = {
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css',
@@ -39,7 +41,8 @@ async function resolveFile(pathname) {
 
 createServer(async (req, res) => {
   const { pathname } = new URL(req.url ?? '/', 'http://localhost');
-  const file = await resolveFile(pathname);
+  const insideBase = pathname === base || pathname.startsWith(`${base}/`);
+  const file = insideBase ? await resolveFile(pathname.slice(base.length) || '/') : null;
   const target = file ?? join(root, '404.html');
   try {
     const body = await readFile(target);

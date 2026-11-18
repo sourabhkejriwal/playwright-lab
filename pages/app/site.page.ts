@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import type { Locator, Page, Response } from '@playwright/test';
+import { appConfig } from '../../config/app';
 import { StorageKeys } from '../../enums/app/app';
 import { PROGRESS_STORAGE_KEY, type Progress } from '../../src/stores/progress';
 import { SearchDialogComponent } from '../components/search-dialog.component';
@@ -91,11 +92,11 @@ export class SitePage {
   /**
    * Opens a path on the site.
    *
-   * @param path - The path, relative to the base URL.
+   * @param path - The path, relative to the site's base path.
    * @returns The navigation's response.
    */
   visit(path: string): Promise<Response | null> {
-    return this.page.goto(path);
+    return this.page.goto(`${appConfig.basePath}${path}`);
   }
 
   /**
