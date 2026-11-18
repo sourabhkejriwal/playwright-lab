@@ -12,8 +12,8 @@ const pages = [
     type: 'article',
   },
   {
-    path: '/chapters/09-accessibility/',
-    title: 'ch09 Accessibility testing with axe-core · playwright-lab',
+    path: '/chapters/10-visual-regression/',
+    title: 'ch10 Visual regression testing · playwright-lab',
     type: 'website',
   },
   { path: '/playground/', title: 'playground · playwright-lab', type: 'website' },

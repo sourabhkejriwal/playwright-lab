@@ -1,0 +1,369 @@
+---
+chapter: 9
+title: Accessibility testing with axe-core
+summary: Scan pages with axe-core, choose the WCAG tags that really cover your target, fix the common violations, and test what a scanner can't see.
+readingMinutes: 13
+---
+
+import { url as siteUrl } from '../../lib/url';
+
+## What automation can and can't do
+
+Accessibility, often shortened to **a11y**, means people can use your site however they read, move or interact. That includes people using a screen reader, a keyboard only, or high zoom.
+
+**axe-core** is a rules engine that inspects a live page. **@axe-core/playwright** injects it into the page your test has open, so a scan can run at any point in a user journey.
+
+A scan is good at facts it can measure, such as a missing label or low contrast. The axe-core project says it finds on average 57% of WCAG issues automatically. The rest need a person, so a clean scan means "no detectable violations", not "accessible".
+
+## Your first scan
+
+```bash
+npm install --save-dev @axe-core/playwright
+```
+
+```ts title="tests/a11y.spec.ts" {8-10}
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+test('home page has no detectable WCAG violations', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('main')).toBeVisible();
+
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+    .analyze();
+
+  expect(results.violations).toEqual([]);
+});
+```
+
+`analyze()` scans the page as it is at that moment, so first wait for the content you care about. Assert on something visible, because Playwright discourages `waitForLoadState('networkidle')`.
+
+## WCAG in brief
+
+The **Web Content Accessibility Guidelines** are organised in three layers: four principles, guidelines under each principle, and testable **success criteria** under each guideline.
+
+| Principle      | The question it asks                      | Example                         |
+| -------------- | ----------------------------------------- | ------------------------------- |
+| Perceivable    | Can people sense the content?             | Alt text, captions, contrast    |
+| Operable       | Can people use the controls?              | Keyboard access, enough time    |
+| Understandable | Can people follow the content and the UI? | Clear errors, predictable pages |
+| Robust         | Can assistive technology read the page?   | Correct names, roles and states |
+
+Each success criterion has a conformance level.
+
+| Level | Meaning                                   | Example                                 |
+| ----- | ----------------------------------------- | --------------------------------------- |
+| A     | Removes the most serious barriers         | 1.1.1 Non-text Content                  |
+| AA    | The usual target for teams and law        | 1.4.3 Contrast (Minimum), 1.4.10 Reflow |
+| AAA   | Strictest, not achievable for all content | 1.4.6 Contrast (Enhanced)               |
+
+To conform at AA, a page must meet every A and AA criterion. Legal requirements depend on where you operate and which version they name. For example, the US Section 508 standards reference WCAG 2.0 AA, and EN 301 549 V3.2.1 in Europe references WCAG 2.1 AA.
+
+## Choose axe tags carefully
+
+`withTags()` selects rules by tag. WCAG levels build on each other, but **axe tags don't**. A tag only selects rules carrying that exact tag, and each rule is tagged with the WCAG version and level that introduced its criterion.
+
+| Tag             | Rules in axe-core 4.14 | What it selects                       |
+| --------------- | ---------------------- | ------------------------------------- |
+| `wcag2a`        | 62                     | WCAG 2.0 Level A                      |
+| `wcag2aa`       | 3                      | WCAG 2.0 Level AA, including contrast |
+| `wcag21a`       | 1                      | Added in WCAG 2.1 at Level A          |
+| `wcag21aa`      | 3                      | Added in WCAG 2.1 at Level AA         |
+| `wcag22aa`      | 1                      | Added in WCAG 2.2 at Level AA         |
+| `best-practice` | 30                     | Useful advice beyond WCAG             |
+
+Here is what different tags report for one page with no `lang`, an image without alt text, an unlabelled input and low contrast:
+
+| `withTags()` argument                                      | Violations found |
+| ---------------------------------------------------------- | ---------------- |
+| `['wcag21aa']`                                             | 0                |
+| `['wcag2aa']`                                              | 1                |
+| `['wcag2a']`                                               | 3                |
+| `['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']` | 4                |
+
+<Callout type="gotcha" title="wcag21aa alone is not WCAG 2.1 AA">
+  `withTags(['wcag21aa'])` skips the Level A and WCAG 2.0 rules, so a badly broken page can pass. To target
+  WCAG 2.1 AA, list `wcag2a`, `wcag2aa`, `wcag21a` and `wcag21aa`. Add `wcag22aa` to target WCAG 2.2 AA.
+</Callout>
+
+With no tags at all, `analyze()` runs every rule that's on by default, which includes best practices. AAA and experimental rules are off by default. A rule such as `color-contrast-enhanced` runs when you ask for its tag, here `wcag2aaa`.
+
+<Callout type="warn" title="a mistyped tag passes silently">
+  An unknown tag such as `wcag99` raises no error. axe runs zero rules and returns no violations. An unknown
+  rule id in `withRules()` does throw. If tags come from configuration, also assert that
+  `results.passes.length` is above zero.
+</Callout>
+
+Add `best-practice` when you want checks such as `heading-order`, `page-has-heading-one`, `region` and `tabindex`. They aren't WCAG failures, so many teams report them separately from the compliance gate.
+
+## Scope a scan
+
+Scope a scan with CSS selectors when a test owns one component, or when part of the page is outside your control.
+
+```ts title="checkout.spec.ts"
+const results = await new AxeBuilder({ page })
+  .include('#checkout-form')
+  .exclude('.payment-provider-frame')
+  .analyze();
+```
+
+- `include()` limits the scan to matching elements and their contents. It throws if nothing matches.
+- `exclude()` skips matching elements, even inside an included area. A selector that matches nothing is ignored.
+- Iframes are scanned too, including cross-origin ones, so exclude a third-party frame on purpose if you can't fix it.
+
+Excluding an element also stops every rule from checking it, so keep exclusions narrow and write down why each one exists.
+
+## Choose rules
+
+`withRules()` runs only the rules you name. `disableRules()` removes rules from whatever would otherwise run.
+
+```ts title="rules.spec.ts"
+// Only these two rules
+await new AxeBuilder({ page }).withRules(['color-contrast', 'image-alt']).analyze();
+
+// The WCAG set, minus one rule
+await new AxeBuilder({ page })
+  .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+  .disableRules(['color-contrast'])
+  .analyze();
+```
+
+<Callout type="gotcha" title="withTags and withRules replace each other">
+  Both set the same option, so the last call wins. `withRules(['image-alt']).withTags(['wcag2aa'])` doesn't
+  run `image-alt`. Calling `withTags()` twice also keeps only the second list.
+</Callout>
+
+## Read the results
+
+| Field          | Meaning                                     | What to do                     |
+| -------------- | ------------------------------------------- | ------------------------------ |
+| `violations`   | Rules that failed                           | Fix them, and fail the test    |
+| `incomplete`   | axe couldn't decide, so a person must check | Review them                    |
+| `passes`       | Rules that passed                           | Useful for checking a scan ran |
+| `inapplicable` | Rules with nothing to check on this page    | Usually ignore                 |
+
+Text over a gradient is a typical `incomplete` result, because axe can't work out one background color. It isn't a violation, so `expect(results.violations).toEqual([])` still passes.
+
+Each violation has an `id`, an `impact` (`minor` to `critical`), a `helpUrl`, and `nodes` listing the failing elements. Print a short summary and attach the full data to the report.
+
+```ts title="tests/a11y.spec.ts" {8-11,13-15}
+const wcagTags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+
+test('sign-in page', async ({ page }, testInfo) => {
+  await page.goto('/sign-in');
+
+  const results = await new AxeBuilder({ page }).withTags(wcagTags).analyze();
+
+  await testInfo.attach('axe-results', {
+    body: JSON.stringify(results.violations, null, 2),
+    contentType: 'application/json',
+  });
+
+  const summary = results.violations.map(
+    (v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`,
+  );
+  expect(summary).toEqual([]);
+});
+```
+
+A failure now reads like `label (critical): input`, and <ApiRef name="testInfo.attach()" /> keeps the details in the HTML report.
+
+## Share the setup with a fixture
+
+A fixture keeps the tags and agreed exclusions in one place, and each test can still narrow its scan. <a href={siteUrl('chapters/05-fixtures')}>Chapter 5</a> covers fixtures in depth.
+
+```ts title="tests/fixtures.ts"
+import { test as base } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+export const wcagTags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+
+export const test = base.extend<{ makeAxeBuilder: () => AxeBuilder }>({
+  makeAxeBuilder: async ({ page }, use) => {
+    await use(() => new AxeBuilder({ page }).withTags(wcagTags).exclude('#chat-widget'));
+  },
+});
+
+export { expect } from '@playwright/test';
+```
+
+```ts title="tests/sign-in.spec.ts"
+import { test, expect } from './fixtures';
+
+test('sign-in form', async ({ page, makeAxeBuilder }) => {
+  await page.goto('/sign-in');
+  const results = await makeAxeBuilder().include('form').analyze();
+  expect(results.violations).toEqual([]);
+});
+```
+
+The fixture provides a function because an `AxeBuilder` holds its settings, so each scan should start from a new one.
+
+## Scan the states users see
+
+axe skips hidden content. A closed dialog with an unlabelled input passes, and the same dialog fails once it's open. Drive the page into each state, then scan.
+
+```ts title="dialog.spec.ts" {3-4}
+test('delete dialog', async ({ page, makeAxeBuilder }) => {
+  await page.goto('/account');
+  await page.getByRole('button', { name: 'Delete account' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+
+  const results = await makeAxeBuilder().include('dialog').analyze();
+  expect(results.violations).toEqual([]);
+});
+```
+
+Good states to cover are open menus and dialogs, validation errors, empty and loading views, and each color theme.
+
+<Callout type="tip" title="scan after animations settle">
+  Text that is fading in can fail `color-contrast` for that moment. If your CSS honours reduced motion, set
+  `test.use({ reducedMotion: 'reduce' })` in the scan so axe measures the final colors.
+</Callout>
+
+## Fix common violations
+
+| Problem             | Fix                                                                    |
+| ------------------- | ---------------------------------------------------------------------- |
+| Low contrast        | 4.5:1 for normal text, 3:1 for large text (24px, or about 18.7px bold) |
+| Unlabelled field    | Connect a `<label>` to the input                                       |
+| Missing alt text    | Describe the image, or use `alt=""` if it's decorative                 |
+| Mouse-only control  | Use a real `<button>` or `<a>`                                         |
+| Lost focus position | Keep a clearly visible focus style                                     |
+| Skipped headings    | Use one `h1`, then go down one level at a time                         |
+| Silent updates      | Put the message in a live region                                       |
+
+```html title="fixes.html"
+<!-- A label connected to its input -->
+<label for="email">Email</label>
+<input id="email" type="email" autocomplete="email" />
+
+<!-- Informative and decorative images -->
+<img src="chart.png" alt="Sales doubled between March and June" />
+<img src="divider.png" alt="" />
+
+<!-- A native control works with the keyboard for free -->
+<button type="button">Add to cart</button>
+
+<!-- Announced politely, after the current speech -->
+<p role="status">Changes saved</p>
+
+<!-- Announced straight away, for urgent errors -->
+<p role="alert">Your session has expired</p>
+```
+
+`role="status"` already implies `aria-live="polite"`, and `role="alert"` implies `aria-live="assertive"`, so you don't need both. Add the live region to the page before its text changes, because screen readers announce changes to a region they already know about.
+
+Avoid `tabindex` values above 0, because they pull elements out of the natural tab order. `tabindex="0"` makes a custom control focusable, but you must then add its role, name and key handling yourself, so prefer native elements.
+
+## What a scan can't see
+
+axe reported nothing on a page containing all of these:
+
+- A clickable `<div>` that no keyboard can reach
+- A link that only says "click here"
+- An image whose alt text describes the wrong picture
+- A button that swallows every key press
+- A button with its focus outline removed
+
+Playwright can cover much of this with ordinary tests. Locators such as <ApiRef name="page.getByRole()" /> are already small accessibility checks, because they find elements by role and accessible name. Try them in the <a href={siteUrl('playground')}>locator playground</a>.
+
+### Keyboard paths
+
+Press the keys a user would, then assert where focus went with <ApiRef name="expect(locator).toBeFocused()" />.
+
+```ts title="keyboard.spec.ts"
+test('the sign-in form follows the visual order', async ({ page }) => {
+  await page.goto('/sign-in');
+
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByLabel('Email')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Sign in' })).toBeFocused();
+});
+```
+
+### Focus in a dialog
+
+A dialog should take focus when it opens and return it to the trigger when it closes.
+
+```ts title="dialog-focus.spec.ts" {7,10}
+test('the dialog manages focus', async ({ page }) => {
+  await page.goto('/account');
+  const trigger = page.getByRole('button', { name: 'Delete account' });
+
+  await trigger.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Cancel' })).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(trigger).toBeFocused();
+});
+```
+
+### Names, roles and structure
+
+<ApiRef name="expect(locator).toHaveAccessibleName()" /> and <ApiRef name="expect(locator).toHaveRole()" />
+check one element. <ApiRef name="expect(locator).toMatchAriaSnapshot()" /> checks the structure assistive
+technology receives.
+
+```ts title="structure.spec.ts"
+await expect(page.getByTestId('close-dialog')).toHaveAccessibleName('Close');
+
+await expect(page.getByRole('main')).toMatchAriaSnapshot(`
+  - heading "Your account" [level=1]
+  - button "Delete account"
+`);
+```
+
+### Status messages and reflow
+
+A test can confirm a live region receives its message. It can't confirm how a screen reader speaks it.
+
+```ts title="status.spec.ts"
+test('saving is reported in a live region', async ({ page }) => {
+  await page.goto('/settings');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status')).toHaveText('Changes saved');
+});
+```
+
+WCAG 1.4.10 Reflow asks for content to work at 320 CSS pixels wide without sideways scrolling. That's the width of a 1280px window at 400% zoom.
+
+```ts title="reflow.spec.ts"
+test.use({ viewport: { width: 320, height: 256 } });
+
+test('the page reflows at 400% zoom', async ({ page }) => {
+  await page.goto('/');
+  const { scrollWidth, clientWidth } = await page.evaluate(() => {
+    const { scrollWidth, clientWidth } = document.documentElement;
+    return { scrollWidth, clientWidth };
+  });
+  expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+});
+```
+
+## A quick manual pass
+
+Run through this list for each new feature, ideally with NVDA on Windows or VoiceOver on macOS and iOS.
+
+- **Keyboard:** Reach and use everything without a mouse, in a sensible order, and never get trapped.
+- **Focus:** You can always see where focus is, and it moves sensibly when dialogs open and close.
+- **Zoom:** At 400% the content fits one column with no sideways scrolling.
+- **Color:** Errors and states aren't shown by color alone.
+- **Screen reader:** Announcements make sense in order, and decorative images are skipped.
+- **Updates:** Status messages are announced without moving focus.
+- **Media:** Videos have accurate captions.
+
+## Interview angle
+
+- **Does a clean axe scan mean a page is accessible?** No. It means no detectable violations, and a person must still check things such as meaning, reading order and the real keyboard experience.
+- **Which tags target WCAG 2.1 AA?** `wcag2a`, `wcag2aa`, `wcag21a` and `wcag21aa`. Each tag selects only its own rules.
+- **What's the difference between `violations` and `incomplete`?** Violations are definite failures. Incomplete results are cases axe couldn't decide, so they need a manual review.
+- **Why might a scan miss a broken dialog?** axe skips hidden content, so the test must open the dialog before it scans.
+- **`exclude()` or `disableRules()` for a third-party widget?** Use `exclude()` for the widget, so its rules still run on the rest of your page.
+- **How do you share axe configuration across tests?** Use a fixture that returns a new, preconfigured `AxeBuilder`.
+- **What can Playwright test beyond axe?** Tab order, focus handling, accessible names, ARIA structure, live region content and reflow.

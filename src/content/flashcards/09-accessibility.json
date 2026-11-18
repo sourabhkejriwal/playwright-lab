@@ -1,0 +1,75 @@
+{
+  "chapter": 9,
+  "cards": [
+    {
+      "id": "accessibility/clean-scan",
+      "front": "What does a clean axe scan prove?",
+      "back": "Only that axe detected no violations. People still need to check meaning, reading order and the real keyboard and screen reader experience."
+    },
+    {
+      "id": "accessibility/pour",
+      "front": "What are the four WCAG principles?",
+      "back": "Perceivable, Operable, Understandable and Robust, often shortened to POUR."
+    },
+    {
+      "id": "accessibility/wcag21-tags",
+      "front": "Which axe tags target WCAG 2.1 AA?",
+      "back": "`wcag2a`, `wcag2aa`, `wcag21a` and `wcag21aa`. Add `wcag22aa` to target WCAG 2.2 AA."
+    },
+    {
+      "id": "accessibility/exact-tags",
+      "front": "Does `withTags(['wcag21aa'])` include Level A rules?",
+      "back": "No. A tag selects only rules carrying that exact tag, so Level A and WCAG 2.0 rules are skipped."
+    },
+    {
+      "id": "accessibility/unknown-tag",
+      "front": "What happens if you mistype a tag in `withTags()`?",
+      "back": "axe raises no error and runs zero rules, so the scan passes. Check that `results.passes.length` is above zero."
+    },
+    {
+      "id": "accessibility/tags-vs-rules",
+      "front": "What happens if you call both `withTags()` and `withRules()`?",
+      "back": "The last call wins, because both set the same option. `disableRules()` can be combined with either."
+    },
+    {
+      "id": "accessibility/include-exclude",
+      "front": "How do `include()` and `exclude()` behave when a selector matches nothing?",
+      "back": "`include()` throws an error. `exclude()` ignores the selector."
+    },
+    {
+      "id": "accessibility/incomplete",
+      "front": "What is `results.incomplete`?",
+      "back": "Checks axe couldn't decide, such as text over a gradient. They need a manual review and don't count as violations."
+    },
+    {
+      "id": "accessibility/hidden-content",
+      "front": "Why scan a dialog after opening it?",
+      "back": "axe skips hidden content, so a closed dialog's problems aren't reported."
+    },
+    {
+      "id": "accessibility/fixture",
+      "front": "Why does an axe fixture usually provide a function?",
+      "back": "Each scan gets a new `AxeBuilder` with the shared tags and exclusions, and a test can narrow it without affecting other scans."
+    },
+    {
+      "id": "accessibility/contrast",
+      "front": "What are the WCAG AA contrast minimums for text?",
+      "back": "4.5:1 for normal text and 3:1 for large text, meaning 24px or about 18.7px bold."
+    },
+    {
+      "id": "accessibility/decorative-image",
+      "front": "How should a decorative image be marked up?",
+      "back": "Use an empty `alt=\"\"` so screen readers skip it."
+    },
+    {
+      "id": "accessibility/live-roles",
+      "front": "Which live region settings do `role=\"status\"` and `role=\"alert\"` imply?",
+      "back": "`status` implies `aria-live=\"polite\"`, and `alert` implies `aria-live=\"assertive\"`."
+    },
+    {
+      "id": "accessibility/reflow",
+      "front": "How can a Playwright test approximate 400% zoom for WCAG 1.4.10 Reflow?",
+      "back": "Use a viewport 320 CSS pixels wide and check that the page has no sideways scrolling."
+    }
+  ]
+}

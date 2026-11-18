@@ -60,7 +60,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ 06 Parallelization and performance
 - [x] ⇉ 07 CI/CD pipelines
 - [x] ⇉ 08 Headless testing and debugging
-- [ ] ⇉ 09 Accessibility testing with axe-core
+- [x] ⇉ 09 Accessibility testing with axe-core
 - [ ] ⇉ 10 Visual regression testing
 - [ ] ⇉ 11 Mobile web
 - [ ] ⇉ 12 Forms
@@ -76,6 +76,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [ ] Playground behaviour tests (locator → expected highlights)
 - [ ] Cross-browser projects (Firefox, WebKit) in CI
 - [ ] README: architecture, test strategy, badges, screenshots, live link
+- [ ] Add `wcag21a` and `wcag22aa` to `tests/a11y.spec.ts`, and fix the 16 home page links that fail `target-size` (found while writing chapter 9)
 
 ## Notes and decisions log
 
@@ -225,3 +226,10 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   script run with `node`. **Not run:** anything needing a window (Inspector, UI Mode, `--headed`, `show-trace`), `xvfb-run`, `channel: 'chromium'` and
   `--auto-open-devtools-for-tabs`. Their descriptions come from the installed CLI help, types and bundled UI. Chapter 9 is now the "unwritten chapter"
   example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 9 must move those to chapter 10.
+- 2026-11-18: Chapter 9 notes follow the installed axe-core (4.14) and Playwright (1.65) where the reference PDF differs: axe tags are exact, so
+  `wcag21aa` alone skips Level A and WCAG 2.0 rules and reported nothing on a badly broken page; `wcag2a` and `wcag2aa` mean WCAG 2.0 only; and
+  `networkidle` is discouraged. Added from testing: an unknown tag silently runs zero rules, `withTags()` and `withRules()` replace each other, `include()`
+  throws when nothing matches, hidden content is skipped, cross-origin iframes are scanned, and text mid-fade can fail `color-contrast`. Snippets ran in a
+  throwaway project on desktop Chromium, since removed. **Not run:** any screen reader, so the live region announcement advice comes from the ARIA
+  specification and common guidance. Legal references were not checked against the standards' text. Chapter 10 is now the "unwritten chapter" example in the
+  smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 10 must move those to chapter 11.

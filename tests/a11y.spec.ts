@@ -13,6 +13,7 @@ const pages = [
   '/chapters/07-ci-cd',
   '/chapters/08-headless-debugging',
   '/chapters/09-accessibility',
+  '/chapters/10-visual-regression',
   '/playground',
   '/flashcards',
   '/config',

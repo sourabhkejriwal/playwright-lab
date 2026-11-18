@@ -124,6 +124,19 @@ test.describe('chapters', () => {
     await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
   });
 
+  test('the accessibility chapter renders its notes and quiz', async ({ page }) => {
+    await page.goto('/chapters/09-accessibility');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(
+      'Accessibility testing with axe-core',
+    );
+    await expect(page.getByRole('heading', { level: 2, name: 'Choose axe tags carefully' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'tests/fixtures.ts' })).toContainText('makeAxeBuilder');
+    await expect(
+      page.getByRole('main').getByRole('link', { name: 'locator playground', exact: true }),
+    ).toHaveAttribute('href', /\/playground\/?$/);
+    await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
+  });
+
   test('code blocks show a title bar and highlighted lines', async ({ page }) => {
     await page.goto('/chapters/02-selectors');
 
@@ -155,7 +168,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter shows a pending placeholder', async ({ page }) => {
-    await page.goto('/chapters/09-accessibility');
+    await page.goto('/chapters/10-visual-regression');
     await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();
   });
 
@@ -185,7 +198,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter has no table of contents', async ({ page }) => {
-    await page.goto('/chapters/09-accessibility');
+    await page.goto('/chapters/10-visual-regression');
     await expect(page.locator('[data-toc]')).toHaveCount(0);
   });
 

@@ -66,7 +66,7 @@ test.describe('chapter quiz', () => {
     page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '{}').quizzes?.selectors, KEY);
 
   test('an unwritten chapter has no quiz', async ({ page }) => {
-    await page.goto('/chapters/09-accessibility');
+    await page.goto('/chapters/10-visual-regression');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expect(quiz(page)).toHaveCount(0);
   });

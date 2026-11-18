@@ -1,0 +1,60 @@
+{
+  "chapter": 9,
+  "questions": [
+    {
+      "question": "A page has images with no alt text, yet `withTags(['wcag21aa'])` reports no violations. Why?",
+      "options": [
+        "axe only checks images when `best-practice` is included",
+        "The tag selects only rules added at WCAG 2.1 AA, so the Level A rule for alt text doesn't run",
+        "Alt text is a Level AAA requirement",
+        "`analyze()` must be called twice to load image rules"
+      ],
+      "answer": 1,
+      "explanation": "axe tags are exact. To target WCAG 2.1 AA, list `wcag2a`, `wcag2aa`, `wcag21a` and `wcag21aa`."
+    },
+    {
+      "question": "A scan of a page with a closed dialog passes, but the open dialog has an unlabelled input. What should the test do?",
+      "options": [
+        "Add the `experimental` tag",
+        "Use `setLegacyMode()` before scanning",
+        "Scan twice in a row",
+        "Open the dialog, wait for it to be visible, then scan"
+      ],
+      "answer": 3,
+      "explanation": "axe skips hidden content, so each state has to be on screen when `analyze()` runs."
+    },
+    {
+      "question": "What does it mean when a result appears in `results.incomplete`?",
+      "options": [
+        "axe couldn't decide, so a person needs to review it",
+        "The scan timed out before finishing",
+        "The rule passed on some elements",
+        "The element is excluded from the scan"
+      ],
+      "answer": 0,
+      "explanation": "Text over a gradient is a typical example, because axe can't work out a single background color. Incomplete results don't fail `expect(results.violations).toEqual([])`."
+    },
+    {
+      "question": "What runs after `new AxeBuilder({ page }).withRules(['image-alt']).withTags(['wcag2aa']).analyze()`?",
+      "options": [
+        "Only `image-alt`",
+        "`image-alt` plus every `wcag2aa` rule",
+        "Only the `wcag2aa` rules, because the last call replaces the first",
+        "Nothing, because the call throws an error"
+      ],
+      "answer": 2,
+      "explanation": "`withRules()` and `withTags()` set the same option, so the later call wins."
+    },
+    {
+      "question": "Which problem will an axe scan NOT report?",
+      "options": [
+        "An input with no label",
+        "Body text with a 2:1 contrast ratio",
+        "An image with no `alt` attribute",
+        "A clickable `<div>` that can't be reached by keyboard"
+      ],
+      "answer": 3,
+      "explanation": "axe can't tell that a plain `<div>` is meant to be a control. Use a native `<button>`, and cover keyboard paths with Playwright tests and manual checks."
+    }
+  ]
+}
