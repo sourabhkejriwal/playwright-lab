@@ -33,6 +33,14 @@ Never read the whole PDF. Chapter text is pre-extracted (see "Content workflow")
 | `pnpm test:ui`          | Playwright UI mode                                            |
 | `pnpm format`           | Prettier (incl. `.astro`)                                     |
 | `pnpm extract:chapters` | Re-extract `source/chapters/*.txt` from the PDF               |
+| `pnpm roadmap`          | Work through `ROADMAP.md` unattended (see below)              |
+
+## Unattended roadmap runs
+
+`pnpm roadmap` (`scripts/run-roadmap.mjs`) starts a fresh Claude session for each open task, then runs
+`pnpm check`, `pnpm format:check` and `pnpm test` itself before starting the next one. It stops at the first
+failure or blocked task. Options: `--max N`, `--dry-run`. To stop after the current task: `touch .roadmap/stop`.
+Logs go to `.roadmap/logs/`. Work is committed to local `main` and pushing is disabled for these sessions.
 
 ## Stack
 

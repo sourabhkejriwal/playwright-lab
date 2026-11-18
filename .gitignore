@@ -8,6 +8,9 @@ node_modules/
 # raw text extracted from the reference PDF: reference only, never committed
 source/
 
+# roadmap runner logs and stop file
+.roadmap/
+
 # Playwright
 playwright-report/
 test-results/
