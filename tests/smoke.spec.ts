@@ -56,6 +56,36 @@ test.describe('chapters', () => {
     await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();
   });
 
+  test('table of contents jumps to a section and marks it current', async ({ page, isMobile }) => {
+    test.skip(isMobile, 'the table of contents only shows on xl screens');
+    // Tall enough that the page bottoms out before this section reaches the top of the viewport.
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    await page.goto('/chapters/02-selectors');
+
+    const toc = page.getByRole('navigation', { name: 'On this page' });
+    await expect(toc.getByRole('link')).toHaveCount(3);
+
+    const link = toc.getByRole('link', { name: 'Fall back deliberately' });
+    await link.click();
+    await expect(page).toHaveURL(/#fall-back-deliberately$/);
+    await expect(page.getByRole('heading', { level: 2, name: 'Fall back deliberately' })).toBeInViewport();
+    await expect(link).toHaveAttribute('aria-current', 'location');
+
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await expect(link).not.toHaveAttribute('aria-current', 'location');
+  });
+
+  test('table of contents is hidden on small screens', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'covers the mobile layout only');
+    await page.goto('/chapters/02-selectors');
+    await expect(page.getByRole('navigation', { name: 'On this page' })).toBeHidden();
+  });
+
+  test('an unwritten chapter has no table of contents', async ({ page }) => {
+    await page.goto('/chapters/05-fixtures');
+    await expect(page.locator('[data-toc]')).toHaveCount(0);
+  });
+
   test('prev/next links walk the chapters', async ({ page }) => {
     await page.goto('/chapters/01-setup');
     await page

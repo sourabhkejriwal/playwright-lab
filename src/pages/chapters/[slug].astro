@@ -3,6 +3,7 @@ import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import TerminalWindow from '../../components/TerminalWindow.astro';
 import StatusMark from '../../components/StatusMark.astro';
+import TableOfContents from '../../components/TableOfContents.astro';
 import { getChapters, type ChapterWithStatus } from '../../lib/chapters';
 import { pad } from '../../data/chapters';
 import { url } from '../../lib/url';
@@ -22,60 +23,69 @@ interface Props {
 }
 const { chapter, prev, next } = Astro.props;
 const written = chapter.status === 'passed' && chapter.entry;
-const { Content } = written ? await render(chapter.entry!) : { Content: null };
+const { Content, headings } = written ? await render(chapter.entry!) : { Content: null, headings: [] };
+const tocHeadings = headings.filter((h) => h.depth === 2 || h.depth === 3);
+const hasToc = tocHeadings.length >= 2;
 ---
 
 <BaseLayout
   title={`ch${pad(chapter.num)} ${chapter.title}`}
   description={chapter.entry?.data.summary ?? chapter.blurb}
 >
-  <article>
-    <p class="text-sm text-dim">
-      <a href={url('chapters')} class="text-dim no-underline hover:text-bright">
-        chapters/
-      </a>
-      {pad(chapter.num)}-{chapter.slug}
-    </p>
-    <h1 class="mt-3 flex items-baseline gap-3 text-2xl font-semibold text-bright sm:text-3xl">
-      <StatusMark status={chapter.status} />
-      {chapter.entry?.data.title ?? chapter.title}
-    </h1>
-    <p class="mt-3 max-w-prose font-prose text-lg text-muted">
-      {chapter.entry?.data.summary ?? chapter.blurb}
-    </p>
-
-    <div class="mt-10">
-      {Content ? (
-        <div class="prose-term">
-          <Content />
-        </div>
-      ) : (
-        <TerminalWindow title={`ch${pad(chapter.num)}.spec.ts`} class="max-w-2xl">
-          <p>
-            <StatusMark status="pending" label />
-            <span class="text-muted"> — notes for this chapter aren't written yet.</span>
-          </p>
-          <p class="mt-2 text-dim">test.fixme('write chapter {pad(chapter.num)} notes')</p>
-        </TerminalWindow>
-      )}
-    </div>
-
-    <nav
-      class="mt-16 flex justify-between gap-4 border-t border-line pt-6 text-sm"
-      aria-label="Previous and next chapter"
-    >
-      {prev ? (
-        <a href={url(prev.href)} class="no-underline">
-          ← {pad(prev.num)} {prev.short}
+  <div class:list={[hasToc && 'xl:grid xl:grid-cols-[minmax(0,1fr)_13rem] xl:gap-10']}>
+    <article class="min-w-0">
+      <p class="text-sm text-dim">
+        <a href={url('chapters')} class="text-dim no-underline hover:text-bright">
+          chapters/
         </a>
-      ) : (
-        <span />
-      )}
-      {next && (
-        <a href={url(next.href)} class="no-underline">
-          {pad(next.num)} {next.short} →
-        </a>
-      )}
-    </nav>
-  </article>
+        {pad(chapter.num)}-{chapter.slug}
+      </p>
+      <h1 class="mt-3 flex items-baseline gap-3 text-2xl font-semibold text-bright sm:text-3xl">
+        <StatusMark status={chapter.status} />
+        {chapter.entry?.data.title ?? chapter.title}
+      </h1>
+      <p class="mt-3 max-w-prose font-prose text-lg text-muted">
+        {chapter.entry?.data.summary ?? chapter.blurb}
+      </p>
+
+      <div class="mt-10">
+        {Content ? (
+          <div class="prose-term">
+            <Content />
+          </div>
+        ) : (
+          <TerminalWindow title={`ch${pad(chapter.num)}.spec.ts`} class="max-w-2xl">
+            <p>
+              <StatusMark status="pending" label />
+              <span class="text-muted"> — notes for this chapter aren't written yet.</span>
+            </p>
+            <p class="mt-2 text-dim">test.fixme('write chapter {pad(chapter.num)} notes')</p>
+          </TerminalWindow>
+        )}
+      </div>
+
+      <nav
+        class="mt-16 flex justify-between gap-4 border-t border-line pt-6 text-sm"
+        aria-label="Previous and next chapter"
+      >
+        {prev ? (
+          <a href={url(prev.href)} class="no-underline">
+            ← {pad(prev.num)} {prev.short}
+          </a>
+        ) : (
+          <span />
+        )}
+        {next && (
+          <a href={url(next.href)} class="no-underline">
+            {pad(next.num)} {next.short} →
+          </a>
+        )}
+      </nav>
+    </article>
+    {hasToc && (
+      <div class="hidden xl:block">
+        <TableOfContents headings={tocHeadings} />
+      </div>
+    )}
+  </div>
 </BaseLayout>

@@ -1,0 +1,96 @@
+---
+// "On this page" links for a chapter's h2/h3 headings. The script marks the section being read.
+import type { MarkdownHeading } from 'astro';
+
+interface Props {
+  headings: MarkdownHeading[];
+}
+const { headings } = Astro.props;
+---
+
+<nav
+  aria-label="On this page"
+  data-toc
+  class="sticky top-[calc(var(--header-h)+3rem)] max-h-[calc(100dvh-var(--header-h)-4rem)] overflow-y-auto text-sm"
+>
+  <p class="px-2 text-xs text-dim"># on this page</p>
+  <ul class="mt-2 space-y-px border-l border-line">
+    {headings.map((h) => (
+      <li>
+        <a
+          href={`#${h.slug}`}
+          class:list={[
+            'block py-1 pr-2 text-muted no-underline transition-colors hover:text-bright',
+            'aria-[current=location]:text-bright aria-[current=location]:shadow-[inset_2px_0_0_var(--term-pass)]',
+            h.depth === 3 ? 'pl-6 text-xs' : 'pl-3',
+          ]}
+        >
+          {h.text}
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>
+
+<script>
+  const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-toc] a')];
+  const sections = links.flatMap((link) => {
+    const heading = document.getElementById(decodeURIComponent(link.hash.slice(1)));
+    return heading ? [{ link, heading }] : [];
+  });
+
+  if (sections.length > 0) {
+    // Same line a clicked heading scrolls to, so the clicked link is the one that lights up.
+    const offset = parseFloat(getComputedStyle(sections[0].heading).scrollMarginTop) + 1;
+    let queued = false;
+    // A section the reader jumped to stays marked until they scroll away: near the end of the
+    // page its heading may never reach the top of the viewport.
+    let pinned: (typeof sections)[number] | undefined;
+    let pinnedY: number | undefined;
+
+    const update = () => {
+      queued = false;
+      if (pinned && pinnedY !== undefined && Math.abs(scrollY - pinnedY) > 4) pinned = undefined;
+
+      const { scrollHeight } = document.documentElement;
+      const atBottom = scrollHeight > innerHeight && scrollY + innerHeight >= scrollHeight - 2;
+      const active =
+        pinned ??
+        (atBottom
+          ? sections.at(-1)
+          : sections.findLast(({ heading }) => heading.getBoundingClientRect().top <= offset));
+
+      for (const section of sections) {
+        if (section === active) section.link.setAttribute('aria-current', 'location');
+        else section.link.removeAttribute('aria-current');
+      }
+    };
+
+    const queueUpdate = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(update);
+    };
+
+    const pin = (section: (typeof sections)[number] | undefined) => {
+      if (!section) return;
+      pinned = section;
+      pinnedY = undefined;
+      // The browser has finished the jump by the next frame.
+      requestAnimationFrame(() => {
+        pinnedY = scrollY;
+        update();
+      });
+    };
+    const pinFromHash = () => pin(sections.find(({ link }) => link.hash === location.hash));
+
+    for (const section of sections) {
+      section.link.addEventListener('click', () => pin(section));
+    }
+    addEventListener('hashchange', pinFromHash);
+    addEventListener('scroll', queueUpdate, { passive: true });
+    addEventListener('resize', queueUpdate);
+    pinFromHash();
+    update();
+  }
+</script>

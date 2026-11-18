@@ -56,6 +56,7 @@
     color: var(--term-bright);
     font-weight: 600;
     margin: 2.25rem 0 0.75rem;
+    scroll-margin-top: calc(var(--header-h) + 1.5rem);
   }
   .prose-term h2 {
     font-size: 1.35rem;

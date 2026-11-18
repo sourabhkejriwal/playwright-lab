@@ -50,7 +50,7 @@ src/
   lib/chapters.ts        getChapters(): joins the list with MDX entries → status passed/pending
   lib/url.ts             url(): base-path-aware internal links
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
-  components/            .astro UI: Sidebar, TerminalWindow, StatusMark, TopBar, Footer, TestRunHero, ComingSoon
+  components/            .astro UI: Sidebar, TableOfContents, TerminalWindow, StatusMark, TopBar, Footer, TestRunHero, ComingSoon
   islands/               (planned) React interactive components: Playground, Flashcards, Quiz, …
   layouts/BaseLayout.astro
   pages/                 routes; chapters/[slug].astro renders MDX or a "pending" placeholder
