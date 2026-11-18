@@ -62,6 +62,7 @@ src/
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
   components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
   islands/               (planned) React interactive components: Playground, Flashcards, Quiz, …
+  stores/progress.ts     visitor progress in localStorage: chapters read, flashcard reviews, quiz scores
   layouts/BaseLayout.astro
   pages/                 routes; chapters/[slug].astro renders MDX or a "pending" placeholder
 scripts/
@@ -112,6 +113,9 @@ The site looks like a Playwright test run in a dark terminal.
 - TypeScript strict. `.astro` for static UI, React (`src/islands/*.tsx`) only when interactive, hydrated
   with the lightest directive that works (`client:visible` > `client:idle` > `client:load`).
 - Internal links and assets always go through `url()`; the site is served under `/<repo>/` on Pages.
+- Progress: read `$progress` with `useStore`, change it only through the store's save functions, and call `loadProgress()`
+  in `useEffect`, never during render, so the first client render matches the static HTML. Use `$progressReady` to avoid
+  showing "unread" before saved data arrives.
 - Prefer accessible markup (landmarks, labelled lists and navs); tests locate by role and name, so
   keep accessible names stable.
 - Tests: user-facing locators (`getByRole`, `getByLabel`, `getByText`), web-first assertions, no

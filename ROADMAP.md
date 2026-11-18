@@ -29,7 +29,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 
 ## Phase 3 · Progress and learning engine
 
-- [ ] nanostores progress store in `localStorage`: chapter read state, flashcard state, quiz scores
+- [x] nanostores progress store in `localStorage`: chapter read state, flashcard state, quiz scores
 - [ ] Hero and chapter list reflect the user's own progress (read ✓ vs content-ready)
 - [ ] "Mark chapter as done" control at the end of each chapter
 - [ ] Data format for flashcards and quizzes (content collection, Zod schema) per chapter
@@ -86,3 +86,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   auto-discover `/favicon.ico` at the domain root and Pages serves the site under `/playwright-lab/`.
 - 2026-11-18: Light theme is opt-in. Dark stays the default whatever the OS prefers, because the terminal look is the
   site's identity; the choice is saved in `localStorage` (`playwright-lab:theme`). Without JavaScript the toggle is hidden.
+- 2026-11-18: Progress lives in `src/stores/progress.ts` under one versioned key (`playwright-lab:progress`), written by
+  hand on plain nanostores atoms instead of adding `@nanostores/persistent`, because saves must re-read storage to merge
+  other tabs and damaged entries must be dropped one by one. Chapters and quizzes are keyed by chapter slug, flashcards by
+  card id. The store only records flashcard schedules; the spaced-repetition maths belongs to the flashcards task.
