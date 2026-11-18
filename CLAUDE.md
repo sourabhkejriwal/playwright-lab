@@ -64,11 +64,12 @@ src/
   lib/study-schema.ts    Zod schemas for flashcard decks and quizzes
   lib/flashcards.ts      spaced repetition: intervals, due dates, the study queue (pure, tested in Node)
   lib/quiz.ts            shuffles a question's options and keeps the answer index right (pure, tested in Node)
+  lib/config-generator.ts  writes playwright.config.ts from the generator's choices (pure, tested by running real Playwright)
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
   content/flashcards/    NN-slug.json flashcard deck per chapter
   content/quizzes/       NN-slug.json quiz per chapter
   components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, ChapterStatus, ChapterDone, ChapterProgressSync, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
-  islands/               React interactive components: Playground, LocatorEditor, Flashcards, Quiz, CodeText (renders `backticks` as code)
+  islands/               React interactive components: Playground, LocatorEditor, Flashcards, Quiz, ConfigGenerator, CodeText (renders `backticks` as code)
   stores/progress.ts     visitor progress in localStorage: chapters read, flashcard reviews, quiz scores
   layouts/BaseLayout.astro
   pages/                 routes; chapters/[slug].astro renders MDX or a "pending" placeholder
@@ -153,6 +154,8 @@ Repo setting needed once: Settings → Pages → Source: **GitHub Actions**.
 - **`robots.txt` is only honoured at a domain root.** Under the `/playwright-lab/` project path crawlers ignore it, so
   it takes effect only with a custom domain or a user site. Page-level `noindex` works either way.
 - **`client:visible` islands don't hydrate off-screen.** A test must scroll to one first (`scrollIntoViewIfNeeded()`), or its controls never appear.
+- **A test that runs the Playwright CLI needs its own `package.json` in the temp project.** Otherwise the nested run uses this
+  repo's `test-results/` as its output folder and empties it mid-run. `tsconfig.json` excludes `test-results` so these temp projects aren't type-checked.
 - **Changing the playground's sample page or engine?** Add the new cases to `expressions` in `tests/locator-engine.spec.ts`:
   real Playwright is the reference. Code touching the iframe must not use `instanceof` (its elements belong to another
   window), and the iframe needs `allow-scripts` in its sandbox or axe hangs.

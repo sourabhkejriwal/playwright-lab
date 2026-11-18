@@ -18,7 +18,7 @@ test.describe('home', () => {
     if (isMobile) await page.getByText('browse chapters').click();
 
     const sidebar = page.getByRole('navigation', { name: 'Chapters' });
-    await expect(sidebar.getByRole('listitem')).toHaveCount(16 + 2); // chapters + practice links
+    await expect(sidebar.getByRole('listitem')).toHaveCount(16 + 3); // chapters + practice links
     await expect(sidebar.getByRole('link', { name: /Selectors/ })).toHaveAttribute('aria-current', 'page');
 
     await sidebar.getByRole('link', { name: /Fixtures/ }).click();
@@ -32,6 +32,7 @@ test.describe('home', () => {
       ['chapters', 'Chapters'],
       ['playground', 'Locator playground'],
       ['flashcards', 'Flashcards'],
+      ['config', 'Config generator'],
       ['about', 'About'],
     ]) {
       await nav.getByRole('link', { name: label }).click();

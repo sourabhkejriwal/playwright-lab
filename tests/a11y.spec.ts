@@ -8,6 +8,7 @@ const pages = [
   '/chapters/05-fixtures',
   '/playground',
   '/flashcards',
+  '/config',
   '/about',
 ];
 

@@ -42,7 +42,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ **Flashcards**: seed from `../pdf/advanced-selectors-interview-questions.md`; reveal, again/good/easy
       with spaced repetition; filter by chapter
 - [x] ⇉ **Chapter quizzes**: 5 multiple-choice questions per chapter, explanations, score saved
-- [ ] ⇉ **Config generator**: pick browsers, devices, retries, reporters, trace → `playwright.config.ts`
+- [x] ⇉ **Config generator**: pick browsers, devices, retries, reporters, trace → `playwright.config.ts`
 - [ ] ⇉ **Explainer: auto-waiting timeline** (actionability checks, step through)
 - [ ] ⇉ **Explainer: fixture graph** (setup/teardown order, scopes)
 - [ ] ⇉ **Explainer: parallel and shard simulator** (workers/shards sliders → runtime)
@@ -125,3 +125,9 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   click handler, so hydration is unaffected); question order stays as written. Answers use radio buttons with a separate "check
   answer" step, so arrow keys can't commit a choice by accident. The score is saved when the last answer is checked, so leaving
   before the score screen still counts. An unfinished attempt is not saved.
+- 2026-11-18: The config generator lives at `/config`. `src/lib/config-generator.ts` is pure, and
+  `tests/config-generator.spec.ts` runs its output through the real Playwright CLI, so a generated config can't silently stop
+  being valid. Output order follows the option lists, not click order, so the same choices always give the same file. The
+  `github` reporter is added on CI only, because it prints workflow commands anywhere else. `json` and `junit` write to
+  `reports/`, because Playwright empties `test-results/` at the start of a run. Choices aren't saved between visits. Devices are
+  models older Playwright versions also know, so the file works in projects that haven't upgraded.

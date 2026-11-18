@@ -20,6 +20,12 @@ const tools = [
     text: 'Interview-style questions with spaced repetition.',
   },
   {
+    href: 'config',
+    cmd: 'config --generate',
+    title: 'Config generator',
+    text: 'Pick browsers, devices and reporters, get a playwright.config.ts.',
+  },
+  {
     href: 'chapters',
     cmd: 'ls chapters/',
     title: 'Chapter notes',
@@ -61,7 +67,7 @@ const tools = [
     <h2 id="tools-heading" class="text-sm text-dim">
       # tools
     </h2>
-    <ul class="mt-4 grid gap-4 sm:grid-cols-3">
+    <ul class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {tools.map((t) => (
         <li>
           <a

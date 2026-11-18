@@ -13,6 +13,8 @@ Interactive study notes, a locator playground, and drills for end-to-end testing
   real-world e-commerce suite, shown as a Playwright-style test run.
 - **Locator playground** _(in progress)_: type a locator and see what it matches.
 - **Flashcards and quizzes** _(in progress)_: interview-style drills with progress saved locally.
+- **Config generator:** pick browsers, devices, retries, reporters and tracing, and get a
+  `playwright.config.ts`.
 
 ## Tech
 
