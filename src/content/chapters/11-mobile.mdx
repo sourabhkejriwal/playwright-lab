@@ -1,0 +1,432 @@
+---
+chapter: 11
+title: Testing mobile web experiences
+summary: Emulate phones and tablets with device presets, test touch and rotation properly, simulate poor networks and locations, and know what emulation can't tell you.
+readingMinutes: 12
+---
+
+import { url as siteUrl } from '../../lib/url';
+
+## Emulation or a real device?
+
+Playwright's mobile testing is **emulation**. A desktop browser engine takes on a phone's screen size, pixel density, user agent and touch support. No phone is involved.
+
+| Question                                    | Emulation | Real device |
+| ------------------------------------------- | --------- | ----------- |
+| Does the responsive layout work?            | Yes       | Yes         |
+| Do touch handlers fire?                     | Yes       | Yes         |
+| Does the app cope with a slow network?      | Roughly   | Yes         |
+| Is it fast on a cheap phone's CPU?          | No        | Yes         |
+| Does the phone's browser UI get in the way? | No        | Yes         |
+| Is it cheap enough to run on every PR?      | Yes       | Rarely      |
+
+Use emulation for everyday coverage, and keep a small real-device pass for hardware, operating system and performance questions.
+
+<Callout type="warn" title="the webkit project isn't iOS Safari">
+  An iPhone preset runs Playwright's WebKit build on your machine or CI runner. It's close to Safari's engine,
+  but it won't reproduce every iOS bug.
+</Callout>
+
+## Device presets
+
+`devices` holds more than 200 ready-made profiles. Each one sets the options a page can detect.
+
+| Preset        | Viewport | Screen  | Scale | Engine   |
+| ------------- | -------- | ------- | ----- | -------- |
+| `Pixel 5`     | 393×727  | 393×851 | 2.75  | chromium |
+| `iPhone 15`   | 393×659  | 393×852 | 3     | webkit   |
+| `iPad Pro 11` | 834×1194 | not set | 2     | webkit   |
+
+The **viewport** is smaller than the **screen** because the browser's own bars take up space. Presets also set `userAgent`, `isMobile`, `hasTouch` and `defaultBrowserType`.
+
+### Put devices in projects
+
+Projects are the normal way to do this: every test runs on each device, with no device code in the tests.
+
+```ts title="playwright.config.ts" {6-7}
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  projects: [
+    { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
+    { name: 'android', use: { ...devices['Pixel 5'] } },
+    { name: 'iphone', use: { ...devices['iPhone 15'] } },
+  ],
+});
+```
+
+```bash
+npx playwright test --project=iphone
+```
+
+### One file on one device
+
+`test.use()` at the top of a file applies a preset to that file.
+
+```ts title="tests/checkout.mobile.spec.ts"
+import { test, expect, devices } from '@playwright/test';
+
+test.use({ ...devices['Pixel 5'] });
+
+test('shows the compact menu', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Menu' })).toBeVisible();
+});
+```
+
+A preset also picks the browser engine, which has two consequences:
+
+- That file runs on Chromium in **every** project, even one configured for WebKit.
+- A preset can't go inside `test.describe()`, because a new engine needs a new worker.
+
+```text
+Cannot use({ defaultBrowserType }) in a describe group, because it forces a new worker.
+Make it top-level in the test file or put in the configuration file.
+```
+
+<Callout type="gotcha" title="newContext() keeps the current engine">
+  `browser.newContext({...devices['iPhone 15']})` ignores the preset's engine, because the browser is already
+  running. In a Chromium project you get an iPhone user agent on Chromium, and the test still passes. Use a
+  project when the engine matters.
+</Callout>
+
+## Build a custom device
+
+If no preset fits, set the options yourself.
+
+```ts title="playwright.config.ts"
+{
+  name: 'budget-android',
+  use: {
+    browserName: 'chromium',
+    viewport: { width: 360, height: 640 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+    userAgent: 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36',
+  },
+},
+```
+
+| Option              | What it changes                                          |
+| ------------------- | -------------------------------------------------------- |
+| `viewport`          | The page's size in CSS pixels                            |
+| `deviceScaleFactor` | Physical pixels per CSS pixel                            |
+| `isMobile`          | Respects the `meta viewport` tag and mobile layout rules |
+| `hasTouch`          | Enables touch input and `pointer: coarse`                |
+| `userAgent`         | The browser identity sent to servers and seen by scripts |
+
+<Callout type="gotcha" title="isMobile doesn't turn on touch">
+  With `isMobile: true` alone, `tap()` fails with "The page does not support tap. Use hasTouch context option
+  to enable touch support." A phone needs both options. Presets set both for you.
+</Callout>
+
+`isMobile` also explains a classic bug: a page with no `meta viewport` tag laid out at **980px** wide on both the Pixel 5 and iPhone 15 presets, so everything looked tiny. No preset uses Firefox, because Firefox doesn't support `isMobile`.
+
+## Test responsive layouts
+
+To check a few widths, loop over them. `test.use()` with only a `viewport` is allowed inside a describe block, and it keeps the project's device settings.
+
+```ts title="tests/responsive.spec.ts"
+import { test, expect } from '@playwright/test';
+
+const widths = [
+  { name: 'phone', width: 390, height: 844 },
+  { name: 'tablet', width: 768, height: 1024 },
+  { name: 'desktop', width: 1440, height: 900 },
+];
+
+for (const { name, width, height } of widths) {
+  test.describe(name, () => {
+    test.use({ viewport: { width, height } });
+
+    test('home page layout', async ({ page }) => {
+      await page.goto('/');
+      await expect(page).toHaveScreenshot(`home-${name}.png`, { fullPage: true });
+    });
+  });
+}
+```
+
+For a larger visual suite, tag the tests and give them their own projects, so the fast functional run skips them.
+
+```ts title="playwright.config.ts" {8,13,18}
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  projects: [
+    {
+      name: 'functional',
+      use: { ...devices['Desktop Chrome'] },
+      grepInvert: /@visual/,
+    },
+    {
+      name: 'visual-phone',
+      use: { ...devices['Pixel 5'] },
+      grep: /@visual/,
+    },
+    {
+      name: 'visual-tablet',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 768, height: 1024 } },
+      grep: /@visual/,
+    },
+  ],
+});
+```
+
+```ts title="tests/home.visual.spec.ts"
+test('home page', { tag: '@visual' }, async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveScreenshot('home.png', { fullPage: true });
+});
+```
+
+A narrow viewport on a desktop profile checks your CSS breakpoints, but it isn't a phone: there's no touch and no mobile user agent. Baselines are stored per project, as <a href={siteUrl('chapters/10-visual-regression')}>chapter 10</a> explains.
+
+## Rotate the device
+
+Landscape versions of many presets are built in.
+
+```ts title="tests/gallery.landscape.spec.ts"
+import { test, expect, devices } from '@playwright/test';
+
+test.use({ ...devices['Pixel 5 landscape'] }); // viewport 802×293
+
+test('gallery fits a landscape phone', async ({ page }) => {
+  await page.goto('/gallery');
+  await expect(page.getByRole('img', { name: 'Product photo' })).toBeInViewport();
+});
+```
+
+To rotate during a test, swap the viewport's width and height with <ApiRef name="page.setViewportSize()" />.
+
+```ts title="tests/gallery.spec.ts"
+const { width, height } = page.viewportSize()!;
+await page.setViewportSize({ width: height, height: width });
+await expect(page.getByRole('navigation')).toBeVisible();
+```
+
+The page stays mobile, and `(orientation: landscape)` starts to match.
+
+<Callout type="gotcha" title="changing screen doesn't rotate anything">
+  Swapping only the `screen` option left a Pixel 5 page at 393×727 with `(orientation: landscape)` false. The
+  viewport decides the layout, so change `viewport`.
+</Callout>
+
+`setViewportSize()` fires `resize` everywhere, but `orientationchange` fired only on WebKit in our runs. Code that listens for `orientationchange` alone needs a real-device check.
+
+## Touch input
+
+### Tap, don't just click
+
+<ApiRef name="locator.tap()" /> sends touch events and then the mouse events a phone would generate. `click()`
+never sends touch events, even on a phone preset.
+
+| Action                   | Touch events             | Mouse events and `click` |
+| ------------------------ | ------------------------ | ------------------------ |
+| `locator.click()`        | None                     | Yes                      |
+| `locator.tap()`          | `touchstart`, `touchend` | Yes                      |
+| `page.touchscreen.tap()` | `touchstart`, `touchend` | Yes                      |
+| `locator.dragTo()`       | None                     | Mouse events             |
+
+So a menu that listens for `touchend` stays closed after `click()` and opens after `tap()`.
+
+```ts title="tests/menu.spec.ts"
+test('opens the menu by touch', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Menu' }).tap();
+  await expect(page.getByRole('navigation')).toBeVisible();
+});
+```
+
+`tap()` auto-waits like every other action, and scrolls the element into view. You don't need `waitFor()` or `scrollIntoViewIfNeeded()` first.
+
+`page.touchscreen.tap()` takes **page coordinates only**, and passing a selector throws an `expected float, got string` error. Keep it for places with no element to target, such as tapping the backdrop behind a bottom sheet.
+
+```ts title="tests/filters.spec.ts"
+const sheet = page.getByRole('dialog', { name: 'Filters' });
+await expect(sheet).toBeVisible();
+
+await page.touchscreen.tap(20, 20); // outside the sheet
+await expect(sheet).toBeHidden();
+```
+
+### Swipes
+
+Playwright has no swipe method, and `dragTo()` won't help because it only sends mouse events. Send the touch events with <ApiRef name="locator.dispatchEvent()" />, which worked on both Chromium and WebKit.
+
+```ts title="tests/support/swipe.ts"
+import type { Locator } from '@playwright/test';
+
+export async function swipe(target: Locator, fromX: number, toX: number) {
+  const box = await target.boundingBox();
+  if (!box) throw new Error('swipe target is not visible');
+  const clientY = box.y + box.height / 2;
+  const at = (clientX: number) => [{ identifier: 0, clientX, clientY }];
+
+  await target.dispatchEvent('touchstart', {
+    touches: at(fromX),
+    changedTouches: at(fromX),
+    targetTouches: at(fromX),
+  });
+  await target.dispatchEvent('touchmove', {
+    touches: at(toX),
+    changedTouches: at(toX),
+    targetTouches: at(toX),
+  });
+  await target.dispatchEvent('touchend', {
+    touches: [],
+    changedTouches: at(toX),
+    targetTouches: [],
+  });
+}
+```
+
+```ts title="tests/inbox.spec.ts"
+await swipe(page.getByRole('listitem').first(), 300, 60);
+await expect(page.getByRole('status')).toHaveText('Archived');
+```
+
+These events run your page's swipe handlers, but they don't make the browser scroll natively.
+
+<Callout type="gotcha" title="mouse.wheel() fails on mobile webkit">
+  It throws "Mouse wheel is not supported in mobile WebKit". To reach content lower on the page, act on the
+  element directly and let Playwright scroll to it.
+</Callout>
+
+## Simulate real-world conditions
+
+### Offline
+
+<ApiRef name="context.setOffline()" /> works on every engine.
+
+```ts title="tests/offline.spec.ts"
+test('warns when the connection drops', async ({ page, context }) => {
+  await page.goto('/');
+
+  await context.setOffline(true);
+  await expect(page.getByRole('status')).toHaveText('You are offline');
+
+  await context.setOffline(false);
+  await expect(page.getByRole('status')).toHaveText('Back online');
+});
+```
+
+### A slow API
+
+Delaying one route is the simplest way to test a loading state, and it also works on every engine.
+
+```ts title="tests/loading.spec.ts"
+await page.route('**/api/products', async (route) => {
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await route.continue();
+});
+
+await page.goto('/products');
+await expect(page.getByRole('progressbar')).toBeVisible();
+await expect(page.getByRole('listitem').first()).toBeVisible();
+```
+
+### A slow connection
+
+Real throttling needs the Chrome DevTools Protocol, so it's Chromium only. Other engines throw `CDP session is only available in Chromium`, so skip them.
+
+```ts title="tests/slow-network.spec.ts"
+import { test, expect } from '@playwright/test';
+
+test('home page survives slow 3G', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'CDP is Chromium only');
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Network.enable');
+  await cdp.send('Network.emulateNetworkConditions', {
+    offline: false,
+    latency: 400,
+    downloadThroughput: (500 * 1024) / 8, // bytes per second
+    uploadThroughput: (500 * 1024) / 8,
+  });
+
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+});
+```
+
+With these settings, a 100 KB page went from 15 ms to about 2 seconds. Throughput is in **bytes** per second, which is why the value is divided by 8.
+
+### Location and permissions
+
+Setting a location isn't enough: the page also needs permission to read it.
+
+```ts title="tests/stores.spec.ts" {4-5,10}
+import { test, expect } from '@playwright/test';
+
+test.use({
+  geolocation: { latitude: -36.85, longitude: 174.76 },
+  permissions: ['geolocation'],
+});
+
+test('shows stores near the user', async ({ page, context }) => {
+  await page.goto('/stores');
+  await context.setGeolocation({ latitude: 48.85, longitude: 2.35 });
+  await page.getByRole('button', { name: 'Use my location' }).tap();
+  await expect(page.getByRole('heading', { name: 'Stores in Paris' })).toBeVisible();
+});
+```
+
+Without the permission, Chromium and WebKit reported "User denied Geolocation", while Firefox gave no answer within 3 seconds. Test your denied path on the engines you support.
+
+<Callout type="gotcha" title="permissions is an array">
+  There's no grant or deny map. `permissions: { geolocation: 'grant' }` throws
+  `permissions: expected array, got object`. List what to grant, and anything you leave out isn't granted. Use
+  `context.grantPermissions()` and `context.clearPermissions()` to change them during a test.
+</Callout>
+
+## Dialogs and popups
+
+**Native dialogs** (`alert`, `confirm`, `prompt`) are dismissed automatically if nothing listens, so a `confirm()` returns `false`. Register a handler before the action that opens one.
+
+```ts title="tests/cart.spec.ts"
+page.once('dialog', (dialog) => dialog.accept());
+await page.getByRole('button', { name: 'Empty cart' }).tap();
+```
+
+**Custom popups** are ordinary page elements, so the `dialog` event never sees them. When a banner might or might not appear, <ApiRef name="page.addLocatorHandler()" /> deals with it whenever it blocks an action.
+
+```ts title="tests/checkout.spec.ts"
+await page.addLocatorHandler(page.getByRole('dialog', { name: 'Cookies' }), async (banner) => {
+  await banner.getByRole('button', { name: 'Accept' }).tap();
+});
+
+await page.goto('/checkout');
+await page.getByRole('button', { name: 'Pay' }).tap();
+```
+
+## Debug mobile failures
+
+The tools from <a href={siteUrl('chapters/08-headless-debugging')}>chapter 8</a> work the same on an emulated device.
+
+| Tool                                           | Use it for                                               |
+| ---------------------------------------------- | -------------------------------------------------------- |
+| `npx playwright test --project=iphone --debug` | Stepping through one device in the Inspector             |
+| `trace: 'on-first-retry'`                      | Seeing the DOM, network and console from a failed CI run |
+| `await page.pause()`                           | Stopping at one line to explore the page                 |
+
+<ApiRef name="page.pause()" /> does nothing in a headless run, so add `--headed` or `--debug`.
+
+When a test fails only on a phone, check these first:
+
+- A different element is showing, such as a menu button in place of the desktop nav.
+- A sticky header or cookie banner is covering the target.
+- The test uses `click()` where the app expects touch.
+- The server sent different content because of the user agent.
+
+## Interview angle
+
+- **Is Playwright's mobile testing done on real devices?** No, it emulates them in desktop browser engines. Keep some real-device testing for hardware, OS and performance issues.
+- **What's the difference between `isMobile` and `hasTouch`?** `isMobile` applies mobile viewport behavior. `hasTouch` enables touch input. A phone needs both.
+- **Why can't a device preset go inside `test.describe()`?** It sets `defaultBrowserType`, and changing the engine needs a new worker.
+- **What's the difference between `click()` and `tap()`?** `tap()` sends touch events first. `click()` never does, so touch-only handlers won't run.
+- **How do you test landscape?** Use a landscape preset, or swap the viewport's width and height with `setViewportSize()`.
+- **How do you simulate a slow network?** Delay routes with `page.route()` on any engine, or use CDP throttling on Chromium.
+- **How do you test geolocation?** Set `geolocation` and grant the `geolocation` permission.
+- **How do you simulate a swipe?** Dispatch `touchstart`, `touchmove` and `touchend` on the element.

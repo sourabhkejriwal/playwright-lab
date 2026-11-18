@@ -18,6 +18,7 @@ const pages = [
   '/chapters/09-accessibility',
   '/chapters/10-visual-regression',
   '/chapters/11-mobile',
+  '/chapters/12-forms',
   '/playground',
   '/flashcards',
   '/config',

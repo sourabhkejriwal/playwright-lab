@@ -62,7 +62,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ 08 Headless testing and debugging
 - [x] ⇉ 09 Accessibility testing with axe-core
 - [x] ⇉ 10 Visual regression testing
-- [ ] ⇉ 11 Mobile web
+- [x] ⇉ 11 Mobile web
 - [ ] ⇉ 12 Forms
 - [ ] ⇉ 13 File uploads and downloads
 - [ ] ⇉ 14 Security and authentication
@@ -244,3 +244,10 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   **Not run:** the workflow on GitHub and the `docker run` command, because Docker wasn't available to the unattended session. The advice that arm64 and x64 Linux images can render
   differently is general guidance and wasn't measured. Chapter 11 is now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes
   chapter 11 must move those to chapter 12.
+- 2026-11-18: Chapter 11 notes follow the installed Playwright (1.65) where the reference PDF differs: `isMobile` doesn't enable touch (`hasTouch` does, and `tap()` fails without it);
+  `permissions` is an array of grants, and the object form throws; `page.touchscreen.tap()` takes coordinates, not a selector; swapping `screen` doesn't rotate the layout, so the notes use
+  landscape presets or `setViewportSize()`; `dragTo()` sends only mouse events, so swipes use `locator.dispatchEvent()`; and `tap()` auto-waits, so the extra `waitFor()` is dropped. Added from
+  testing: a preset can't go inside `test.describe()`, `browser.newContext()` keeps the project's engine, `mouse.wheel()` throws on mobile WebKit, `orientationchange` fired only on WebKit, and a page
+  with no meta viewport laid out at 980px. Snippets and behaviours ran in a throwaway project on Pixel 5 (Chromium) and iPhone 15 (WebKit) presets, with engine differences also checked on desktop Chromium,
+  WebKit and Firefox, since removed. **Not run:** anything on a real phone. The statements that emulation can't show real hardware performance or every iOS bug are general guidance and weren't measured.
+  Chapter 12 is now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 12 must move those to chapter 13.

@@ -1,0 +1,60 @@
+{
+  "chapter": 11,
+  "questions": [
+    {
+      "question": "A context is created with `isMobile: true` and nothing else. What happens when a test calls `locator.tap()`?",
+      "options": [
+        "The tap works, because `isMobile` enables touch",
+        "Playwright falls back to a normal click",
+        "It fails, because the context also needs `hasTouch: true`",
+        "The tap is ignored without an error"
+      ],
+      "answer": 2,
+      "explanation": "`isMobile` and `hasTouch` are separate options. Without `hasTouch`, `tap()` fails and tells you to enable touch support."
+    },
+    {
+      "question": "A menu opens from a `touchend` listener and has no `click` listener. Which call opens it on a phone preset?",
+      "options": [
+        "`await menu.tap()`",
+        "`await menu.click()`",
+        "`await menu.dragTo(menu)`",
+        "`await menu.hover()`"
+      ],
+      "answer": 0,
+      "explanation": "`tap()` sends `touchstart` and `touchend`. `click()` and `dragTo()` only send mouse events, so a touch-only listener never runs."
+    },
+    {
+      "question": "Why does `test.use({ ...devices['iPhone 15'] })` fail inside a `test.describe()` block?",
+      "options": [
+        "Device presets only work in the config file",
+        "`iPhone 15` needs a real device",
+        "`test.use()` is never allowed in a describe block",
+        "The preset sets `defaultBrowserType`, and changing the engine forces a new worker"
+      ],
+      "answer": 3,
+      "explanation": "Move the preset to the top of the file or into a project. Options such as `viewport` are still allowed in a describe block."
+    },
+    {
+      "question": "You want a Pixel 5 test to run in landscape. Which approach changes the page's layout?",
+      "options": [
+        "Swap the width and height in the `screen` option",
+        "Use `devices['Pixel 5 landscape']`",
+        "Set `isMobile: false`",
+        "Dispatch an `orientationchange` event"
+      ],
+      "answer": 1,
+      "explanation": "The landscape preset sets a landscape viewport. Changing only `screen` leaves the viewport, and so the layout, in portrait."
+    },
+    {
+      "question": "Which context option correctly lets a page read an emulated location?",
+      "options": [
+        "`permissions: { geolocation: 'grant' }`",
+        "`geolocation: { latitude: 48.85, longitude: 2.35, granted: true }`",
+        "`geolocation: { latitude: 48.85, longitude: 2.35 }, permissions: ['geolocation']`",
+        "`hasTouch: true, permissions: 'geolocation'`"
+      ],
+      "answer": 2,
+      "explanation": "The location and the permission are both required, and `permissions` must be an array of permissions to grant."
+    }
+  ]
+}

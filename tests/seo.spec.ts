@@ -12,8 +12,8 @@ const pages = [
     type: 'article',
   },
   {
-    path: '/chapters/11-mobile/',
-    title: 'ch11 Testing mobile web experiences · playwright-lab',
+    path: '/chapters/12-forms/',
+    title: 'ch12 Testing forms · playwright-lab',
     type: 'website',
   },
   { path: '/playground/', title: 'playground · playwright-lab', type: 'website' },

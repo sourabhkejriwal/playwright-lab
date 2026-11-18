@@ -27,10 +27,10 @@ test.describe('chapter progress', () => {
   test('a new visitor sees written chapters as ready, not read', async ({ page, isMobile }) => {
     await page.goto('/');
     await expect(heroRun(page).getByRole('link', { name: 'Chapter 2, Selectors: ready' })).toBeVisible();
-    await expect(heroRun(page).getByRole('link', { name: 'Chapter 11, Mobile: pending' })).toBeVisible();
+    await expect(heroRun(page).getByRole('link', { name: 'Chapter 12, Forms: pending' })).toBeVisible();
     await expect(page.getByText('0 read', { exact: true })).toBeVisible();
-    await expect(page.getByText('10 ready')).toBeVisible();
-    await expect(page.getByText('6 pending')).toBeVisible();
+    await expect(page.getByText('11 ready')).toBeVisible();
+    await expect(page.getByText('5 pending')).toBeVisible();
     await expect(page.getByRole('link', { name: 'ch01 Quick setup refresher' })).toBeVisible();
 
     const sidebar = await openSidebar(page, isMobile);
@@ -51,18 +51,19 @@ test.describe('chapter progress', () => {
         'headless-debugging',
         'accessibility',
         'visual-regression',
+        'mobile',
       ),
     );
     await page.goto('/');
 
     await expect(heroRun(page).getByRole('link', { name: 'Chapter 2, Selectors: read' })).toBeVisible();
-    await expect(page.getByText('10 read')).toBeVisible();
+    await expect(page.getByText('11 read')).toBeVisible();
     await expect(page.getByText('0 ready')).toBeVisible();
     await expect(page.getByText('all written chapters read')).toBeVisible();
     await expect(page.getByText(/next up/)).toBeHidden();
 
     const sidebar = await openSidebar(page, isMobile);
-    await expect(sidebar.getByText('10/16')).toBeVisible();
+    await expect(sidebar.getByText('11/16')).toBeVisible();
     await expect(sidebar.getByRole('link', { name: 'read 02 Selectors' })).toBeVisible();
   });
 
@@ -82,9 +83,9 @@ test.describe('chapter progress', () => {
   });
 
   test('a saved entry for an unwritten chapter stays pending and is not counted', async ({ page }) => {
-    await seed(page, savedProgress('mobile'));
+    await seed(page, savedProgress('forms'));
     await page.goto('/');
-    await expect(heroRun(page).getByRole('link', { name: 'Chapter 11, Mobile: pending' })).toBeVisible();
+    await expect(heroRun(page).getByRole('link', { name: 'Chapter 12, Forms: pending' })).toBeVisible();
     await expect(page.getByText('0 read', { exact: true })).toBeVisible();
     await expect(page.getByRole('link', { name: 'ch01 Quick setup refresher' })).toBeVisible();
   });
@@ -156,7 +157,7 @@ test.describe('chapter progress', () => {
     });
 
     test('an unwritten chapter has no control', async ({ page }) => {
-      await page.goto('/chapters/11-mobile');
+      await page.goto('/chapters/12-forms');
       await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();
       await expect(doneButton(page)).toHaveCount(0);
     });

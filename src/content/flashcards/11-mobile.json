@@ -1,0 +1,80 @@
+{
+  "chapter": 11,
+  "cards": [
+    {
+      "id": "mobile/emulation",
+      "front": "What does Playwright's mobile emulation actually do?",
+      "back": "A desktop browser engine takes on a device's viewport, scale, user agent and touch support. No real phone is involved."
+    },
+    {
+      "id": "mobile/real-device",
+      "front": "What can emulation not tell you?",
+      "back": "How the app performs on real hardware, plus issues specific to the operating system or the real mobile browser."
+    },
+    {
+      "id": "mobile/preset-project",
+      "front": "Where is the usual place to apply a device preset?",
+      "back": "In a project: `use: { ...devices['Pixel 5'] }`. Every test then runs on that device with no device code in the tests."
+    },
+    {
+      "id": "mobile/preset-describe",
+      "front": "Why does `test.use({ ...devices['iPhone 15'] })` fail inside `test.describe()`?",
+      "back": "The preset sets `defaultBrowserType`, and changing the engine forces a new worker. Put it at the top of the file or in the config."
+    },
+    {
+      "id": "mobile/new-context-engine",
+      "front": "What engine does `browser.newContext({ ...devices['iPhone 15'] })` use in a Chromium project?",
+      "back": "Chromium. The browser is already running, so you get an iPhone user agent on the wrong engine."
+    },
+    {
+      "id": "mobile/is-mobile-has-touch",
+      "front": "What's the difference between `isMobile` and `hasTouch`?",
+      "back": "`isMobile` applies mobile viewport behavior, including the meta viewport tag. `hasTouch` enables touch input. A phone needs both."
+    },
+    {
+      "id": "mobile/viewport-screen",
+      "front": "Why is a preset's viewport smaller than its screen?",
+      "back": "The viewport is the area left for the page after the browser's own bars. The screen is the whole display."
+    },
+    {
+      "id": "mobile/rotate",
+      "front": "How do you rotate a device during a test?",
+      "back": "Swap the width and height with `page.setViewportSize()`. Changing only the `screen` option doesn't rotate the layout."
+    },
+    {
+      "id": "mobile/tap-vs-click",
+      "front": "How does `locator.tap()` differ from `locator.click()`?",
+      "back": "`tap()` sends `touchstart` and `touchend` before the mouse events and `click`. `click()` sends no touch events."
+    },
+    {
+      "id": "mobile/touchscreen-tap",
+      "front": "What arguments does `page.touchscreen.tap()` take?",
+      "back": "Only x and y coordinates. To tap an element, use `locator.tap()`."
+    },
+    {
+      "id": "mobile/swipe",
+      "front": "How do you simulate a swipe?",
+      "back": "Dispatch `touchstart`, `touchmove` and `touchend` on the element with `locator.dispatchEvent()`. `dragTo()` only sends mouse events."
+    },
+    {
+      "id": "mobile/wheel",
+      "front": "What happens when you call `page.mouse.wheel()` on mobile WebKit?",
+      "back": "It throws, because mouse wheel input isn't supported there. Act on the element and let Playwright scroll to it."
+    },
+    {
+      "id": "mobile/slow-network",
+      "front": "What are the options for simulating a slow network?",
+      "back": "Delay requests with `page.route()` on any engine, or use the CDP command `Network.emulateNetworkConditions` on Chromium only."
+    },
+    {
+      "id": "mobile/geolocation",
+      "front": "What two things does a geolocation test need?",
+      "back": "A `geolocation` value and the permission: `permissions: ['geolocation']`."
+    },
+    {
+      "id": "mobile/permissions-shape",
+      "front": "What type is the `permissions` context option?",
+      "back": "An array of permissions to grant. An object such as `{ geolocation: 'grant' }` throws an error."
+    }
+  ]
+}
