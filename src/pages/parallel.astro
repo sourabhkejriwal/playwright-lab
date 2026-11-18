@@ -1,0 +1,44 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ParallelSimulator from '../islands/ParallelSimulator';
+import { RULES, SHARD_SETUP_SECONDS } from '../lib/parallel-sim';
+
+const inlineCode = (text: string) => text.replace(/`([^`]+)`/g, '<code class="font-mono text-xs">$1</code>');
+---
+
+<BaseLayout
+  title="parallel and shard simulator"
+  description="Change Playwright workers, shards and fullyParallel, and see how a test suite's schedule and CI runtime respond."
+>
+  <p class="text-sm text-dim">
+    <span class="text-pass">$</span> explain --parallel
+  </p>
+  <h1 class="mt-3 text-2xl font-semibold text-bright">Parallel and shard simulator</h1>
+  <p class="mt-3 max-w-prose font-prose text-lg text-muted">
+    Workers split a run across processes, and shards split it across machines. Move the sliders to see where
+    each test lands, what the pipeline costs, and when adding more stops helping.
+  </p>
+  <noscript>
+    <p class="mt-6 text-sm text-pending">The simulator runs in your browser, so it needs JavaScript.</p>
+  </noscript>
+  <ParallelSimulator client:visible />
+
+  <section aria-labelledby="rules-heading" class="mt-12">
+    <h2 id="rules-heading" class="text-lg font-semibold text-bright">
+      The rules behind the schedule
+    </h2>
+    <dl class="mt-4 grid gap-3 md:grid-cols-2">
+      {RULES.map(({ name, meaning }) => (
+        <div class="rounded-term border border-line bg-surface p-4">
+          <dt class="text-sm text-pass">{name}</dt>
+          <dd class="mt-1 font-prose text-sm text-text" set:html={inlineCode(meaning)} />
+        </div>
+      ))}
+    </dl>
+    <p class="mt-4 max-w-prose font-prose text-sm text-muted">
+      Test durations are made up, and each shard is assumed to spend {SHARD_SETUP_SECONDS} seconds on CI
+      setup. Real runs also spend time starting workers, and running more workers than the machine has CPU
+      cores slows every test down.
+    </p>
+  </section>
+</BaseLayout>

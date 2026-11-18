@@ -45,7 +45,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ **Config generator**: pick browsers, devices, retries, reporters, trace → `playwright.config.ts`
 - [x] ⇉ **Explainer: auto-waiting timeline** (actionability checks, step through)
 - [x] ⇉ **Explainer: fixture graph** (setup/teardown order, scopes)
-- [ ] ⇉ **Explainer: parallel and shard simulator** (workers/shards sliders → runtime)
+- [x] ⇉ **Explainer: parallel and shard simulator** (workers/shards sliders → runtime)
 - [ ] ⇉ **"Spot the flaky test"** challenges
 - [ ] ⇉ **CI pipeline builder** → GitHub Actions YAML
 - [ ] ⌘K search with Pagefind
@@ -143,3 +143,10 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   worker prints. Parallel workers are compared as a set, because either can start first. The two-worker scenario uses one spec
   file per worker, because tests in one file stay in one worker by default. The graph drawing is hidden from screen readers;
   the lifetimes list gives each fixture's state and creation count in words.
+- 2026-11-18: The parallel simulator lives at `/parallel`. `src/lib/parallel-sim.ts` follows Playwright's own rules: jobs leave the
+  queue in order for the lowest free worker, shards hold equal test counts, and a file belongs to the shard its first test falls
+  in, which can leave a shard empty. `tests/parallel-sim.spec.ts` passes the commands the page shows to the real CLI and compares
+  shard contents, serial order, workers started and first job placement. Durations are not compared with real runs, because worker
+  start-up varies; they are a model, and the 40 seconds of CI setup per shard is an assumption the page states.
+- 2026-11-18: Watch for flakiness: the playground's "re-evaluates when the sample page changes state" failed once on mobile in a full
+  run, showing "invalid locator" after `fill`. It then passed 40 repeats and two more full runs.

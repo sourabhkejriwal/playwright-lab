@@ -11,6 +11,7 @@ const pages = [
   '/config',
   '/auto-waiting',
   '/fixture-graph',
+  '/parallel',
   '/about',
 ];
 
