@@ -11,6 +11,7 @@ const RECEIVERS: Record<string, ApiClass> = {
   context: { page: 'browsercontext', anchor: 'browser-context' },
   dialog: { page: 'dialog', anchor: 'dialog' },
   download: { page: 'download', anchor: 'download' },
+  fileChooser: { page: 'filechooser', anchor: 'file-chooser' },
   frame: { page: 'frame', anchor: 'frame' },
   frameLocator: { page: 'framelocator', anchor: 'frame-locator' },
   keyboard: { page: 'keyboard', anchor: 'keyboard' },

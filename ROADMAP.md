@@ -64,7 +64,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ 10 Visual regression testing
 - [x] ⇉ 11 Mobile web
 - [x] ⇉ 12 Forms
-- [ ] ⇉ 13 File uploads and downloads
+- [x] ⇉ 13 File uploads and downloads
 - [ ] ⇉ 14 Security and authentication
 - [ ] ⇉ 15 Maintainability and Page Object Model
 - [ ] ⇉ 16 Real-world e-commerce project
@@ -258,3 +258,8 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   Inline code in chapters now wraps with `overflow-wrap: anywhere`, which also fixes the sideways scroll chapter 10 had at 375px. Avoid `xy` in chapter text as well as a lone `x`: Pagefind matched it for "xylophone". Watch for
   flakiness: the playground's "a unique locator gets one green highlight" failed once on mobile in a full run, showing "invalid locator" for a valid locator after `fill()`. It then passed 40 repeats and a full run. Chapter 13 is
   now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 13 must move those to chapter 14.
+- 2026-11-19: Chapter 13 notes follow the installed Playwright (1.65.1) where the reference PDF differs: `saveAs()` creates missing folders, relative upload paths work (they resolve from the working directory), `download.failure()` never
+  reports an HTTP status, and a `target="_blank"` link straight to an attachment fires `download` on the original page. The notes also drop the PDF's try/catch timeout pattern, because it passes when the download works, and use
+  `testInfo.outputPath()` in place of `fs.unlink()` in `afterAll`. Measured differences are in the chapter: a 404 or 500 gives no event, `canceled`, or a WebKit "success" holding the error body, and `postDataBuffer()` left the file out of
+  a multipart request on Chromium. Every code sample and behaviour ran on desktop Chromium, Firefox and WebKit in a throwaway project against a local fixture, since removed. **Not run:** headed mode, so the inline PDF behaviour is left out of the notes.
+  `fileChooser` is now an `ApiRef` receiver. Chapter 14 is now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 14 must move those to chapter 15.

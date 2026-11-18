@@ -1,0 +1,397 @@
+---
+chapter: 13
+title: File uploads and downloads
+summary: Upload files without touching the system dialog, check what a download really contains, and handle the failures that browsers report in different ways.
+readingMinutes: 12
+---
+
+import { url as siteUrl } from '../../lib/url';
+
+## What a file test should prove
+
+Selecting a file is the easy part. A useful test goes further:
+
+- **Uploads:** the app accepts good files, rejects bad ones with a clear message, and the server receives the file.
+- **Downloads:** a download starts, has the right name, finishes, and contains the right data.
+
+Playwright never opens the operating system's file dialog, so these tests run the same way headless and in CI.
+
+## Uploading a file
+
+<ApiRef name="locator.setInputFiles()" /> puts files straight into an `<input type="file">`.
+
+```ts title="tests/apply.spec.ts"
+import { test, expect } from '@playwright/test';
+import path from 'node:path';
+
+const resume = path.join(__dirname, 'fixtures', 'resume.pdf');
+
+test('uploads a resume', async ({ page }) => {
+  await page.goto('/apply');
+
+  const input = page.getByLabel('Resume');
+  await input.setInputFiles(resume);
+  await expect(input).toHaveValue(/resume\.pdf$/);
+
+  await page.getByRole('button', { name: 'Submit' }).click();
+  await expect(page.getByRole('status')).toHaveText('resume.pdf uploaded');
+});
+```
+
+A few details make this simpler than it looks:
+
+- `getByLabel()` works, because Playwright follows the label to its input.
+- The input can be hidden. Styled upload buttons often hide the real one, and `setInputFiles()` still reaches it.
+- It fires `input` and `change`, so the page reacts as it would to a real selection.
+- Browsers report the value as `C:\fakepath\resume.pdf` on every platform, so match the end of it with a regular expression.
+
+### File paths
+
+A relative path resolves from the folder you run Playwright in, not from the spec file. Build the path from the spec's location when tests may run from different folders.
+
+| Project type                    | Folder of the current spec |
+| ------------------------------- | -------------------------- |
+| CommonJS (the default)          | `__dirname`                |
+| ES modules (`"type": "module"`) | `import.meta.dirname`      |
+
+<Callout type="gotcha" title="__dirname is undefined in ES modules">
+  With `"type": "module"` in `package.json`, `__dirname` doesn't exist and `import.meta.dirname` does. In a
+  CommonJS project it's the reverse: `import.meta` stops the spec from loading at all.
+</Callout>
+
+## Several files, replacing and clearing
+
+Pass an array to an input that has the `multiple` attribute. Each call **replaces** the selection, and an empty array clears it.
+
+```ts title="tests/attachments.spec.ts"
+const attachments = page.getByLabel('Attachments');
+const selected = page.getByRole('list', { name: 'Selected files' }).getByRole('listitem');
+
+await attachments.setInputFiles(['fixtures/notes.txt', 'fixtures/data.csv']);
+await expect(selected).toHaveText(['notes.txt', 'data.csv']);
+
+await attachments.setInputFiles('fixtures/data.csv');
+await expect(selected).toHaveText(['data.csv']);
+
+await attachments.setInputFiles([]);
+await expect(selected).toHaveCount(0);
+await expect(attachments).toHaveValue('');
+```
+
+| What you pass                                  | Result                                                       |
+| ---------------------------------------------- | ------------------------------------------------------------ |
+| Two files, input without `multiple`            | Throws `Non-multiple file input can only accept single file` |
+| A path that doesn't exist                      | Throws `ENOENT`                                              |
+| A folder, input with `webkitdirectory`         | Uploads the folder's files                                   |
+| A folder, ordinary file input                  | Throws `File input does not support directories`             |
+| A single file, input with `webkitdirectory`    | Throws, because that input needs a folder                    |
+| A target that isn't an input, such as a button | Throws `Node is not an HTMLInputElement`                     |
+
+## Files created in memory
+
+You don't need a fixture on disk. Pass a `name`, a `mimeType` and a `buffer`, and the page receives a normal file.
+
+```ts title="tests/import.spec.ts"
+await page.getByLabel('Import contacts').setInputFiles({
+  name: 'contacts.csv',
+  mimeType: 'text/csv',
+  buffer: Buffer.from('name,email\nAda,ada@example.com\n'),
+});
+
+await expect(page.getByRole('cell', { name: 'ada@example.com' })).toBeVisible();
+```
+
+The data sits next to the assertion that depends on it, and there is nothing to clean up afterwards.
+
+<Callout type="warn" title="buffers stop at 50 MB">
+  A larger buffer throws `Cannot set buffer larger than 50Mb`. Write big files to disk and pass the path: a 60
+  MB file uploaded by path worked in Chromium, Firefox and WebKit.
+</Callout>
+
+## Testing rejected files
+
+`setInputFiles()` ignores the input's `accept` attribute. A PDF goes into an input with `accept=".csv"` without complaint, and a `mimeType` of `image/png` is believed whatever the bytes are.
+
+That's useful. `accept` only filters the system dialog, and users can get around it, so your app's own validation is what needs testing. A table of bad files keeps the cases readable.
+
+```ts title="tests/import-validation.spec.ts"
+const csv = (name: string, content: string) => ({
+  name,
+  mimeType: 'text/csv',
+  buffer: Buffer.from(content),
+});
+
+const badFiles = [
+  { title: 'the wrong type', file: csv('notes.txt', 'hello'), error: 'Choose a CSV file' },
+  { title: 'an empty file', file: csv('empty.csv', ''), error: 'The file is empty' },
+  {
+    title: 'a file over the limit',
+    file: csv('big.csv', 'a'.repeat(2 * 1024 * 1024 + 1)),
+    error: 'Files must be 2 MB or smaller',
+  },
+  {
+    title: 'a missing column',
+    file: csv('old.csv', 'name,phone\nAda,555\n'),
+    error: 'Missing column: email',
+  },
+];
+
+for (const { title, file, error } of badFiles) {
+  test(`rejects ${title}`, async ({ page }) => {
+    await page.goto('/import');
+    await page.getByLabel('Import contacts').setInputFiles(file);
+    await expect(page.getByRole('alert')).toHaveText(error);
+  });
+}
+```
+
+## Proving the server got the file
+
+A file name on screen may only mean the browser selected it. Wait for the upload's response, and start waiting **before** the click.
+
+```ts title="tests/avatar.spec.ts"
+const avatar = { name: 'me.png', mimeType: 'image/png', buffer: Buffer.from('fake image bytes') };
+
+test('sends the avatar to the server', async ({ page }) => {
+  await page.goto('/avatar');
+  await page.getByLabel('Avatar').setInputFiles(avatar);
+
+  const uploaded = page.waitForResponse('**/api/avatar');
+  await page.getByRole('button', { name: 'Save' }).click();
+
+  const response = await uploaded;
+  expect(response.ok()).toBe(true);
+  expect(await response.json()).toMatchObject({ name: 'me.png', type: 'image/png' });
+  await expect(page.getByRole('status')).toHaveText('Saved');
+});
+```
+
+<Callout type="gotcha" title="don't assert on the multipart request body">
+  `request.postDataBuffer()` included the file's part in Firefox and WebKit but not in Chromium. Assert on the
+  server's response instead, which works in all three.
+</Callout>
+
+<ApiRef name="page.route()" /> can force the failure path, such as a file the server refuses as too large.
+
+```ts title="tests/avatar-failure.spec.ts"
+await page.route('**/api/avatar', (route) => route.fulfill({ status: 413 }));
+await page.goto('/avatar');
+
+await page.getByLabel('Avatar').setInputFiles(avatar);
+await page.getByRole('button', { name: 'Save' }).click();
+
+await expect(page.getByRole('alert')).toHaveText('Upload failed. Try again.');
+```
+
+<a href={siteUrl('chapters/12-forms')}>Chapter 12</a> covers this pattern for ordinary form submissions.
+
+## When there's no input to target
+
+### Pickers opened by a button
+
+Some apps create the input only when you click, so there's nothing to locate beforehand. Catch the `filechooser` event instead. As with every event, start waiting before the click.
+
+```ts title="tests/gallery.spec.ts"
+await page.goto('/gallery');
+
+const chooserOpened = page.waitForEvent('filechooser');
+await page.getByRole('button', { name: 'Add photos' }).click();
+const chooser = await chooserOpened;
+
+expect(chooser.isMultiple()).toBe(true);
+await chooser.setFiles(['fixtures/beach.png', 'fixtures/hills.png']);
+
+await expect(page.getByRole('list', { name: 'Photos' }).getByRole('listitem')).toHaveText([
+  'beach.png',
+  'hills.png',
+]);
+```
+
+<ApiRef name="fileChooser.setFiles()" /> accepts the same paths and in-memory files as `setInputFiles()`.
+
+The event only covers `<input type="file">` pickers. `window.showOpenFilePicker()` fired no `filechooser` event in Chromium, and Firefox and WebKit don't have that function.
+
+### Drag and drop
+
+If a dropzone is backed by a file input, use `setInputFiles()` on the input. For a true drop target, build a `DataTransfer` in the page and dispatch a `drop` event with it.
+
+```ts title="tests/dropzone.spec.ts"
+await page.goto('/dropzone');
+
+const dataTransfer = await page.evaluateHandle(() => {
+  const transfer = new DataTransfer();
+  transfer.items.add(new File(['id,name\n'], 'people.csv', { type: 'text/csv' }));
+  return transfer;
+});
+
+await page.getByRole('region', { name: 'Drop files here' }).dispatchEvent('drop', { dataTransfer });
+
+await expect(page.getByRole('list', { name: 'Queued files' })).toContainText('people.csv');
+```
+
+This runs the page's `drop` handler directly. It doesn't prove that a person can drag a file there, so also give keyboard users a file button and test that too.
+
+## Catching a download
+
+A download is an event. Start waiting, trigger it, then await the result.
+
+```ts title="tests/report.spec.ts"
+await page.goto('/reports');
+
+const downloadStarted = page.waitForEvent('download');
+await page.getByRole('link', { name: 'Download report' }).click();
+const download = await downloadStarted;
+
+expect(download.suggestedFilename()).toBe('report-2026.csv');
+expect(await download.failure()).toBeNull();
+```
+
+<Callout type="gotcha" title="the order matters">
+  With `await click()` first and `waitForEvent('download')` after, the event was missed and the wait timed out
+  in Chromium and Firefox. WebKit happened to catch it, so a test written this way can pass on one browser and
+  fail on another.
+</Callout>
+
+`suggestedFilename()` comes from the `Content-Disposition` header or the link's `download` attribute. Files generated in the browser from a blob work the same way.
+
+| Method                                         | What it gives you                                    |
+| ---------------------------------------------- | ---------------------------------------------------- |
+| <ApiRef name="download.suggestedFilename()" /> | The name the browser would use                       |
+| <ApiRef name="download.url()" />               | The URL it came from                                 |
+| <ApiRef name="download.failure()" />           | `null` on success, otherwise the error text          |
+| <ApiRef name="download.path()" />              | Temp file path. Waits for the end, throws on failure |
+| <ApiRef name="download.saveAs()" />            | Copies the file to a path you choose                 |
+| <ApiRef name="download.createReadStream()" />  | A stream of the contents                             |
+| <ApiRef name="download.cancel()" />            | Stops it, and `failure()` then returns `canceled`    |
+| <ApiRef name="download.delete()" />            | Removes the temp file                                |
+
+Downloads are accepted by default. With `acceptDownloads: false` in the context options, the event still fires but the download fails.
+
+## Checking what's inside
+
+The right name doesn't mean the right content. `download.path()` waits for the file to finish, so it's safe to read straight away.
+
+```ts title="tests/report-content.spec.ts"
+import fs from 'node:fs/promises';
+
+const text = await fs.readFile(await download.path(), 'utf8');
+const [header, ...rows] = text.trim().split('\n');
+
+expect(header).toBe('id,name');
+expect(rows).toEqual(['1,Ada', '2,Grace']);
+```
+
+Splitting on newlines is fine for simple data. Use a CSV parser when values can contain commas, quotes or line breaks.
+
+Binary files can't be compared as text. Check the signature at the start of the file and a sensible size, or use a parsing library when the contents matter.
+
+```ts title="tests/invoice.spec.ts"
+const bytes = await fs.readFile(await download.path());
+
+expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
+expect(bytes.length).toBeGreaterThan(1024);
+```
+
+## When downloads fail
+
+Failures are where browsers differ most. The same server response gave these results:
+
+| Server behaviour              | Chromium              | Firefox                         | WebKit                              |
+| ----------------------------- | --------------------- | ------------------------------- | ----------------------------------- |
+| 404 on a plain link           | No download event     | No download event               | No download event                   |
+| 404 on a link with `download` | Fails with `canceled` | No download event               | **Succeeds**, saving the error body |
+| 500 with an attachment header | No download event     | No download event               | **Succeeds**, saving the error body |
+| Connection drops partway      | `canceled`            | `NS_ERROR_NET_PARTIAL_TRANSFER` | `The network connection was lost.`  |
+
+Three rules follow from this:
+
+- `failure()` doesn't report HTTP status codes, so never assert that it contains `404`.
+- For an interrupted download, assert that `failure()` isn't `null`, not what the message says.
+- A "successful" WebKit download can hold an error page, which is one more reason to check the contents.
+
+```ts title="tests/interrupted.spec.ts"
+const downloadStarted = page.waitForEvent('download');
+await page.getByRole('link', { name: 'Download archive' }).click();
+const download = await downloadStarted;
+
+expect(await download.failure()).not.toBeNull();
+await expect(download.path()).rejects.toThrow();
+```
+
+### Proving no download started
+
+When the app fetches the file first, it can show an error instead of starting a download. Record any downloads with a listener, then assert on what the user sees.
+
+```ts title="tests/export-failure.spec.ts"
+import { test, expect, type Download } from '@playwright/test';
+
+test('shows an error when the export fails', async ({ page }) => {
+  await page.route('**/api/export', (route) => route.fulfill({ status: 404 }));
+  await page.goto('/reports');
+
+  const downloads: Download[] = [];
+  page.on('download', (download) => downloads.push(download));
+
+  await page.getByRole('button', { name: 'Export' }).click();
+
+  await expect(page.getByRole('alert')).toHaveText('Export failed');
+  expect(downloads).toHaveLength(0);
+});
+```
+
+<Callout type="warn" title="avoid try/catch around the wait">
+  A test that catches a `waitForEvent()` timeout and asserts on the message inside `catch` also passes when
+  the download works, because the `catch` block never runs.
+</Callout>
+
+### Downloads from a new tab
+
+Which page gets the event depends on how the download starts.
+
+| How it starts                                        | Listen on     |
+| ---------------------------------------------------- | ------------- |
+| `target="_blank"` link straight to an attachment     | Original page |
+| New tab opens a page, which then starts the download | The new tab   |
+
+```ts title="tests/popup-download.spec.ts"
+const popupOpened = page.waitForEvent('popup');
+await page.getByRole('link', { name: 'Open export' }).click();
+const popup = await popupOpened;
+
+const download = await popup.waitForEvent('download');
+expect(download.suggestedFilename()).toBe('report-2026.csv');
+```
+
+## Keeping the workspace clean
+
+Playwright stores each download in a temp folder and deletes it when the browser context closes. Anything you need later has to be copied with `saveAs()`, and those copies are yours to manage.
+
+Save into <ApiRef name="testInfo.outputPath()" />. Each test gets its own folder, so parallel tests can't overwrite each other's files, and Playwright empties the output directory at the start of the next run.
+
+```ts title="tests/report-artifact.spec.ts"
+test('keeps the report with the test results', async ({ page }, testInfo) => {
+  await page.goto('/reports');
+
+  const downloadStarted = page.waitForEvent('download');
+  await page.getByRole('link', { name: 'Download report' }).click();
+  const download = await downloadStarted;
+
+  const saved = testInfo.outputPath(download.suggestedFilename());
+  await download.saveAs(saved);
+  await testInfo.attach('report', { path: saved });
+
+  expect(await fs.readFile(saved, 'utf8')).toContain('Grace');
+});
+```
+
+`saveAs()` creates any missing folders, so there's no need to make them first. `testInfo.attach()` adds the file to the HTML report, which helps when a CI run fails.
+
+## Interview angle
+
+- **How do you upload a file without the system dialog?** Call `setInputFiles()` on the file input. It works on hidden inputs and accepts paths or in-memory buffers.
+- **What if the input doesn't exist until a button is clicked?** Start `page.waitForEvent('filechooser')` before the click, then call `setFiles()` on the chooser.
+- **Does `setInputFiles()` respect `accept`?** No. That lets you send invalid files and test the app's own validation.
+- **Why start `waitForEvent('download')` before the click?** The event can fire while the click is being awaited, and a listener added afterwards misses it.
+- **How do you verify a download's contents?** Read the file at `download.path()`, which waits for it to finish, then assert on the text, signature or size.
+- **What does `download.failure()` return for a 404?** Usually nothing useful. Many 404s never start a download, and the error text doesn't include the status code.
+- **How do you stop downloaded files piling up?** Leave temp files to Playwright, and save copies under `testInfo.outputPath()`.

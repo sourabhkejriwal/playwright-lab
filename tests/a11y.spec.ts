@@ -20,6 +20,7 @@ const pages = [
   '/chapters/11-mobile',
   '/chapters/12-forms',
   '/chapters/13-files',
+  '/chapters/14-security-auth',
   '/playground',
   '/flashcards',
   '/config',

@@ -1,0 +1,95 @@
+{
+  "chapter": 13,
+  "cards": [
+    {
+      "id": "files/set-input-files",
+      "front": "Which method uploads a file without opening the system dialog?",
+      "back": "`locator.setInputFiles()`. It sets the files directly on an `<input type=\"file\">`, even a hidden one."
+    },
+    {
+      "id": "files/clear-selection",
+      "front": "How do you clear a file input?",
+      "back": "Call `setInputFiles([])`. Each call replaces the current selection."
+    },
+    {
+      "id": "files/multiple-attribute",
+      "front": "What happens if you pass two files to an input without `multiple`?",
+      "back": "It throws `Non-multiple file input can only accept single file`."
+    },
+    {
+      "id": "files/in-memory",
+      "front": "What does an in-memory upload need?",
+      "back": "An object with `name`, `mimeType` and `buffer`. Buffers are limited to 50 MB, so pass a path for larger files."
+    },
+    {
+      "id": "files/accept-ignored",
+      "front": "Does `setInputFiles()` enforce the `accept` attribute?",
+      "back": "No. `accept` only filters the system dialog, so tests can send invalid files to check the app's validation."
+    },
+    {
+      "id": "files/fakepath",
+      "front": "What does a file input's value look like after selecting `resume.pdf`?",
+      "back": "`C:\\fakepath\\resume.pdf`, on every platform. Match the end with a regular expression such as `/resume\\.pdf$/`."
+    },
+    {
+      "id": "files/relative-paths",
+      "front": "What are relative paths in `setInputFiles()` relative to?",
+      "back": "The folder Playwright runs in. Use `__dirname` in CommonJS or `import.meta.dirname` in ES modules to build a path from the spec's location."
+    },
+    {
+      "id": "files/file-chooser",
+      "front": "How do you upload when the input is only created on click?",
+      "back": "Start `page.waitForEvent('filechooser')` before the click, await it, then call `fileChooser.setFiles()`."
+    },
+    {
+      "id": "files/drag-and-drop",
+      "front": "How do you simulate dropping a file on a custom dropzone?",
+      "back": "Create a `DataTransfer` with `page.evaluateHandle()`, add a `File`, then call `dispatchEvent('drop', { dataTransfer })` on the target."
+    },
+    {
+      "id": "files/verify-upload",
+      "front": "How do you prove the server received an upload?",
+      "back": "Start `page.waitForResponse()` before submitting, then assert on the response. The multipart request body isn't reliable: Chromium left the file out of `postDataBuffer()`."
+    },
+    {
+      "id": "files/download-order",
+      "front": "What's the correct order for catching a download?",
+      "back": "Create the `page.waitForEvent('download')` promise, trigger the download, then await the promise."
+    },
+    {
+      "id": "files/download-path",
+      "front": "What does `download.path()` do?",
+      "back": "It waits for the download to finish and returns the temp file's path. It throws if the download failed or was canceled."
+    },
+    {
+      "id": "files/failure-return",
+      "front": "What does `download.failure()` return when a download succeeds?",
+      "back": "`null`. On failure it returns error text, and that text differs by browser."
+    },
+    {
+      "id": "files/failure-404",
+      "front": "Why not assert that `download.failure()` contains `404`?",
+      "back": "It doesn't report status codes. A 404 may fire no download event, fail as `canceled`, or succeed in WebKit with the error body saved."
+    },
+    {
+      "id": "files/new-tab",
+      "front": "A `target=\"_blank\"` link points straight at an attachment. Which page gets the `download` event?",
+      "back": "The original page. The new tab gets the event only when it loads a page that then starts the download."
+    },
+    {
+      "id": "files/temp-lifetime",
+      "front": "When does Playwright delete a download's temp file?",
+      "back": "When the browser context closes, or when you call `download.delete()`. Copies made with `saveAs()` stay."
+    },
+    {
+      "id": "files/save-as-folders",
+      "front": "Must the target folder exist before `download.saveAs()`?",
+      "back": "No. `saveAs()` creates any missing folders."
+    },
+    {
+      "id": "files/output-path",
+      "front": "Where should a test save files it wants to keep?",
+      "back": "Under `testInfo.outputPath()`. Each test gets its own folder, and the output directory is emptied at the start of the next run."
+    }
+  ]
+}

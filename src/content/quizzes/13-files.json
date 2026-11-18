@@ -1,0 +1,60 @@
+{
+  "chapter": 13,
+  "questions": [
+    {
+      "question": "An input has `accept=\".csv\"`. What happens when a test calls `setInputFiles('report.pdf')` on it?",
+      "options": [
+        "Playwright throws because the type isn't accepted",
+        "The call waits until it times out",
+        "The file is selected, so the app's own validation can be tested",
+        "The browser silently drops the file"
+      ],
+      "answer": 2,
+      "explanation": "`setInputFiles()` ignores `accept`, which only filters the system dialog. That makes it easy to test how the app handles a file it should reject."
+    },
+    {
+      "question": "A photo button creates its file input only when clicked. How should the test select a file?",
+      "options": [
+        "Start `page.waitForEvent('filechooser')`, click, then call `setFiles()`",
+        "Click the button, then call `setInputFiles()` on the button",
+        "Add an input to the page with `page.evaluate()`",
+        "Use `keyboard.type()` to enter the path in the dialog"
+      ],
+      "answer": 0,
+      "explanation": "The `filechooser` event hands you the picker the click opened. Start waiting before the click so the event can't be missed."
+    },
+    {
+      "question": "Why does this order cause trouble? `await link.click(); const download = await page.waitForEvent('download');`",
+      "options": [
+        "`waitForEvent()` can't be used with links",
+        "The download can start during the click, before anything is waiting for it",
+        "`click()` cancels downloads unless `force` is set",
+        "Downloads must be awaited with `page.waitForResponse()`"
+      ],
+      "answer": 1,
+      "explanation": "An event that fires before the wait begins is lost, and the wait times out. Create the promise first, click, then await the promise."
+    },
+    {
+      "question": "A download link returns a 404. Which test is safe across Chromium, Firefox and WebKit?",
+      "options": [
+        "Assert that `download.failure()` contains `404`",
+        "Assert that `download.path()` returns `null`",
+        "Assert that `suggestedFilename()` is empty",
+        "Don't rely on `failure()`, and assert what the user sees instead"
+      ],
+      "answer": 3,
+      "explanation": "Browsers differ here: some fire no download event, Chromium can report `canceled`, and WebKit can save the error body as a success. None of them reports the status code."
+    },
+    {
+      "question": "A test needs to keep a downloaded report for debugging. Where should it save the file?",
+      "options": [
+        "In a shared `downloads/` folder in the project",
+        "At the path returned by `download.path()`, which is permanent",
+        "Under `testInfo.outputPath()`, using `download.saveAs()`",
+        "In the operating system's home folder"
+      ],
+      "answer": 2,
+      "explanation": "`testInfo.outputPath()` gives each test its own folder, so parallel tests don't collide, and the output directory is emptied at the start of the next run. The temp file goes away when the context closes."
+    }
+  ]
+}
