@@ -10,6 +10,7 @@ const pages = [
   '/chapters/04-ai-test-generation',
   '/chapters/05-fixtures',
   '/chapters/06-parallelization',
+  '/chapters/07-ci-cd',
   '/playground',
   '/flashcards',
   '/config',

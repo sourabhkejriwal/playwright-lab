@@ -12,8 +12,8 @@ const pages = [
     type: 'article',
   },
   {
-    path: '/chapters/06-parallelization/',
-    title: 'ch06 Parallelization and performance · playwright-lab',
+    path: '/chapters/07-ci-cd/',
+    title: 'ch07 CI/CD pipelines · playwright-lab',
     type: 'website',
   },
   { path: '/playground/', title: 'playground · playwright-lab', type: 'website' },

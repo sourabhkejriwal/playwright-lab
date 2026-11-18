@@ -57,7 +57,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ 03 Cross-browser testing
 - [x] ⇉ 04 AI-powered test generation
 - [x] ⇉ 05 Fixtures
-- [ ] ⇉ 06 Parallelization and performance
+- [x] ⇉ 06 Parallelization and performance
 - [ ] ⇉ 07 CI/CD pipelines
 - [ ] ⇉ 08 Headless testing and debugging
 - [ ] ⇉ 09 Accessibility testing with axe-core
@@ -199,3 +199,9 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   local server, since removed. Chapter 6 is now the "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so
   whoever writes chapter 6 must move those to chapter 7. Avoid a lone `x` as a word in chapter text: with one in this chapter, Pagefind
   returned a result for "xylophone" and `tests/search.spec.ts` failed until it was reworded.
+- 2026-11-18: Chapter 6 notes follow the installed Playwright (1.65) where the reference PDF differs: workers default to half the logical cores,
+  parallel tests run in separate processes, `shard` is a top-level config option and not a project option, shards balance test counts rather
+  than files, and `test.describe.configure()` is preferred over `test.describe.parallel()`. The LCP budget uses the common 2.5 seconds. The
+  unattended session was not permitted to run a scratch project, so **the chapter's snippets were not executed**: claims were checked by reading the
+  installed source and type docs. Worth running them once, especially the CDP throttling and `requestfinished` examples. Chapter 7 is now the
+  "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 7 must move those to chapter 8.

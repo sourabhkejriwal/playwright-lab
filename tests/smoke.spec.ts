@@ -88,6 +88,18 @@ test.describe('chapters', () => {
     await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
   });
 
+  test('the parallelization chapter renders its notes and quiz', async ({ page }) => {
+    await page.goto('/chapters/06-parallelization');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Parallelization and performance');
+    await expect(page.getByRole('heading', { level: 2, name: 'Shard across machines' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'lcp.perf.ts' })).toContainText('PerformanceObserver');
+    await expect(page.getByRole('link', { name: 'parallel simulator', exact: true })).toHaveAttribute(
+      'href',
+      /\/parallel\/?$/,
+    );
+    await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
+  });
+
   test('code blocks show a title bar and highlighted lines', async ({ page }) => {
     await page.goto('/chapters/02-selectors');
 
@@ -119,7 +131,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter shows a pending placeholder', async ({ page }) => {
-    await page.goto('/chapters/06-parallelization');
+    await page.goto('/chapters/07-ci-cd');
     await expect(page.getByText("notes for this chapter aren't written yet")).toBeVisible();
   });
 
@@ -149,7 +161,7 @@ test.describe('chapters', () => {
   });
 
   test('an unwritten chapter has no table of contents', async ({ page }) => {
-    await page.goto('/chapters/06-parallelization');
+    await page.goto('/chapters/07-ci-cd');
     await expect(page.locator('[data-toc]')).toHaveCount(0);
   });
 

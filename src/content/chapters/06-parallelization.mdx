@@ -1,0 +1,442 @@
+---
+chapter: 6
+title: Parallelization and performance
+summary: Run tests across workers and machines, remove resource bottlenecks, and measure what the browser is really doing.
+readingMinutes: 13
+---
+
+import { url as siteUrl } from '../../lib/url';
+
+## How the runner divides the work
+
+`npx playwright test` starts a pool of **workers**. Each worker is a separate Node.js process with its own browser.
+
+- **Workers default to half your logical CPU cores**, and there is always at least one.
+- **Files run in parallel, tests in a file run in order.** That is the default.
+- **Work is handed out from a queue.** A free worker takes the next job, so a worker with quick files simply gets through more of them.
+- **Each test gets a new browser context.** Cookies and storage never carry over, even though tests in a worker share one browser.
+- **A failed test replaces the worker.** The next job starts in a new process.
+
+See how these rules play out in the <a href={siteUrl('parallel')}>parallel simulator</a>.
+
+## Set the number of workers
+
+Pass a number or a percentage of logical cores on the command line. A percentage rounds down, and never goes below one worker.
+
+```bash
+npx playwright test --workers=4
+npx playwright test --workers=50%
+npx playwright test --workers=1   # one at a time
+```
+
+The config sets the same value for everyone. A common choice is a fixed number on CI and the default on your laptop.
+
+```ts title="playwright.config.ts" {4}
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  workers: process.env.CI ? 2 : undefined,
+});
+```
+
+<Callout type="tip" title="pick a number for CI">
+  In a container, `os.cpus()` can report the host's cores instead of your limit, so a percentage may start too
+  many workers. A fixed number is predictable.
+</Callout>
+
+A project can also have its own limit, which is useful for a group of tests that must not overlap.
+
+```ts title="playwright.config.ts" {5}
+export default defineConfig({
+  workers: 4,
+  projects: [
+    { name: 'e2e', testIgnore: /.*\.perf\.ts/ },
+    { name: 'perf', testMatch: /.*\.perf\.ts/, workers: 1 },
+  ],
+});
+```
+
+## Choose what runs in parallel
+
+| Setting                                         | Effect                                                  |
+| ----------------------------------------------- | ------------------------------------------------------- |
+| Nothing                                         | Files in parallel, tests in each file in order          |
+| `test.describe.configure({ mode: 'parallel' })` | Tests in this file or group can run at the same time    |
+| `fullyParallel: true`                           | Every test in the config or project can run in parallel |
+| `test.describe.configure({ mode: 'default' })`  | Opts this group out of `fullyParallel`                  |
+| `test.describe.configure({ mode: 'serial' })`   | Dependent tests: one failure skips the rest             |
+
+### Parallel inside one file
+
+<ApiRef name="test.describe.configure()" /> works at the top of a file or inside a `describe` block.
+
+```ts title="catalog.spec.ts" {3}
+import { test, expect } from '@playwright/test';
+
+test.describe.configure({ mode: 'parallel' });
+
+test('lists books', async ({ page }) => {
+  await page.goto('/catalog/books');
+  await expect(page.getByRole('heading', { name: 'Books' })).toBeVisible();
+});
+
+test('lists music', async ({ page }) => {
+  await page.goto('/catalog/music');
+  await expect(page.getByRole('heading', { name: 'Music' })).toBeVisible();
+});
+```
+
+<Callout type="gotcha" title="parallel tests don't share a process">
+  Tests running at the same time are in different worker processes, so a variable at the top of the file is
+  not shared between them. Hooks are repeated too: `beforeAll` runs in each worker that picks up tests from
+  the group.
+</Callout>
+
+`test.describe.parallel()` still exists, but the docs now prefer `test.describe.configure()`.
+
+### Parallel everywhere
+
+Set `fullyParallel` at the top of the config, or only on the projects that are ready for it.
+
+```ts title="playwright.config.ts" {3}
+export default defineConfig({
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium' }, fullyParallel: true },
+    { name: 'firefox', use: { browserName: 'firefox' } },
+  ],
+});
+```
+
+### Keep parallel tests apart
+
+Browser contexts isolate the browser, but not your backend. Two tests that edit the same account will still collide, and the
+failure will look random. Give each test its own data, or use `parallelIndex` to pick from a pool with one entry per worker.
+
+```ts title="accounts.ts" {4}
+import { test as base } from '@playwright/test';
+
+export const test = base.extend<{ email: string }>({
+  email: async ({}, use, testInfo) => {
+    await use(`user-${testInfo.parallelIndex}@example.com`);
+  },
+});
+```
+
+## Shard across machines
+
+Workers share one machine. **Shards** split the suite across several, and each shard still uses its own workers.
+
+```bash
+# machine 1
+npx playwright test --shard=1/3
+# machine 2
+npx playwright test --shard=2/3
+# machine 3
+npx playwright test --shard=3/3
+```
+
+`shard: { total: 3, current: 1 }` does the same in the top-level config. It isn't a project option, and the flag is easier to
+drive from a CI matrix.
+
+<Callout type="gotcha" title="shards balance tests, not time">
+  Playwright divides the suite by test count. Without `fullyParallel`, a whole file goes to the shard where
+  its first test lands, so one large file can leave the shards uneven. With `fullyParallel: true`, tests are
+  placed one by one and the split is much closer.
+</Callout>
+
+Each shard produces its own report. Use the `blob` reporter on every shard, then join the results with
+`npx playwright merge-reports`.
+
+## Tune for your machine
+
+More workers only help while the machine has room. Start from the default and watch CPU and memory during a real run.
+
+| What you see                               | What to try                               |
+| ------------------------------------------ | ----------------------------------------- |
+| CPU stays at 100%, tests time out          | Fewer workers                             |
+| Memory runs out, browsers crash            | Fewer workers, close contexts you created |
+| CPU is low, tests mostly wait on a server  | More workers, if the server can take them |
+| A few slow tests hold up everything else   | Split them out and run them separately    |
+| Failures appear only when running together | Shared data: fix isolation first          |
+
+### Separate the slow tests
+
+Tag them, then run each group with its own worker count.
+
+```ts title="checkout.spec.ts" {1}
+test('completes a full checkout', { tag: '@slow' }, async ({ page }) => {
+  await page.goto('/checkout');
+  // ...
+});
+```
+
+```bash
+npx playwright test --grep-invert @slow --workers=8
+npx playwright test --grep @slow --workers=2
+```
+
+### Give slow tests more time
+
+<ApiRef name="test.slow()" /> triples the timeout. It can take a condition and a reason.
+
+```ts title="report.spec.ts" {2,7}
+test('builds the yearly report', async ({ page }) => {
+  test.slow();
+  // ...
+});
+
+test('exports a large file', async ({ page, browserName }) => {
+  test.slow(browserName === 'webkit', 'export is slower in WebKit');
+  // ...
+});
+```
+
+To mark every test in a file or group under a condition, pass a callback:
+`test.slow(({ browserName }) => browserName === 'webkit', 'slow in WebKit')`. `test.slow()` can't be used in `beforeAll` or
+`afterAll`, so use `test.setTimeout()` there.
+
+## Remove resource bottlenecks
+
+### Reuse the browser
+
+The test runner already shares one browser per worker. This matters when you write your own scripts with the library: launch once,
+and create a context for each visit.
+
+```ts title="crawl.ts" {3,5,9}
+import { chromium } from 'playwright';
+
+const browser = await chromium.launch();
+for (const url of urls) {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  await page.goto(url);
+  // check the page
+  await context.close();
+}
+await browser.close();
+```
+
+The built-in `page` and `context` fixtures clean up after themselves. Any context you create yourself is yours to close.
+
+### Block what the test doesn't need
+
+<ApiRef name="page.route()" /> can drop images, fonts, and third-party scripts before they download. Checking
+the resource type is more reliable than matching file names, because a glob such as `**/*.png` is compared
+with the whole URL and misses `logo.png?v=2`.
+
+```ts title="no-media.fixture.ts" {6-8}
+import { test as base } from '@playwright/test';
+
+export const test = base.extend({
+  page: async ({ page }, use) => {
+    await page.route('**/*', (route) => {
+      const blocked = ['image', 'media', 'font'];
+      if (blocked.includes(route.request().resourceType())) return route.abort();
+      return route.continue();
+    });
+    await use(page);
+  },
+});
+```
+
+Third-party hosts can be blocked by address:
+
+```ts
+await page.route('https://ads.example.com/**', (route) => route.abort());
+```
+
+<Callout type="gotcha" title="routing turns off the HTTP cache">
+  Enabling any route disables the browser's HTTP cache for that page. A broad route can therefore make a test
+  that revisits pages slower, so measure before and after. Don't block assets in visual or layout tests.
+</Callout>
+
+### Stub slow APIs
+
+<ApiRef name="route.fulfill()" /> answers a request without reaching the server. The `json` option sets the
+body and content type.
+
+```ts title="profile.spec.ts" {2-4}
+test('shows the signed-in name', async ({ page }) => {
+  await page.route('**/api/user/profile', (route) => route.fulfill({ json: { id: 123, name: 'Test User' } }));
+  await page.goto('/profile');
+  await expect(page.getByRole('heading', { name: 'Test User' })).toBeVisible();
+});
+```
+
+Keep a few tests that use the real API, or a broken backend will go unnoticed.
+
+### Record artifacts only when they help
+
+```ts title="playwright.config.ts" {3-5}
+export default defineConfig({
+  use: {
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
+});
+```
+
+| Trace or video mode               | Records          | Keeps                       |
+| --------------------------------- | ---------------- | --------------------------- |
+| `'off'` (default)                 | Nothing          | Nothing                     |
+| `'on'`                            | Every run        | Every run                   |
+| `'on-first-retry'`                | First retry only | That retry                  |
+| `'on-all-retries'`                | Every retry      | Every retry                 |
+| `'retain-on-failure'`             | Every run        | Failed runs                 |
+| `'retain-on-first-failure'`       | First run only   | That run, if it failed      |
+| `'retain-on-failure-and-retries'` | Every run        | Failed runs and all retries |
+
+<Callout type="gotcha" title="retain-on-failure still pays to record">
+  It saves disk space, but every passing test was recorded first. `on-first-retry` costs nothing on a clean
+  run, but it needs `retries` above 0, or it never records anything.
+</Callout>
+
+If you must keep video for every test, make it smaller: `video: { mode: 'on', size: { width: 640, height: 360 } }`.
+
+## Measure performance
+
+Playwright has no performance report of its own, but it can read everything the browser knows.
+
+<Callout type="warn" title="measure one at a time">
+  Parallel workers compete for CPU, which distorts timings. Run performance specs in their own project with
+  `workers: 1`, as in the config above, and set budgets with some headroom.
+</Callout>
+
+### Navigation and resource timing
+
+```ts title="timing.perf.ts" {5-7}
+import { test, expect, type Page } from '@playwright/test';
+
+const navigation = (page: Page) =>
+  page.evaluate(() => {
+    const [entry] = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+    return { ttfb: entry.responseStart, loaded: entry.loadEventEnd };
+  });
+
+test('the home page loads within budget', async ({ page }) => {
+  await page.goto('/');
+  await expect.poll(async () => (await navigation(page)).loaded).toBeGreaterThan(0);
+
+  const { ttfb, loaded } = await navigation(page);
+  expect(ttfb).toBeLessThan(800);
+  expect(loaded).toBeLessThan(3000);
+});
+```
+
+`loadEventEnd` stays at 0 until the load event has finished, which is why the test polls. For individual files, read
+`performance.getEntriesByType('resource')`. Each entry has `name`, `duration`, `transferSize`, and `decodedBodySize`.
+
+### Largest Contentful Paint
+
+LCP entries can appear before your code runs, so start the observer with <ApiRef name="page.addInitScript()" />. Poll for the value
+instead of sleeping for a fixed time.
+
+```ts title="lcp.perf.ts" {4-8,12}
+import { test, expect } from '@playwright/test';
+
+test('largest content paints within 2.5 seconds', async ({ page }) => {
+  await page.addInitScript(() => {
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) (window as any).__lcp = entry.startTime;
+    }).observe({ type: 'largest-contentful-paint', buffered: true });
+  });
+
+  await page.goto('/');
+  const lcp = () => page.evaluate(() => (window as any).__lcp ?? 0);
+  await expect.poll(lcp).toBeGreaterThan(0);
+  expect(await lcp()).toBeLessThan(2500);
+});
+```
+
+### Chromium-only metrics
+
+`performance.memory` reports JavaScript heap size, but it is non-standard and exists only in Chromium. A **CDP session** goes further:
+it can slow the CPU and network, then return the browser's own counters.
+
+```ts title="throttled.perf.ts" {4,8-14,17}
+import { test } from '@playwright/test';
+
+test('home page on a slow device', async ({ page, context, browserName }) => {
+  test.skip(browserName !== 'chromium', 'CDP sessions need Chromium');
+
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Performance.enable');
+  await cdp.send('Network.enable');
+  await cdp.send('Network.emulateNetworkConditions', {
+    offline: false,
+    latency: 100,
+    downloadThroughput: 75_000,
+    uploadThroughput: 25_000,
+  });
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+
+  await page.goto('/');
+  const { metrics } = await cdp.send('Performance.getMetrics');
+  console.table(metrics);
+});
+```
+
+| Metric                            | Tells you                          |
+| --------------------------------- | ---------------------------------- |
+| `TaskDuration`                    | How busy the main thread was       |
+| `ScriptDuration`                  | Time spent running JavaScript      |
+| `LayoutCount`, `RecalcStyleCount` | How often layout and styles rerun  |
+| `Nodes`                           | Size of the DOM                    |
+| `JSHeapUsedSize`                  | JavaScript memory currently in use |
+
+### Log every request
+
+The `requestfinished` event fires for each completed request. `request.sizes()` gives the byte counts without downloading the body again.
+
+```ts title="network.perf.ts" {4-11,15}
+import { test, expect, type Request } from '@playwright/test';
+
+test('no oversized responses', async ({ page }) => {
+  const toRow = async (request: Request) => ({
+    url: request.url(),
+    type: request.resourceType(),
+    ms: request.timing().responseEnd,
+    bytes: (await request.sizes()).responseBodySize,
+  });
+  const rows: Promise<Awaited<ReturnType<typeof toRow>>>[] = [];
+  page.on('requestfinished', (request) => rows.push(toRow(request)));
+
+  await page.goto('/');
+  await expect(page.getByRole('main')).toBeVisible();
+  const finished = await Promise.all(rows);
+
+  expect(finished.filter((row) => row.bytes > 500_000)).toEqual([]);
+});
+```
+
+<Callout type="gotcha" title="async listeners aren't awaited">
+  Playwright doesn't wait for an `async` event handler. If the handler pushes its result after an `await`, the
+  array can still be incomplete when you read it. Collect the promises, as above, and await them all.
+</Callout>
+
+`responseEnd` is already relative to the start of the request, so it is the duration. Avoid waiting for `networkidle` here: the docs
+discourage it, and pages that poll may never reach it.
+
+### Find slow steps with a trace
+
+A trace records each action, network call, console message, and DOM snapshot on one timeline. It shows where a slow test spent its time.
+
+```bash
+npx playwright test --trace on
+npx playwright show-trace test-results/checkout-chromium/trace.zip
+npx playwright show-report
+```
+
+Traces add overhead and can be large, so use `--trace on` for a focused investigation rather than every run.
+
+## Interview angle
+
+- **What is a worker?** A separate Node.js process with its own browser. By default there are half as many workers as logical cores.
+- **What runs in parallel by default?** Test files. Tests inside a file run in order unless you set `mode: 'parallel'` or `fullyParallel`.
+- **Workers or shards?** Workers divide tests on one machine. Shards divide the suite across machines, and each shard runs its own workers.
+- **Why are shards sometimes uneven?** They balance test counts, and without `fullyParallel` a whole file stays together.
+- **Tests pass alone but fail together. What do you check?** Shared backend data first, because contexts only isolate the browser.
+- **When do more workers make a suite slower?** When CPU or memory is saturated, or the system under test can't handle the load.
+- **How do you make tests faster without adding workers?** Block unneeded assets, stub slow APIs, reuse signed-in state, and limit artifacts.
+- **Which trace mode suits CI?** `on-first-retry`, with retries enabled. It adds no cost to tests that pass first time.

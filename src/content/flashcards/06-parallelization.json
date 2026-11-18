@@ -1,0 +1,115 @@
+{
+  "chapter": 6,
+  "cards": [
+    {
+      "id": "parallelization/worker",
+      "front": "What is a Playwright worker?",
+      "back": "A separate Node.js process with its own browser. Tests in a worker share that browser, and each test gets a new context."
+    },
+    {
+      "id": "parallelization/default-workers",
+      "front": "How many workers does Playwright use by default?",
+      "back": "Half the logical CPU cores, and always at least one."
+    },
+    {
+      "id": "parallelization/default-mode",
+      "front": "What runs in parallel by default?",
+      "back": "Test files. Tests inside one file run in order, in the same worker."
+    },
+    {
+      "id": "parallelization/percent-workers",
+      "front": "How does `--workers=50%` round?",
+      "back": "It takes that share of the logical cores, rounds down, and never goes below one worker."
+    },
+    {
+      "id": "parallelization/mode-parallel",
+      "front": "How do you run the tests in one file at the same time?",
+      "back": "Call `test.describe.configure({ mode: 'parallel' })` at the top of the file or inside a `describe` block."
+    },
+    {
+      "id": "parallelization/fully-parallel",
+      "front": "What does `fullyParallel: true` do?",
+      "back": "Lets every test run in parallel, across and within files. Set it in the config or on a single project."
+    },
+    {
+      "id": "parallelization/opt-out",
+      "front": "How does a group opt out of `fullyParallel`?",
+      "back": "Use `test.describe.configure({ mode: 'default' })`, or `mode: 'serial'` if the tests depend on each other."
+    },
+    {
+      "id": "parallelization/shared-state",
+      "front": "Why can't parallel tests share a variable at the top of a file?",
+      "back": "They run in different worker processes, and each process loads its own copy of the file."
+    },
+    {
+      "id": "parallelization/backend-isolation",
+      "front": "What don't browser contexts isolate?",
+      "back": "Your backend. Tests that change the same account or rows still collide, so give each test its own data."
+    },
+    {
+      "id": "parallelization/shard",
+      "front": "What's the difference between workers and shards?",
+      "back": "Workers divide tests on one machine. Shards divide the suite across machines, and each shard runs its own workers."
+    },
+    {
+      "id": "parallelization/shard-balance",
+      "front": "How does Playwright balance shards?",
+      "back": "By test count. Without `fullyParallel`, a whole file goes to the shard where its first test lands."
+    },
+    {
+      "id": "parallelization/merge",
+      "front": "How do you get one report from several shards?",
+      "back": "Use the `blob` reporter on each shard, then combine the results with `npx playwright merge-reports`."
+    },
+    {
+      "id": "parallelization/project-workers",
+      "front": "How do you stop one group of tests from overlapping while others stay parallel?",
+      "back": "Put them in their own project and set `workers: 1` on that project."
+    },
+    {
+      "id": "parallelization/test-slow",
+      "front": "What does `test.slow()` do?",
+      "back": "It triples the test's timeout. It also accepts a condition and a reason, but can't be used in `beforeAll` or `afterAll`."
+    },
+    {
+      "id": "parallelization/route-cache",
+      "front": "What side effect does `page.route()` have on caching?",
+      "back": "Enabling routing disables the HTTP cache, so a broad route can make repeat visits slower."
+    },
+    {
+      "id": "parallelization/resource-type",
+      "front": "Why block by `resourceType()` instead of a glob like `**/*.png`?",
+      "back": "Globs are compared with the whole URL, so `logo.png?v=2` slips through. The resource type doesn't depend on the address."
+    },
+    {
+      "id": "parallelization/retain-cost",
+      "front": "Does `trace: 'retain-on-failure'` avoid the cost of tracing passing tests?",
+      "back": "No. It records every run and discards the passing ones, so it saves disk space but not recording time."
+    },
+    {
+      "id": "parallelization/first-retry",
+      "front": "What does `trace: 'on-first-retry'` need in order to work?",
+      "back": "`retries` above 0. Without a retry, nothing is ever recorded."
+    },
+    {
+      "id": "parallelization/measure-alone",
+      "front": "Why run performance specs with `workers: 1`?",
+      "back": "Parallel workers compete for CPU, which distorts the timings you are trying to measure."
+    },
+    {
+      "id": "parallelization/lcp-init-script",
+      "front": "How do you capture Largest Contentful Paint in a test?",
+      "back": "Start a `PerformanceObserver` in `page.addInitScript()` with `buffered: true`, then poll for the value it stores."
+    },
+    {
+      "id": "parallelization/cdp",
+      "front": "What can a CDP session do that page APIs can't?",
+      "back": "Throttle CPU and network and read browser counters with `Performance.getMetrics`. It works only in Chromium."
+    },
+    {
+      "id": "parallelization/request-sizes",
+      "front": "How do you get a response's size from a finished request?",
+      "back": "`(await request.sizes()).responseBodySize`, inside a `requestfinished` listener."
+    }
+  ]
+}

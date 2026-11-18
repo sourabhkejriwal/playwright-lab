@@ -1,0 +1,60 @@
+{
+  "chapter": 6,
+  "questions": [
+    {
+      "question": "With no configuration, what runs in parallel?",
+      "options": [
+        "Every test in the suite",
+        "Test files, while tests inside each file run in order",
+        "Nothing, until you set `workers`",
+        "Tests inside a file, while files run in order"
+      ],
+      "answer": 1,
+      "explanation": "Files are spread across workers by default. Use `mode: 'parallel'` or `fullyParallel` to run the tests inside a file at the same time."
+    },
+    {
+      "question": "Two tests in a file use `mode: 'parallel'` and write to a variable at the top of the file. What happens?",
+      "options": [
+        "They share the variable, so writes can race",
+        "Playwright locks the variable between tests",
+        "The file fails to load",
+        "Each worker process has its own copy, so the value isn't shared"
+      ],
+      "answer": 3,
+      "explanation": "Parallel tests run in separate worker processes, and each process loads the file for itself."
+    },
+    {
+      "question": "A suite has one file with 50 tests and many small files. Why might `--shard=1/4` get far more work than `--shard=2/4` without `fullyParallel`?",
+      "options": [
+        "A whole file goes to the shard where its first test lands",
+        "Shards are assigned by file size on disk",
+        "The first shard always runs the slowest tests",
+        "Shards share one queue at run time"
+      ],
+      "answer": 0,
+      "explanation": "Shards balance test counts, but a file stays together unless `fullyParallel` lets its tests be placed one by one."
+    },
+    {
+      "question": "What is the catch with `trace: 'on-first-retry'`?",
+      "options": [
+        "It records every passing test",
+        "It only works in Chromium",
+        "It records nothing unless `retries` is above 0",
+        "It deletes the trace when the retry passes"
+      ],
+      "answer": 2,
+      "explanation": "The trace is recorded during the first retry, so a config with no retries never produces one."
+    },
+    {
+      "question": "Why start a `PerformanceObserver` for LCP with `page.addInitScript()`?",
+      "options": [
+        "`page.evaluate()` can't use browser APIs",
+        "It makes the page load faster",
+        "It's the only way to read `window` values",
+        "The observer is in place before the page's own code runs"
+      ],
+      "answer": 3,
+      "explanation": "An init script runs before the page's scripts, so the observer is ready from the start of the load."
+    }
+  ]
+}
