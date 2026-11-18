@@ -55,7 +55,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ 01 Quick setup refresher
 - [x] ⇉ 02 Advanced selectors
 - [x] ⇉ 03 Cross-browser testing
-- [ ] ⇉ 04 AI-powered test generation
+- [x] ⇉ 04 AI-powered test generation
 - [ ] ⇉ 05 Fixtures
 - [ ] ⇉ 06 Parallelization and performance
 - [ ] ⇉ 07 CI/CD pipelines
@@ -186,3 +186,9 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   channels were only checked for their error when the browser is missing, and headed mode and the Inspector were not opened.
   Watch for flakiness: the playground's "suggests a sturdier locator and can apply it" failed once on mobile in a full run. Its error wasn't
   captured, and it then passed alone and in another full run.
+- 2026-11-18: Chapter 4 notes follow the installed Playwright (1.65) where the reference PDF differs: Codegen's language flag is `--target`, not
+  `--lang`; `toPass` takes `intervals`, not `interval`; `waitForFunction` options are the third argument; and Playwright now ships planner,
+  generator and healer agents through `init-agents`. The notes advise against the PDF's rethrowing `try`/`catch` and its `page.goto()` fallback,
+  which hides a broken link. Runtime behaviour was checked in a throwaway spec on Chromium. CLI flags, agent definitions and the Copy prompt
+  button were read from the installed package, because the unattended session could not run `npx`. Codegen, `init-agents` and the MCP server
+  were not run, and the `@playwright/mcp` setup was not installed or tried.

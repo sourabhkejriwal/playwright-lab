@@ -1,0 +1,105 @@
+{
+  "chapter": 4,
+  "cards": [
+    {
+      "id": "ai-test-generation/codegen",
+      "front": "What does Playwright Codegen do, and is it AI?",
+      "back": "It records your actions in a browser and writes matching Playwright code. It isn't AI."
+    },
+    {
+      "id": "ai-test-generation/codegen-target",
+      "front": "Which flag sets the language Codegen writes?",
+      "back": "`--target`, as in `npx playwright codegen --target=python`. There is no `--lang` option."
+    },
+    {
+      "id": "ai-test-generation/codegen-output",
+      "front": "How do you save a Codegen recording straight to a file?",
+      "back": "Pass `--output`, as in `npx playwright codegen --output=tests/login.spec.ts`."
+    },
+    {
+      "id": "ai-test-generation/codegen-storage",
+      "front": "How can Codegen record a flow that needs a signed-in user?",
+      "back": "Save the session with `--save-storage=auth.json`, then start the next recording with `--load-storage=auth.json`."
+    },
+    {
+      "id": "ai-test-generation/codegen-limits",
+      "front": "What won't Codegen add to a recording?",
+      "back": "Loops, conditions, test data, or edge cases. It records one path, and assertions only if you add them."
+    },
+    {
+      "id": "ai-test-generation/mcp",
+      "front": "What does the Playwright MCP server give an AI assistant?",
+      "back": "Tools to drive a real browser and read the page, mainly through accessibility snapshots."
+    },
+    {
+      "id": "ai-test-generation/agents",
+      "front": "What are Playwright's three test agents?",
+      "back": "The planner writes scenarios, the generator turns them into tests, and the healer debugs and repairs failing tests."
+    },
+    {
+      "id": "ai-test-generation/init-agents",
+      "front": "How do you add Playwright's test agents to a repository?",
+      "back": "Run `npx playwright init-agents --loop=claude`, or use another `--loop` value for your assistant."
+    },
+    {
+      "id": "ai-test-generation/page-click-strict",
+      "front": "How does `page.click('button')` differ from `page.locator('button').click()` when several buttons match?",
+      "back": "`page.click()` clicks the first match. The locator throws a strict mode violation."
+    },
+    {
+      "id": "ai-test-generation/prove-it-fails",
+      "front": "How do you check that a generated test is worth keeping?",
+      "back": "Break the feature or change the expected value, and confirm the test goes red."
+    },
+    {
+      "id": "ai-test-generation/try-catch",
+      "front": "Why remove a `try`/`catch` that only logs and rethrows?",
+      "back": "It adds nothing, because Playwright already reports the error. Use the `screenshot` and `trace` options to collect evidence."
+    },
+    {
+      "id": "ai-test-generation/copy-prompt",
+      "front": "What does the Copy prompt button do on a failed test?",
+      "back": "It copies a prompt describing the failure, ready to paste into an AI assistant."
+    },
+    {
+      "id": "ai-test-generation/wait-for-function-args",
+      "front": "Where does the `timeout` go in `page.waitForFunction()`?",
+      "back": "In the third argument: `waitForFunction(fn, undefined, { timeout })`. The second is passed to `fn`, so a timeout there is ignored."
+    },
+    {
+      "id": "ai-test-generation/to-pass-timeout",
+      "front": "What is the default timeout of `toPass()`?",
+      "back": "0, meaning no limit of its own, so it keeps retrying until the test times out. Set one explicitly."
+    },
+    {
+      "id": "ai-test-generation/to-pass-intervals",
+      "front": "How do you control the wait between `toPass()` attempts?",
+      "back": "With `intervals`, an array such as `[500, 1000]`. The default is `[100, 250, 500, 1000]`, and the last value repeats."
+    },
+    {
+      "id": "ai-test-generation/retry-helper-timeout",
+      "front": "Why might a custom retry loop around `click()` never retry?",
+      "back": "Actions have no timeout by default, so the first click can use up the whole test timeout. Give each attempt its own `timeout`."
+    },
+    {
+      "id": "ai-test-generation/locator-or",
+      "front": "How do you target an element that may appear in either of two forms?",
+      "back": "Combine the locators with `first.or(second)`. Add `.first()` if both can match at once, or the action throws a strict mode violation."
+    },
+    {
+      "id": "ai-test-generation/fallback-goto",
+      "front": "Why is falling back to `page.goto()` after a failed link click risky?",
+      "back": "The test passes by another route, so a link that's broken for every user goes unnoticed."
+    },
+    {
+      "id": "ai-test-generation/self-healing-risk",
+      "front": "What is the main risk of self-healing tests?",
+      "back": "A repair can adapt to a genuine bug and report success, so healed changes need human review."
+    },
+    {
+      "id": "ai-test-generation/healer-fixme",
+      "front": "What does Playwright's healer agent do with a test it can't repair?",
+      "back": "It can mark the test `test.fixme()`, which skips it. Review that change, because it can hide a regression."
+    }
+  ]
+}

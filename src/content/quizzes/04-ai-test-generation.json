@@ -1,0 +1,60 @@
+{
+  "chapter": 4,
+  "questions": [
+    {
+      "question": "Which command records a test and generates Python code?",
+      "options": [
+        "`npx playwright codegen --lang=python`",
+        "`npx playwright codegen --target=python`",
+        "`npx playwright test --codegen=python`",
+        "`npx playwright record --python`"
+      ],
+      "answer": 1,
+      "explanation": "Codegen chooses its output language with `--target`. It has no `--lang` option."
+    },
+    {
+      "question": "A generated test ends with `await page.getByRole('button', { name: 'Submit' }).click();`. What is the main problem?",
+      "options": [
+        "`getByRole` is too fragile for generated code",
+        "The click needs a fixed wait before it",
+        "It never checks that submitting worked",
+        "It must be wrapped in `try`/`catch`"
+      ],
+      "answer": 2,
+      "explanation": "Without an assertion on the outcome, the test passes even when the form does nothing."
+    },
+    {
+      "question": "What happens with `page.waitForFunction(fn, { timeout: 5000 })`?",
+      "options": [
+        "The object is passed to `fn`, and the timeout is ignored",
+        "It waits for up to 5 seconds",
+        "TypeScript and the runtime both reject the call",
+        "It polls `fn` every 5 seconds"
+      ],
+      "answer": 0,
+      "explanation": "The second parameter is the argument for `fn`. Options go third: `waitForFunction(fn, undefined, { timeout: 5000 })`."
+    },
+    {
+      "question": "When is `expect(async () => { ... }).toPass()` the right choice?",
+      "options": [
+        "Whenever one element needs time to appear",
+        "To make a whole test retry in CI",
+        "To replace every web-first assertion",
+        "When several steps must be repeated together until they succeed"
+      ],
+      "answer": 3,
+      "explanation": "A single web-first assertion already retries. `toPass` is for a block, such as clicking refresh and then checking the result."
+    },
+    {
+      "question": "A test catches a failed link click and calls `page.goto('/sweets')` instead. What is the risk?",
+      "options": [
+        "`page.goto()` can't be called inside `catch`",
+        "The test stays green even when the link is broken for users",
+        "The browser context closes after the failed click",
+        "The test will always time out"
+      ],
+      "answer": 1,
+      "explanation": "The fallback reaches the page by another route, so the behaviour the test was meant to prove is no longer tested."
+    }
+  ]
+}

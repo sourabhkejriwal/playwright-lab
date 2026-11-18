@@ -68,6 +68,14 @@ test.describe('chapters', () => {
     await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
   });
 
+  test('the AI test generation chapter renders its notes and quiz', async ({ page }) => {
+    await page.goto('/chapters/04-ai-test-generation');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('AI-powered test generation');
+    await expect(page.getByRole('heading', { level: 2, name: 'Review what comes back' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'refresh.spec.ts' })).toContainText('toPass');
+    await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
+  });
+
   test('code blocks show a title bar and highlighted lines', async ({ page }) => {
     await page.goto('/chapters/02-selectors');
 

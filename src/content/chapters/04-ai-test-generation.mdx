@@ -1,0 +1,319 @@
+---
+chapter: 4
+title: AI-powered test generation
+summary: Draft tests with Codegen, MCP, and Playwright's test agents, then review the output until it proves something real.
+readingMinutes: 12
+---
+
+## Three ways to get a first draft
+
+Generated tests differ mostly in how much the tool knows about your intent.
+
+| Tool                | You provide                 | You get                                    |
+| ------------------- | --------------------------- | ------------------------------------------ |
+| Codegen             | Clicks and typing           | A recording of exactly what you did        |
+| Playwright MCP      | A prompt to an AI assistant | An assistant that can drive a real browser |
+| Playwright's agents | A goal and a seed test      | A saved plan, tests, and repairs           |
+
+None of them knows what your app is _supposed_ to do unless you say so. That part stays your job.
+
+## Record a test with Codegen
+
+Codegen isn't AI. It watches what you do in a browser and writes the matching Playwright code.
+
+```bash
+npx playwright codegen https://example.com
+npx playwright codegen --output=tests/login.spec.ts https://example.com
+npx playwright codegen --target=python https://example.com
+npx playwright codegen --device="iPhone 15" https://example.com
+npx playwright codegen --test-id-attribute=data-qa https://example.com
+```
+
+Two windows open: the browser you work in, and the Inspector showing the code as it's written. Leave out the URL if you'd
+rather navigate after the browser opens.
+
+- **Assertions:** the Inspector's toolbar can assert that an element is visible, or has some text or value. Add these
+  as you record, or the script only proves that the clicks didn't crash.
+- **Pick locator:** hover over any element to see the locator Codegen would use, without recording anything.
+- **Signed-in flows:** `--save-storage=auth.json` saves the session when you close the browser, and
+  `--load-storage=auth.json` starts the next recording signed in. Keep that file out of git.
+
+<Callout type="gotcha" title="the language flag is --target">
+  There's no `--lang` option. Use `--target` with a value such as `playwright-test`, `python`, `java`, or
+  `csharp`.
+</Callout>
+
+Codegen records one path through the app. It won't add loops, conditions, test data, or edge cases, and it can't tell which
+of your actions mattered.
+
+## Let an assistant drive the browser with MCP
+
+The **Model Context Protocol** is a standard way to give an AI assistant tools. The Playwright MCP server's tools open
+pages, click, type, and read the page, so the assistant can check its work against the real app instead of guessing at it.
+
+It reads pages mainly through **accessibility snapshots**: structured text listing roles, names, and states. That's why
+assistants using it tend to write role-based locators.
+
+```json title=".mcp.json"
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }
+  }
+}
+```
+
+Each assistant has its own place for this setting, so check its docs. In VS Code, the assistant must be in agent mode to
+use these tools.
+
+A useful prompt names the flow, the data, and the outcomes to check:
+
+```text
+Open http://localhost:3000/search. Search for "lamp", then for "zzzz".
+Write a Playwright test in tests/search.spec.ts for both cases.
+Use role-based locators. Assert the result count and the empty-state message.
+Run the test and fix any failures.
+```
+
+<Callout type="warn" title="keep secrets out of the chat">
+  Anything the assistant reads or types can end up in its context. Sign in by hand when it pauses, or give it
+  a throwaway account on a test environment. Don't point it at production.
+</Callout>
+
+Project instruction files help too. A file such as `.github/copilot-instructions.md` can state your locator rules, folder
+layout, and fixtures once, so you don't repeat them in every prompt.
+
+## Playwright's test agents
+
+Playwright ships three agent definitions that cover the whole loop. `init-agents` writes them into your repository for the
+assistant you use.
+
+```bash
+npx playwright init-agents --loop=claude
+npx playwright init-agents --loop=vscode
+```
+
+The `--loop` choices are `claude`, `codex`, `copilot`, `opencode`, `vscode`, and `vscode-legacy`.
+
+| Agent     | Job                                                         | Output                     |
+| --------- | ----------------------------------------------------------- | -------------------------- |
+| Planner   | Explores the app and writes scenarios                       | A Markdown plan            |
+| Generator | Performs each step in a browser, then writes the test       | A spec file                |
+| Healer    | Runs failing tests, debugs them, and edits the code to pass | A changed spec, or `fixme` |
+
+A **seed test** gives the agents a starting point: a test that sets up the page, including any sign-in. Plans go in a
+`specs/` folder, so they can be reviewed like code.
+
+## Review what comes back
+
+Treat generated code like a pull request from a fast new colleague. These are the problems to look for first.
+
+| Look for                              | Why it hurts                                  | Change it to                                 |
+| ------------------------------------- | --------------------------------------------- | -------------------------------------------- |
+| `page.click('.btn')`                  | Clicks the first match, even if several exist | `page.getByRole('button', { name }).click()` |
+| `div:nth-child(3)`                    | Breaks when the layout changes                | A role, label, or test id                    |
+| `waitForTimeout(3000)`                | Slow, and still too short on a bad day        | A web-first assertion                        |
+| No `expect` after the last action     | Passes even when the feature is broken        | Assert the outcome a user would see          |
+| `chromium.launch()` in a plain script | No fixtures, retries, reports, or isolation   | `test()` from `@playwright/test`             |
+| `try`/`catch` that doesn't rethrow    | Turns a failure into a pass                   | Remove it                                    |
+| Hard-coded users and values           | Collides when tests run in parallel           | Unique data per test                         |
+
+<Callout type="gotcha" title="page.click() isn't strict">
+  `page.click('button')` clicks the first button on the page without complaint.
+  `page.locator('button').click()` throws a strict mode violation when several match, which is the warning you
+  want.
+</Callout>
+
+Here's a typical generated script, followed by the reviewed version.
+
+```ts title="generated.js"
+const { chromium } = require('playwright');
+
+(async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  await page.goto('https://shop.example.com/login');
+  await page.fill('#email', 'ada@example.com');
+  await page.click('.btn');
+  await browser.close();
+})();
+```
+
+```ts title="login.spec.ts" {6-7}
+import { test, expect } from '@playwright/test';
+
+test('signs in with a valid account', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill('ada@example.com');
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { name: 'Your account' })).toBeVisible();
+});
+```
+
+The first version passes whenever the button can be clicked. The second one fails if signing in doesn't work.
+
+<Callout type="tip" title="make it fail once">
+  Break the feature on purpose, or change the expected text, and watch the test go red. A generated test that
+  can't fail is worse than no test, because it adds false confidence.
+</Callout>
+
+### Skip the defensive try/catch
+
+Generated code often wraps a whole test in `try`/`catch` to log the error and rethrow it. That adds nothing: Playwright
+already reports the error, the failing line, and the call log. For evidence, use config:
+
+```ts title="playwright.config.ts" {3-4}
+export default defineConfig({
+  use: {
+    screenshot: 'only-on-failure',
+    trace: 'on-first-retry',
+  },
+});
+```
+
+### Paste failures into an assistant
+
+When a test fails, the error details in the HTML report and Trace Viewer offer a **Copy prompt** button. It copies a prompt
+describing the failure, ready to paste into an assistant. Check the suggested fix as carefully as any other generated code.
+
+## Build resilience in the right place
+
+Most flakiness has a cause you can fix. Start with the top row, and go lower only when you must.
+
+| Tool                | Repeats                               | Reach for it when                               |
+| ------------------- | ------------------------------------- | ----------------------------------------------- |
+| Auto-waiting        | Actionability checks before an action | Always on                                       |
+| Web-first assertion | One check on the page                 | Waiting for any visible result                  |
+| `expect.poll()`     | A value you fetch yourself            | Polling an API or other non-page value          |
+| `expect().toPass()` | A block of several steps              | The steps must be repeated together             |
+| `retries` in config | The whole test                        | A safety net in CI, while you track down causes |
+
+### Wait for a condition, not a duration
+
+A web-first assertion is usually all you need. <ApiRef name="locator.waitFor()" /> covers the case where you need to wait
+without asserting anything.
+
+```ts
+await expect(page.getByRole('progressbar')).toBeHidden();
+await page.getByRole('dialog').waitFor({ state: 'visible' });
+```
+
+For a condition only the page's JavaScript knows about, use <ApiRef name="page.waitForFunction()" />.
+
+```ts
+await page.waitForFunction(() => window.appReady === true, undefined, { timeout: 15_000 });
+```
+
+<Callout type="gotcha" title="options are the third argument">
+  The second parameter of `waitForFunction()` is a value passed to your function. Written as
+  `waitForFunction(fn, { timeout: 15_000 })`, the timeout is silently ignored and the call keeps waiting. Pass
+  `undefined` second when you have no argument.
+</Callout>
+
+### Repeat several steps with `toPass`
+
+`toPass` reruns a block until everything in it succeeds. It suits flows where an action has to be repeated, not checks a
+single assertion could make on its own.
+
+```ts title="refresh.spec.ts" {4}
+await expect(async () => {
+  await page.getByRole('button', { name: 'Refresh' }).click();
+  await expect(page.getByRole('status')).toHaveText('ready', { timeout: 500 });
+}).toPass({ timeout: 10_000, intervals: [500, 1_000] });
+```
+
+- **Always set a `timeout`.** The default is 0, meaning no limit of its own, so it keeps trying until the test times out.
+- **The option is `intervals`,** an array of waits. The default is `[100, 250, 500, 1000]`, and the last value repeats.
+  A misspelled `interval` is ignored.
+- **Give inner assertions a short timeout,** so a failed attempt ends quickly and the block can try again.
+
+### Custom retry helpers need a timeout per attempt
+
+`toPass` covers most cases, but generated code sometimes brings its own retry loop. Check how long each attempt can run.
+
+```ts title="retry.ts" {12}
+async function retryAction(action: () => Promise<void>, maxAttempts = 3) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await action();
+    } catch (error) {
+      if (attempt === maxAttempts) throw error;
+    }
+  }
+}
+
+// Without this timeout, the first click uses up the whole test timeout.
+await retryAction(() => page.getByText('Login').click({ timeout: 2_000 }));
+```
+
+Actions have no timeout of their own by default, so a plain `click()` waits until the test itself times out. The loop never
+reaches a second attempt.
+
+## Fallback locators
+
+When an element really can appear in two forms, such as during a redesign rolled out to some users, use
+
+<ApiRef name="locator.or()" />. It's shorter than a loop of `try`/`catch` blocks and doesn't spend a timeout
+on each miss.
+
+```ts title="sign-in.spec.ts" {3}
+const signIn = page.getByRole('button', { name: 'Sign in' }).or(page.getByRole('button', { name: 'Log in' }));
+
+await signIn.first().click();
+```
+
+<Callout type="gotcha" title="or() is strict too">
+  If both sides match at once, `signIn.click()` throws a strict mode violation. Add `.first()` when both can
+  be present.
+</Callout>
+
+Use fallbacks sparingly. Each one says two different UIs are both acceptable, and a stable role, label, or test id
+usually removes the need.
+
+### Fallback paths can hide real bugs
+
+A fallback that takes a different route to the goal stops testing the route you cared about.
+
+```ts title="broken-link.spec.ts" {5}
+try {
+  await page.getByRole('link', { name: 'Browse sweets' }).click({ timeout: 5_000 });
+  await expect(page).toHaveURL(/sweets$/);
+} catch {
+  await page.goto('/sweets'); // the broken link now passes
+}
+await expect(page).toHaveURL(/sweets$/);
+```
+
+If the link stops working for every user, this test stays green. Remove the `catch`, and let the test report the bug.
+
+## Self-healing tests
+
+Self-healing means a tool repairs a test when the page changes. There are two kinds, and they carry different risks.
+
+- **At run time:** commercial platforms store many facts about each element, such as its text, position, and attributes.
+  When a locator stops matching, they pick the closest candidate and carry on.
+- **In the code:** Playwright's healer agent debugs the failure and edits the spec file, so the repair shows up in a diff
+  you can review.
+
+The trade-offs are the same in both cases. Healing takes extra time and setup, it can't rescue a major redesign, and it can
+**mask real bugs**: a button that lost its label may be exactly the defect a test should catch.
+
+<Callout type="warn" title="read every healed diff">
+  The healer's instructions tell it to make the test pass, including by updating expected values, and to mark
+  a test `test.fixme()` when it can't. Either change can hide a regression, so review them before merging.
+</Callout>
+
+## Interview angle
+
+- **Is Codegen AI?** No. It records your actions and writes code for them. It's often used alongside AI tools.
+- **What does Playwright MCP add?** It gives an assistant tools to drive a real browser and read accessibility snapshots, so
+  it can base tests on the actual page.
+- **What do you check first in a generated test?** That it asserts the outcome, uses user-facing locators, has no fixed
+  sleeps, and can actually fail.
+- **`toPass` or a web-first assertion?** A web-first assertion for one check. `toPass` when several steps must be repeated
+  together, always with a timeout.
+- **What's wrong with falling back to `page.goto()` when a link fails?** The test passes even though users can't follow
+  the link.
+- **What's the main risk of self-healing?** It can adapt to a genuine bug and report success, so repairs need human review.
