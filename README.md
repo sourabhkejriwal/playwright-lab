@@ -10,7 +10,7 @@ Interactive study notes, a locator playground, and drills for end-to-end testing
 [![Playwright 1.65](https://img.shields.io/badge/Playwright-1.65-2EAD33?logo=playwright&logoColor=white)](https://playwright.dev)
 [![Astro 7](https://img.shields.io/badge/Astro-7-BC52EE?logo=astro&logoColor=white)](https://astro.build)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
-[![axe: WCAG 2.2 AA](https://img.shields.io/badge/axe-WCAG%202.2%20AA-663399)](tests/a11y.spec.ts)
+[![axe: WCAG 2.2 AA](https://img.shields.io/badge/axe-WCAG%202.2%20AA-663399)](tests/app/functional/a11y.spec.ts)
 
 ![The home page: a terminal-style test run that tracks reading progress across 16 chapters](docs/screenshots/home.png)
 
@@ -86,10 +86,12 @@ src/
   islands/     interactive React components
   lib/         pure logic: locator engine, generators, simulators, spaced repetition
   stores/      saved visitor progress
-tests/
-  pages/       page objects, handed to tests as fixtures
-  support/     test data and the app behind the flaky challenges
-  *.spec.ts    the suite
+tests/app/functional/  the suite
+fixtures/pom/          the test object, with page objects as fixtures
+pages/                 page objects and shared components
+enums/, config/        routes, storage keys, UI text and time limits
+test-data/static/      curated sets the specs loop over
+helpers/               progress seeding and the app behind the flaky challenges
 ```
 
 ## Test strategy
@@ -111,8 +113,9 @@ disagree, the test fails.
 
 Conventions the suite follows:
 
-- **Page objects as fixtures.** Specs get page objects from `tests/pages/fixtures.ts`. Page objects return locators,
+- **Page objects as fixtures.** Specs get page objects from `fixtures/pom/test-options.ts`. Page objects return locators,
   and the assertions stay in the spec.
+- **One tag per test.** Every test is `@smoke` or `@regression`, so `pnpm test:smoke` runs the critical paths on their own.
 - **User-facing locators and web-first assertions.** Tests find elements by role, label, and text, and never use
   `waitForTimeout`.
 - **Every browser in CI.** Each browser runs as its own job with `fail-fast: false`, so one failure doesn't hide

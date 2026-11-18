@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
+import { appConfig, timeouts } from './config/app';
 
-const PORT = 4322;
 const isCI = !!process.env.CI;
 
 // Tests run against the production build (astro preview), not the dev server,
@@ -13,8 +13,11 @@ export default defineConfig({
   workers: isCI ? 2 : undefined,
   reporter: isCI ? [['github'], ['html', { open: 'never' }]] : [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: appConfig.baseUrl,
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    actionTimeout: timeouts.action,
+    navigationTimeout: timeouts.navigation,
   },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'] } },
@@ -24,9 +27,9 @@ export default defineConfig({
   ],
   webServer: {
     // Not `astro preview`: see scripts/serve-dist.mjs for why.
-    command: `pnpm build && node scripts/serve-dist.mjs ${PORT}`,
-    url: `http://localhost:${PORT}`,
+    command: `pnpm build && node scripts/serve-dist.mjs ${appConfig.port}`,
+    url: appConfig.baseUrl,
     reuseExistingServer: !isCI,
-    timeout: 120_000,
+    timeout: timeouts.webServer,
   },
 });

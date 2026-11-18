@@ -83,13 +83,17 @@ src/
 scripts/
   extract-chapters.mjs   PDF → source/chapters/NN-slug.txt (gitignored)
   serve-dist.mjs         tiny static server for tests (see gotchas)
-tests/                   smoke, a11y, playground, locator-engine (compares the engine with real Playwright), and more
-  pages/fixtures.ts      the `test` and `expect` browser specs import; gives each test its page objects as fixtures
-  pages/site-page.ts     SitePage, the base page object: layout, saved theme and progress, overflow and axe checks
-  pages/site-chrome.ts   TopBar, Sidebar and SearchDialog, which every page holds
-  pages/*-page(s).ts     one page object per page; the quiz is QuizPanel in chapter-pages.ts
-  support/saved-progress.ts  builds the localStorage text that seeds a visitor's progress
-  support/flaky-world.ts the app the flaky challenges run against, with kind and hostile timing
+tests/app/functional/    every spec: smoke, a11y, playground, locator-engine (compares the engine with real Playwright), and more
+fixtures/pom/test-options.ts  the `test` and `expect` every spec imports
+fixtures/pom/page-object-fixture.ts  gives each test its page objects as fixtures
+pages/app/site.page.ts   SitePage, the base page object: layout, saved theme and progress, overflow and axe checks
+pages/app/*.page.ts      one page object per page, plus the shared bases generator.page.ts and stepper.page.ts
+pages/components/        TopBar, Sidebar, SearchDialog and QuizPanel, reached through the page that holds them
+enums/app/app.ts         routes, web storage keys and UI text the page objects look for
+config/app.ts            the test server's address and shared time limits
+test-data/static/app/    curated sets that specs loop over (`as const`, literals only)
+helpers/app/saved-progress.ts  builds the localStorage text that seeds a visitor's progress
+helpers/app/flaky-world.ts  the app the flaky challenges run against, with kind and hostile timing
 source/chapters/         raw reference text per chapter + INDEX.tsv: reference only, NEVER committed
 ```
 
@@ -147,10 +151,13 @@ The site looks like a Playwright test run in a dark terminal.
 - Prefer accessible markup (landmarks, labelled lists and navs); tests locate by role and name, so
   keep accessible names stable.
 - Tests: user-facing locators (`getByRole`, `getByLabel`, `getByText`), web-first assertions, no
-  `waitForTimeout`. Every new page gets a smoke test and an entry in `tests/a11y.spec.ts`.
-- Page objects: browser specs import `test` and `expect` from `tests/pages/fixtures.ts` and reach the page through a page object.
-  A new page gets a class in `tests/pages/` and a fixture. Page objects hold locators and actions and return locators; the checks a
-  test exists to make stay in the spec, and the only `expect` allowed in a page object is waiting for an island to be ready.
+  `waitForTimeout`, no XPath, no `any`. Every new page gets a smoke test and an entry in `test-data/static/app/a11y-pages.ts`.
+- Tags: every test has exactly one tag in its options, `{ tag: '@smoke' }` or `{ tag: '@regression' }`, never on `test.describe()`.
+  Run one group with `pnpm test:smoke` or `pnpm test:regression`.
+- Page objects: specs import `test` and `expect` from `fixtures/pom/test-options.ts` and never call `new` on a page object. A new page gets a
+  `pages/app/<name>.page.ts` class and a fixture in `fixtures/pom/page-object-fixture.ts`. Locators are `get` accessors (or methods when they take
+  arguments) with no JSDoc; actions have explicit return types and JSDoc. The checks a test exists to make stay in the spec, and the only `expect`
+  allowed in a page object is waiting for an island to be ready.
 
 ## Deploy
 
@@ -181,6 +188,6 @@ Repo setting needed once: Settings → Pages → Source: **GitHub Actions**.
   repo's `test-results/` as its output folder and empties it mid-run. `tsconfig.json` excludes `test-results` so these temp projects aren't type-checked.
 - **Don't call `fill()` on the playground's CodeMirror editor.** On Android CodeMirror takes text through `EditContext`, whose selection lags the DOM's until `selectionchange` is handled, so `fill()` leaves the new text beside the old. Use `PlaygroundPage.enterLocator()`.
 - **Pass the browser's selection when dispatching into the locator editor.** A dispatch discards a selection CodeMirror hasn't read yet, so `setError` skips needless dispatches and sends `browserSelection()` with the rest.
-- **Changing the playground's sample page or engine?** Add the new cases to `expressions` in `tests/locator-engine.spec.ts`:
+- **Changing the playground's sample page or engine?** Add the new cases to `test-data/static/app/locator-expressions.ts`:
   real Playwright is the reference. Code touching the iframe must not use `instanceof` (its elements belong to another
   window), and the iframe needs `allow-scripts` in its sandbox or axe hangs.
