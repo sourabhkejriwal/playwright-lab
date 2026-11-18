@@ -18,6 +18,7 @@
     "extract:chapters": "node scripts/extract-chapters.mjs",
     "og:image": "node scripts/generate-og-image.mjs",
     "favicon": "node scripts/generate-favicon.mjs",
+    "screenshots": "pnpm build && node scripts/generate-screenshots.mjs",
     "roadmap": "node scripts/run-roadmap.mjs",
     "astro": "astro"
   },
