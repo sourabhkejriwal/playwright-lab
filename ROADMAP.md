@@ -39,7 +39,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] ⇉ **Locator playground**: sample page in an iframe, CodeMirror input, locator engine for
       `getByRole/Text/Label/Placeholder/TestId`, CSS, XPath, chaining, `filter`, `nth`; highlights matches,
       strict-mode violation message, suggestion of a better locator; preset challenges
-- [ ] ⇉ **Flashcards**: seed from `../pdf/advanced-selectors-interview-questions.md`; reveal, again/good/easy
+- [x] ⇉ **Flashcards**: seed from `../pdf/advanced-selectors-interview-questions.md`; reveal, again/good/easy
       with spaced repetition; filter by chapter
 - [ ] ⇉ **Chapter quizzes**: 5 multiple-choice questions per chapter, explanations, score saved
 - [ ] ⇉ **Config generator**: pick browsers, devices, retries, reporters, trace → `playwright.config.ts`
@@ -112,3 +112,10 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   label, placeholder, alt text, text, then test id. Solved challenges last for the visit only, to keep the saved progress
   format unchanged. Follow-up: save solved challenges if visitors ask for it. Watch for flakiness: "flags hidden matches"
   failed once on mobile in a full run, its error wasn't captured, and it then passed 300 repeats under load.
+- 2026-11-18: Flashcard scheduling is pure code in `src/lib/flashcards.ts`, using only the fields the progress store already
+  saves. "again" keeps a card due now and sends it to the back of the session; "good" starts at 1 day and grows ×2.5; "easy"
+  starts at 4 days and grows ×4, capped at 365 days. Cards fall due at local midnight so a card reviewed in the evening is
+  ready the next morning. Only due and new cards are studied, because early reviews would distort the intervals. There are no
+  single-key shortcuts, because WCAG 2.1.4 would then require a way to turn them off. The filter lists only chapters that have
+  cards, so today it offers "all chapters" and chapter 2; the seed questions are all about selectors. Follow-up: delete
+  `src/components/ComingSoon.astro`, which nothing uses now (the unattended session wasn't permitted to remove it).

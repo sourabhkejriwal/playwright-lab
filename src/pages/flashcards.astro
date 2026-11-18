@@ -1,15 +1,36 @@
 ---
+import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import ComingSoon from '../components/ComingSoon.astro';
+import TerminalWindow from '../components/TerminalWindow.astro';
+import Flashcards from '../islands/Flashcards';
+import { chapters, pad } from '../data/chapters';
+
+const entries = await getCollection('flashcards');
+const decks = chapters.flatMap((meta) => {
+  const entry = entries.find(({ data }) => data.chapter === meta.num);
+  if (!entry) return [];
+  return [
+    { slug: meta.slug, label: `ch${pad(meta.num)} ${meta.short.toLowerCase()}`, cards: entry.data.cards },
+  ];
+});
 ---
 
 <BaseLayout
   title="flashcards"
   description="Drill Playwright interview questions by chapter with spaced repetition, with progress saved in your browser."
 >
-  <ComingSoon
-    cmd="drill --cards"
-    title="Flashcards"
-    description="Interview-style questions per chapter, with spaced repetition and progress saved in your browser."
-  />
+  <p class="text-sm text-dim">
+    <span class="text-pass">$</span> drill --cards
+  </p>
+  <h1 class="mt-3 text-2xl font-semibold text-bright">Flashcards</h1>
+  <p class="mt-3 max-w-prose font-prose text-lg text-muted">
+    Answer in your head, reveal the card, then grade yourself. Cards you find easy come back less often, and
+    your progress stays in this browser.
+  </p>
+  <noscript>
+    <p class="mt-6 text-sm text-pending">The flashcards run in your browser, so they need JavaScript.</p>
+  </noscript>
+  <TerminalWindow title="drill --cards" class="mt-8 max-w-2xl">
+    <Flashcards client:visible decks={decks} />
+  </TerminalWindow>
 </BaseLayout>

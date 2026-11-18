@@ -1,7 +1,15 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const pages = ['/', '/chapters', '/chapters/02-selectors', '/chapters/05-fixtures', '/playground', '/about'];
+const pages = [
+  '/',
+  '/chapters',
+  '/chapters/02-selectors',
+  '/chapters/05-fixtures',
+  '/playground',
+  '/flashcards',
+  '/about',
+];
 
 // Reduced motion makes the reveal animations finish instantly, so axe measures contrast
 // on final colors rather than mid-fade. It also exercises the reduced-motion styles.

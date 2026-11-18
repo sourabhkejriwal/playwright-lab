@@ -62,11 +62,12 @@ src/
   lib/chapters.ts        getChapters(): joins the list with MDX entries → status ready/pending
   lib/url.ts             url(): base-path-aware internal links
   lib/study-schema.ts    Zod schemas for flashcard decks and quizzes
+  lib/flashcards.ts      spaced repetition: intervals, due dates, the study queue (pure, tested in Node)
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
   content/flashcards/    NN-slug.json flashcard deck per chapter
   content/quizzes/       NN-slug.json quiz per chapter
   components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, ChapterStatus, ChapterDone, ChapterProgressSync, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
-  islands/               React interactive components: Playground, LocatorEditor (planned: Flashcards, Quiz, …)
+  islands/               React interactive components: Playground, LocatorEditor, Flashcards (planned: Quiz, …)
   stores/progress.ts     visitor progress in localStorage: chapters read, flashcard reviews, quiz scores
   layouts/BaseLayout.astro
   pages/                 routes; chapters/[slug].astro renders MDX or a "pending" placeholder

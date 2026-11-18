@@ -20,6 +20,86 @@
       "id": "selectors/await-assertions",
       "front": "Why must a web-first assertion be awaited?",
       "back": "Without `await` it keeps retrying in the background while the test moves on, so it can't fail the test."
+    },
+    {
+      "id": "selectors/why-get-by",
+      "front": "What makes the `getBy*` locators a good first choice?",
+      "back": "They find elements by user-facing meaning: role, accessible name, label, placeholder, or visible text. Tests read better and survive CSS and DOM changes, and role and label locators rely on the same information as assistive technology."
+    },
+    {
+      "id": "selectors/get-by-role-name",
+      "front": "What does `getByRole()` match, and how do you narrow it?",
+      "back": "An ARIA role, including implicit roles from native HTML. Narrow it with the accessible name, as in `getByRole('button', { name: 'Save', exact: true })`. The name can come from visible text, a label, or an ARIA attribute."
+    },
+    {
+      "id": "selectors/labeled-field",
+      "front": "Which locator suits a form field that has a label?",
+      "back": "`getByLabel('Email address')`. It uses the description users see and doesn't depend on the field's position or styling."
+    },
+    {
+      "id": "selectors/not-an-audit",
+      "front": "Do `getBy*` locators replace accessibility testing?",
+      "back": "No. A failing locator can reveal a missing name or role, but it is not an audit. You still need dedicated accessibility checks."
+    },
+    {
+      "id": "selectors/when-css",
+      "front": "When is a CSS selector the right choice?",
+      "back": "When no user-facing locator fits, or a short stable attribute is the clearest hook. Prefer something like `input[type=\"password\"]` over long chains tied to layout."
+    },
+    {
+      "id": "selectors/brittle-css",
+      "front": "Why are deeply nested CSS selectors brittle?",
+      "back": "They encode the exact parent-child structure and position, so a harmless markup change breaks them even though the page still behaves the same for users."
+    },
+    {
+      "id": "selectors/xpath",
+      "front": "How do you use XPath in Playwright, and when might you?",
+      "back": "Pass it to `locator()`, as in `page.locator('//button[@type=\"submit\"]')`. Selectors starting with `//` or `..` are detected as XPath, and an `xpath=` prefix makes it explicit. It can express ancestry, but complex expressions are hard to maintain."
+    },
+    {
+      "id": "selectors/get-by-text-matching",
+      "front": "How does `getByText()` match by default, and how do you make it exact?",
+      "back": "By default it matches a case-insensitive substring and normalizes whitespace. Pass `{ exact: true }` for a whole, case-sensitive match, or a regular expression for text that varies."
+    },
+    {
+      "id": "selectors/filter-has-text",
+      "front": "How do you narrow buttons to the one containing \"Submit\"?",
+      "back": "`page.getByRole('button').filter({ hasText: 'Submit' })`. If the button has a reliable accessible name, `getByRole('button', { name: 'Submit' })` is simpler."
+    },
+    {
+      "id": "selectors/test-id-attribute",
+      "front": "What does `getByTestId()` look for, and how do you change it?",
+      "back": "`data-testid` by default. Set `testIdAttribute` in the Playwright config to use another attribute, such as `data-pw`. Test ids are stable hooks, but they shouldn't replace meaningful roles and labels."
+    },
+    {
+      "id": "selectors/unnamed-link",
+      "front": "A link has no accessible name, only `class=\"shopping_cart_link\"` and `data-test=\"shopping-cart-link\"`. What do you do?",
+      "back": "Use `page.locator('.shopping_cart_link')`, or configure `testIdAttribute` to `data-test` and use `getByTestId()`. Also report the missing name: fixing it helps users and allows a role locator."
+    },
+    {
+      "id": "selectors/multiple-matches",
+      "front": "A locator unexpectedly matches several elements. How do you make it reliable?",
+      "back": "Scope it to a meaningful container, then use a distinguishing property: `page.locator('form').getByRole('button', { name: 'Submit' })`. Use `.first()` or positions only when order is the behavior under test."
+    },
+    {
+      "id": "selectors/improve-nth-child",
+      "front": "How would you improve `#app > div:nth-child(2) > button` for a Save button?",
+      "back": "Use `getByRole('button', { name: 'Save' })`, scoped to a named dialog or form if there are several. It describes the control as a user identifies it, not where it sits in the DOM."
+    },
+    {
+      "id": "selectors/regex-locators",
+      "front": "When should a text or role locator use a regular expression?",
+      "back": "When part of the text is stable and part legitimately varies, such as a greeting with a first name. Keep it specific enough to avoid unrelated matches, and use exact strings when the full value is stable."
+    },
+    {
+      "id": "selectors/choosing-a-locator",
+      "front": "How do you choose between a role locator, a test id, and CSS?",
+      "back": "Start with role and name, or a label for form controls. Use a test id when there is no semantic hook. Use CSS for a simple, stable case that is awkward to express otherwise, and keep any fallback short."
+    },
+    {
+      "id": "selectors/scoped-continue",
+      "front": "Two buttons are named \"Continue\", one in the main page and one in a dialog. How do you click the main page one?",
+      "back": "Scope the role locator to the container: `page.locator('main').getByRole('button', { name: 'Continue' }).click()`. The `main` element keeps the dialog's button out of the match."
     }
   ]
 }
