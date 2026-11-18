@@ -10,9 +10,10 @@ const { questions }: { questions: QuizQuestion[] } = JSON.parse(
   readFileSync(new URL('../../../src/content/quizzes/02-selectors.json', import.meta.url), 'utf8'),
 );
 const total = questions.length;
-const plain = (text: string) => text.replaceAll('`', '');
-const rightOption = (question: QuizQuestion) => plain(question.options[question.answer]);
-const wrongOption = (question: QuizQuestion) => plain(question.options[question.answer === 0 ? 1 : 0]);
+const plain = (text: string): string => text.replaceAll('`', '');
+const rightOption = (question: QuizQuestion): string => plain(question.options[question.answer]);
+const wrongOption = (question: QuizQuestion): string =>
+  plain(question.options[question.answer === 0 ? 1 : 0]);
 
 test.describe('option shuffling', () => {
   test.skip(
@@ -39,25 +40,26 @@ test.describe('option shuffling', () => {
 
 test.describe('chapter quiz', () => {
   /** The island hydrates when it scrolls into view, as it does for a visitor reaching the end of the notes. */
-  async function visit(chapter: ChapterPage) {
+  async function visit(chapter: ChapterPage): Promise<void> {
     await chapter.goto('02-selectors');
     await chapter.quiz.hydrate();
   }
 
-  async function open(chapter: ChapterPage) {
+  async function open(chapter: ChapterPage): Promise<void> {
     await visit(chapter);
     await chapter.quiz.startButton.click();
   }
 
   /** Answers every question, getting the first `right` of them right, and stops on the last explanation. */
-  async function answerAll(quiz: QuizPanel, right: number) {
+  async function answerAll(quiz: QuizPanel, right: number): Promise<void> {
     for (const [index, question] of questions.entries()) {
       await quiz.answer(index < right ? rightOption(question) : wrongOption(question));
       if (index < total - 1) await quiz.nextButton.click();
     }
   }
 
-  const savedQuiz = async (chapter: ChapterPage) => (await chapter.savedProgress()).quizzes?.selectors;
+  const savedQuiz = async (chapter: ChapterPage): Promise<QuizProgress | undefined> =>
+    (await chapter.savedProgress()).quizzes?.selectors;
 
   test('an answer must be chosen before it can be checked', { tag: '@regression' }, async ({ chapter }) => {
     const { quiz } = chapter;
@@ -201,10 +203,11 @@ test.describe('chapter quiz', () => {
           expect(await chapter.a11yViolations()).toEqual([]);
 
           await quiz.nextButton.click();
-          for (const question of questions.slice(1)) {
+          for (const question of questions.slice(1, -1)) {
             await quiz.answer(rightOption(question));
-            if (question !== questions.at(-1)) await quiz.nextButton.click();
+            await quiz.nextButton.click();
           }
+          await quiz.answer(rightOption(questions[questions.length - 1]));
           await quiz.scoreButton.click();
           await expect(quiz.heading(/correct$/)).toBeVisible();
           expect(await chapter.a11yViolations()).toEqual([]);

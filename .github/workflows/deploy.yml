@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   checks:
-    name: Format and types
+    name: Format, lint and types
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -27,6 +27,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
+      - run: pnpm lint
       - run: pnpm check
 
   test:

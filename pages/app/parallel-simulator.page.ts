@@ -33,6 +33,14 @@ export class ParallelSimulatorPage extends SitePage {
     return this.page.getByText(Messages.WORKER_DETAILS);
   }
 
+  get secondShardWorkerDetails(): Locator {
+    return this.workerDetails.nth(1);
+  }
+
+  get firstEmptyShardNotice(): Locator {
+    return this.page.getByText(Messages.EMPTY_SHARD).first();
+  }
+
   // The value beside a label in the results summary. Each label has two definitions, and no role can
   // say "the first one after this term", so this is the one place that needs a CSS sibling selector.
   stat(label: string): Locator {
@@ -45,6 +53,14 @@ export class ParallelSimulatorPage extends SitePage {
 
   workersOfShard(shard: number): Locator {
     return this.page.getByRole('list', { name: `shard ${shard} workers` }).getByRole('listitem');
+  }
+
+  firstWorkerOfShard(shard: number): Locator {
+    return this.workersOfShard(shard).first();
+  }
+
+  lastWorkerOfShard(shard: number): Locator {
+    return this.workersOfShard(shard).last();
   }
 
   // ==================== Actions ====================

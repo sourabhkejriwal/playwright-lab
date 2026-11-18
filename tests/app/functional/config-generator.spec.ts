@@ -64,7 +64,7 @@ test('probe', ({}, info) => {
 `;
 
 /** Runs a generated config with the real Playwright CLI and reports what each project actually received. */
-function runConfig(code: string, testInfo: TestInfo, label: string, ci: boolean) {
+function runConfig(code: string, testInfo: TestInfo, label: string, ci: boolean): Probe[] {
   const root = testInfo.outputPath(label);
   const probes = join(root, 'probes');
   mkdirSync(join(root, 'tests'), { recursive: true });
@@ -127,7 +127,8 @@ test.describe('generated config', () => {
       expect(probe.trace).toBe('retain-on-failure');
       expect(probe.reporters).toEqual(reporterNames);
     }
-    const project = (name: string) => onCI.find((probe) => probe.project === name);
+    const project = (name: string): Probe | undefined =>
+      onCI.find((probe): boolean => probe.project === name);
     expect(project('Google Chrome')?.channel).toBe('chrome');
     expect(project('Microsoft Edge')?.channel).toBe('msedge');
     expect(project('webkit')?.browser).toBe('webkit');
@@ -163,7 +164,8 @@ test.describe('generated config', () => {
   });
 
   test('the install command lists each needed browser once', { tag: '@regression' }, () => {
-    const command = (options: Partial<ConfigOptions>) => installCommand({ ...DEFAULT_OPTIONS, ...options });
+    const command = (options: Partial<ConfigOptions>): string =>
+      installCommand({ ...DEFAULT_OPTIONS, ...options });
     expect(command({})).toBe('npx playwright install chromium firefox webkit');
     expect(command({ browsers: [], devices: ['Pixel 7', 'Galaxy S24'] })).toBe(
       'npx playwright install chromium',
@@ -175,7 +177,7 @@ test.describe('generated config', () => {
   });
 
   test('notes flag a trace mode that can never record', { tag: '@regression' }, () => {
-    const texts = (options: Partial<ConfigOptions>) =>
+    const texts = (options: Partial<ConfigOptions>): string[] =>
       configNotes({ ...DEFAULT_OPTIONS, ...options }).map(({ text }) => text);
 
     expect(texts({})).toEqual([]);

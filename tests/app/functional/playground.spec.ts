@@ -149,6 +149,7 @@ test.describe('locator playground', () => {
       `has no a11y violations once interactive, in the ${theme} theme`,
       { tag: '@regression' },
       async ({ playground }) => {
+        // eslint-disable-next-line playwright/no-conditional-in-test -- the site opens dark, so only light needs the toggle
         if (theme === 'light') await playground.topBar.themeToggle.click();
         await expect(playground.sampleHtml).toHaveAttribute('data-theme', theme);
 

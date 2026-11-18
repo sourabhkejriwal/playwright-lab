@@ -52,6 +52,10 @@ export class ChapterPage extends SitePage {
     return this.main.getByRole('link', { name, exact: true });
   }
 
+  keys(note: Locator): Locator {
+    return note.locator('kbd');
+  }
+
   tocLink(name: string): Locator {
     return this.toc.getByRole('link', { name });
   }

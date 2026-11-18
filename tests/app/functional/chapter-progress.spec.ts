@@ -3,7 +3,7 @@ import { statusMark } from '../../../pages/app/site.page';
 import { savedProgress } from '../../../helpers/app/saved-progress';
 
 const readAt = '2026-11-01T00:00:00.000Z';
-const chaptersRead = (...slugs: string[]) =>
+const chaptersRead = (...slugs: string[]): string =>
   savedProgress({ chapters: Object.fromEntries(slugs.map((slug) => [slug, { readAt }])) });
 
 test.describe('chapter progress', () => {
@@ -174,6 +174,7 @@ test.describe('chapter progress', () => {
             `no detectable a11y violations when ${state} in the ${theme} theme`,
             { tag: '@regression' },
             async ({ chapter }) => {
+              // eslint-disable-next-line playwright/no-conditional-in-test -- an unread chapter must start with nothing saved
               if (state === 'done') await chapter.seedProgress(chaptersRead('selectors'));
               await chapter.presetTheme(theme);
               await chapter.goto('02-selectors');

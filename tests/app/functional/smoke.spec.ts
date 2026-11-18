@@ -184,8 +184,10 @@ test.describe('chapters', () => {
       await expect(chapter.h2(written.section)).toBeVisible();
       const [file, snippet] = written.code;
       await expect(chapter.codeBlock(file)).toContainText(snippet);
+      // eslint-disable-next-line playwright/no-conditional-in-test -- only some chapters link to another page
       if (written.link) {
         const [name, href] = written.link;
+        // eslint-disable-next-line playwright/no-conditional-expect -- only some chapters link to another page
         await expect(chapter.notesLink(name)).toHaveAttribute('href', href);
       }
       await expect(chapter.quiz.region).toBeAttached();
@@ -277,8 +279,10 @@ test.describe('chapters', () => {
   });
 });
 
-test('unknown routes show the 404 page', { tag: '@smoke' }, async ({ site, page }) => {
-  const res = await site.visit('/does-not-exist');
-  expect(res?.status()).toBe(404);
-  await expect(page.getByText('page not found')).toBeVisible();
+test.describe('not found page', () => {
+  test('unknown routes show the 404 page', { tag: '@smoke' }, async ({ site, page }) => {
+    const res = await site.visit('/does-not-exist');
+    expect(res?.status()).toBe(404);
+    await expect(page.getByText('page not found')).toBeVisible();
+  });
 });

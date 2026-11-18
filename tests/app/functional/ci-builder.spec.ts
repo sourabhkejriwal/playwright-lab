@@ -46,7 +46,7 @@ interface Workflow {
   jobs: Record<string, Job>;
 }
 
-const workflow = (options: Partial<CiOptions> = {}) =>
+const workflow = (options: Partial<CiOptions> = {}): Workflow =>
   parse(generateWorkflow({ ...DEFAULT_OPTIONS, ...options })) as Workflow;
 
 const samples: CiOptions[] = [
@@ -65,7 +65,7 @@ const samples: CiOptions[] = [
 ];
 
 /** Every combination of a job's matrix, like GitHub expands it. */
-function expandMatrix(matrix: Record<string, (string | number)[]> = {}) {
+function expandMatrix(matrix: Record<string, (string | number)[]> = {}): Record<string, string>[] {
   return Object.entries(matrix).reduce<Record<string, string>[]>(
     (combos, [key, values]) =>
       combos.flatMap((combo) => values.map((value) => ({ ...combo, [key]: String(value) }))),
@@ -73,7 +73,7 @@ function expandMatrix(matrix: Record<string, (string | number)[]> = {}) {
   );
 }
 
-const fill = (text: string, combo: Record<string, string>) =>
+const fill = (text: string, combo: Record<string, string>): string =>
   text.replace(/\$\{\{ matrix\.(\w+) \}\}/g, (_, key: string) => combo[key]);
 
 const SPEC = `
@@ -91,7 +91,7 @@ export default defineConfig({
 `;
 
 /** A project the workflow's own commands can run in. These tests need no browser. */
-function createProject(testInfo: TestInfo, label: string) {
+function createProject(testInfo: TestInfo, label: string): string {
   const root = testInfo.outputPath(label);
   mkdirSync(join(root, 'tests'), { recursive: true });
   // Playwright puts test-results/ beside the nearest package.json and empties it, which must not be this repo's.
@@ -102,7 +102,7 @@ function createProject(testInfo: TestInfo, label: string) {
 }
 
 /** Runs a workflow's playwright command with the real CLI, as GitHub would. */
-function runCommand(command: string, cwd: string) {
+function runCommand(command: string, cwd: string): string {
   const args = command.replace(/^(npx|pnpm exec) playwright /, '').split(' ');
   const env = Object.fromEntries(
     Object.entries(process.env).filter(([key]) => !/^(PW_|PLAYWRIGHT_|TEST_|CI$)/.test(key)),
@@ -117,10 +117,11 @@ function runCommand(command: string, cwd: string) {
   return run.stdout;
 }
 
-const stepRunning = (job: Job, text: string) => job.steps.find(({ run }) => run?.includes(text));
+const stepRunning = (job: Job, text: string): Step | undefined =>
+  job.steps.find(({ run }): boolean | undefined => run?.includes(text));
 
 /** Plays a whole sharded workflow: every test job, then the artifact download and the merge job. */
-function playMergedWorkflow(options: CiOptions, testInfo: TestInfo, label: string) {
+function playMergedWorkflow(options: CiOptions, testInfo: TestInfo, label: string): string[] {
   const { test: testJob, 'merge-reports': mergeJob } = workflow(options).jobs;
   const root = createProject(testInfo, label);
   const command = stepRunning(testJob, 'playwright test')?.run as string;
@@ -157,7 +158,7 @@ function playMergedWorkflow(options: CiOptions, testInfo: TestInfo, label: strin
     .toSorted();
 }
 
-const everyTest = (projects: string[]) =>
+const everyTest = (projects: string[]): string[] =>
   projects.flatMap((name) => [1, 2, 3, 4, 5, 6].map((index) => `${name}: case ${index}`)).toSorted();
 
 test.describe('generated workflow', () => {
@@ -221,13 +222,15 @@ test.describe('generated workflow', () => {
     expect(generateWorkflow(DEFAULT_OPTIONS)).not.toContain('pnpm');
   });
 
+  const nodeInput = (nodeVersion: string): Record<string, string> =>
+    nodeVersion === '.nvmrc' ? { 'node-version-file': '.nvmrc' } : { 'node-version': nodeVersion };
+
   test('node versions stay strings and .nvmrc is read from the file', { tag: '@regression' }, () => {
     for (const nodeVersion of NODE_VERSIONS) {
       const setup = workflow({ nodeVersion }).jobs.test.steps.find(({ uses }) =>
         uses?.startsWith('actions/setup-node'),
       );
-      if (nodeVersion === '.nvmrc') expect(setup?.with?.['node-version-file']).toBe('.nvmrc');
-      else expect(setup?.with?.['node-version']).toBe(nodeVersion);
+      expect(setup?.with).toMatchObject(nodeInput(nodeVersion));
     }
   });
 
@@ -304,7 +307,7 @@ test.describe('generated workflow', () => {
   );
 
   test('notes explain what the workflow depends on', { tag: '@regression' }, () => {
-    const texts = (options: Partial<CiOptions>) =>
+    const texts = (options: Partial<CiOptions>): string[] =>
       workflowNotes({ ...DEFAULT_OPTIONS, ...options }).map(({ text }) => text);
 
     expect(texts({})).toEqual([]);

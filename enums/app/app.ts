@@ -23,6 +23,7 @@ export enum Messages {
   ALL_CHAPTERS_READ = 'all written chapters read',
   BROWSE_CHAPTERS = 'browse chapters',
   CHALLENGE_PASSED = '✓ challenge passed',
+  EMPTY_SHARD = 'This shard has no tests to run.',
   STEP_FAILED = 'failed',
   WORKER_DETAILS = 'what each worker ran',
 }

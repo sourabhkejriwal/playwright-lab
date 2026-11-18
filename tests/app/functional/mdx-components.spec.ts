@@ -13,7 +13,7 @@ test.describe('chapter MDX components', () => {
   });
 
   test('keys render as keyboard elements', { tag: '@regression' }, async ({ chapter }) => {
-    await expect(chapter.note(/^tip/).locator('kbd')).toHaveText(['Ctrl', 'Shift', 'I']);
+    await expect(chapter.keys(chapter.note(/^tip/))).toHaveText(['Ctrl', 'Shift', 'I']);
   });
 
   test('api references link to the Playwright docs', { tag: '@regression' }, async ({ page }) => {

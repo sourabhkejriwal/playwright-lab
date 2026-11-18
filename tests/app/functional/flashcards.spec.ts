@@ -29,7 +29,7 @@ const deck = { cards: decks.flatMap(({ cards }) => cards) };
 const [first, second] = deck.cards;
 const total = deck.cards.length;
 
-const deckOption = ({ chapter, cards }: Deck) => {
+const deckOption = ({ chapter, cards }: Deck): string => {
   const short = chapters.find(({ num }) => num === chapter)?.short.toLowerCase();
   return `ch${pad(chapter)} ${short} (${cards.length})`;
 };
@@ -50,7 +50,11 @@ test.describe('scheduler', () => {
     'no browser involved, so one project is enough',
   );
 
-  const card = (id: string) => ({ id, front: 'Question?', back: 'Answer.' });
+  const card = (id: string): { id: string; front: string; back: string } => ({
+    id,
+    front: 'Question?',
+    back: 'Answer.',
+  });
   const now = new Date(2026, 5, 15, 21, 30);
 
   test(
@@ -106,8 +110,8 @@ test.describe('scheduler', () => {
 });
 
 test.describe('flashcards page', () => {
-  const plain = (text: string) => text.replaceAll('`', '');
-  const seedCards = (flashcards: FlashcardsPage, cards: Record<string, FlashcardProgress>) =>
+  const plain = (text: string): string => text.replaceAll('`', '');
+  const seedCards = (flashcards: FlashcardsPage, cards: Record<string, FlashcardProgress>): Promise<void> =>
     flashcards.seedProgress(savedProgress({ flashcards: cards }));
 
   test('the answer stays hidden until it is revealed', { tag: '@regression' }, async ({ flashcards }) => {

@@ -60,7 +60,7 @@ test.describe('search layout', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await site.visit('/about');
     await site.search.searchFor('locator');
-    await expect(site.search.results.first()).toBeVisible();
+    await expect(site.search.firstResult).toBeVisible();
 
     const box = await site.search.dialog.boundingBox();
     expect(box!.x).toBeGreaterThanOrEqual(0);
@@ -122,17 +122,16 @@ test.describe('site search', () => {
 
   test('arrow keys choose a result and enter opens it', { tag: '@regression' }, async ({ site, page }) => {
     await site.search.searchFor('locator');
-    const { results } = site.search;
-    await expect(results.nth(1)).toBeVisible();
-    await expect(results.first()).toHaveAttribute('aria-selected', 'true');
+    await expect(site.search.secondResult).toBeVisible();
+    await expect(site.search.firstResult).toHaveAttribute('aria-selected', 'true');
 
     await page.keyboard.press('ArrowDown');
-    await expect(results.nth(1)).toHaveAttribute('aria-selected', 'true');
+    await expect(site.search.secondResult).toHaveAttribute('aria-selected', 'true');
     await page.keyboard.press('ArrowUp');
     await page.keyboard.press('ArrowUp');
-    await expect(results.last()).toHaveAttribute('aria-selected', 'true');
+    await expect(site.search.lastResult).toHaveAttribute('aria-selected', 'true');
 
-    const href = await results.last().getAttribute('href');
+    const href = await site.search.lastResult.getAttribute('href');
     await page.keyboard.press('Enter');
     await expect(page).toHaveURL((current) => current.pathname + current.hash === href);
   });
@@ -181,7 +180,7 @@ test.describe('site search', () => {
         await site.presetTheme(theme);
         await site.visit('/about');
         await site.search.searchFor('locator');
-        await expect(site.search.results.first()).toBeVisible();
+        await expect(site.search.firstResult).toBeVisible();
         expect(await site.a11yViolations({ include: '[data-search-dialog]' })).toEqual([]);
       },
     );

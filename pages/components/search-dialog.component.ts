@@ -25,6 +25,18 @@ export class SearchDialogComponent {
     return this.dialog.getByRole('status');
   }
 
+  get firstResult(): Locator {
+    return this.results.first();
+  }
+
+  get secondResult(): Locator {
+    return this.results.nth(1);
+  }
+
+  get lastResult(): Locator {
+    return this.results.last();
+  }
+
   result(name: string | RegExp): Locator {
     return this.dialog.getByRole('option', { name });
   }

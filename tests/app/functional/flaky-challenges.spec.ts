@@ -17,7 +17,7 @@ const env = Object.fromEntries(
 // A retry starts a new worker, so the unlucky run of this challenge is its second test on its own.
 const unluckyArgs: Record<string, string[]> = { 'order-details': ['-g', 'shows the order'] };
 
-function writeProject(challenge: FlakyChallenge, testInfo: TestInfo) {
+function writeProject(challenge: FlakyChallenge, testInfo: TestInfo): string {
   const root = testInfo.outputPath('project');
   mkdirSync(root, { recursive: true });
   // Playwright puts test-results/ beside the nearest package.json and empties it, which must not be this repo's.
@@ -33,7 +33,12 @@ function writeProject(challenge: FlakyChallenge, testInfo: TestInfo) {
   return root;
 }
 
-async function execute(root: string, file: string, timing: 'kind' | 'hostile', args: string[] = []) {
+async function execute(
+  root: string,
+  file: string,
+  timing: 'kind' | 'hostile',
+  args: string[] = [],
+): Promise<{ passed: boolean; log: string }> {
   // These runs share a project and overlap, so each needs its own output folder.
   const output = `results-${file}-${timing}`;
   try {
@@ -126,7 +131,7 @@ test.describe('challenge data', () => {
 
 test.describe('the challenges page', () => {
   const [first, second] = CHALLENGES;
-  const rightCause = (challenge: FlakyChallenge) => challenge.causes[challenge.answer];
+  const rightCause = (challenge: FlakyChallenge): string => challenge.causes[challenge.answer];
 
   test.beforeEach(async ({ flakyChallenges }) => {
     await flakyChallenges.goto(first.title);

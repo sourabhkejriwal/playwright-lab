@@ -27,7 +27,7 @@ const env = Object.fromEntries(
 );
 
 /** Writes the suite as real spec files. Each test records where it ran and takes no time. */
-function writeProject(suite: Suite, testInfo: TestInfo, label: string) {
+function writeProject(suite: Suite, testInfo: TestInfo, label: string): string {
   const root = testInfo.outputPath(label);
   mkdirSync(root, { recursive: true });
   // Playwright puts test-results/ beside the nearest package.json and empties it, which must not be this repo's.
@@ -48,7 +48,7 @@ function writeProject(suite: Suite, testInfo: TestInfo, label: string) {
 }
 
 /** The titles real Playwright puts in one shard, read from `--list`. */
-async function listedTitles(root: string, args: string[]) {
+async function listedTitles(root: string, args: string[]): Promise<string[]> {
   const { stdout } = await run(process.execPath, [cli, 'test', '--list', '--reporter=list', ...args], {
     cwd: root,
     env,
@@ -58,7 +58,14 @@ async function listedTitles(root: string, args: string[]) {
 }
 
 /** Really runs the suite and returns which worker slot ran each test, in the order they ran. */
-function execute(root: string, args: string[]) {
+function execute(
+  root: string,
+  args: string[],
+): {
+  status: number | null;
+  log: string;
+  ran: { slot: number; title: string }[];
+} {
   const trace = join(root, 'trace.log');
   writeFileSync(trace, '');
   const result = spawnSync(process.execPath, [cli, 'test', '--reporter=line', ...args], {
@@ -74,7 +81,7 @@ function execute(root: string, args: string[]) {
   return { status: result.status, log: `${result.stdout}\n${result.stderr}`, ran };
 }
 
-const suiteById = (id: string) => SUITES.find((suite) => suite.id === id)!;
+const suiteById = (id: string): Suite => SUITES.find((suite): boolean => suite.id === id)!;
 
 test.describe('the simulator matches real Playwright', () => {
   test.skip(
@@ -134,6 +141,7 @@ test.describe('the simulator matches real Playwright', () => {
         shard.jobs.slice(0, settings.workers).forEach((job, slot) => {
           expect(ran.find(({ title }) => title === job.tests[0].title)?.slot).toBe(slot);
         });
+        // eslint-disable-next-line playwright/no-conditional-in-test -- the rule below holds only without fullyParallel
         if (fullyParallel) return;
         // Without fullyParallel, a file never leaves its worker.
         for (const job of shard.jobs) {
@@ -187,7 +195,7 @@ test.describe('the simulator model', () => {
     { tag: '@regression' },
     () => {
       const jobs = buildJobs(suiteById('big-file'), false);
-      const files = (shard: number) => jobsForShard(jobs, shard, 4).map(({ file }) => file);
+      const files = (shard: number): string[] => jobsForShard(jobs, shard, 4).map(({ file }): string => file);
       expect(files(1)).toEqual(['account.spec.ts', 'catalog.spec.ts']);
       expect(files(2)).toEqual([]);
       expect(files(3)).toEqual([]);
@@ -196,7 +204,10 @@ test.describe('the simulator model', () => {
   );
 
   test('insights name the limit that applies', { tag: '@regression' }, () => {
-    const ids = (suite: string, settings: Settings) =>
+    const ids = (
+      suite: string,
+      settings: Settings,
+    ): ('empty-shard' | 'long-job' | 'idle-workers' | 'uneven-shards' | 'no-gain' | 'healthy')[] =>
       insights(suiteById(suite), settings).map(({ id }) => id);
 
     expect(ids('slow-file', { workers: 4, shards: 1, fullyParallel: false })).toContain('long-job');
@@ -262,23 +273,24 @@ test.describe('the parallel simulator page', () => {
     await expect(parallelSimulator.commands).toContainText('--fully-parallel');
   });
 
-  test('warns about a shard with no tests', { tag: '@regression' }, async ({ parallelSimulator, page }) => {
+  test('warns about a shard with no tests', { tag: '@regression' }, async ({ parallelSimulator }) => {
     await parallelSimulator.chooseSuite('one file with many tests');
     await parallelSimulator.shards.fill('4');
 
     await expect(parallelSimulator.lessons).toContainText('Shards 2, 3 got no tests');
-    await parallelSimulator.workerDetails.nth(1).click();
-    await expect(page.getByText('This shard has no tests to run.').first()).toBeVisible();
+    await parallelSimulator.secondShardWorkerDetails.click();
+    await expect(parallelSimulator.firstEmptyShardNotice).toBeVisible();
   });
 
   test('lists what each worker ran in words', { tag: '@regression' }, async ({ parallelSimulator }) => {
     await parallelSimulator.workers.fill('8');
     await parallelSimulator.workerDetails.click();
 
-    const workers = parallelSimulator.workersOfShard(1);
-    await expect(workers).toHaveCount(8);
-    await expect(workers.first()).toHaveText('worker 0: 4 tests from account.spec.ts');
-    await expect(workers.last()).toHaveText('worker 7: never started');
+    await expect(parallelSimulator.workersOfShard(1)).toHaveCount(8);
+    await expect(parallelSimulator.firstWorkerOfShard(1)).toHaveText(
+      'worker 0: 4 tests from account.spec.ts',
+    );
+    await expect(parallelSimulator.lastWorkerOfShard(1)).toHaveText('worker 7: never started');
   });
 
   test(

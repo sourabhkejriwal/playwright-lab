@@ -51,6 +51,7 @@ const DISALLOWED_TOOLS = [
 
 const VERIFY_STEPS = [
   ['pnpm', ['check']],
+  ['pnpm', ['lint']],
   ['pnpm', ['format:check']],
   ['pnpm', ['test']],
 ];

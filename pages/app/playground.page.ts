@@ -73,6 +73,10 @@ export class PlaygroundPage extends SitePage {
     return this.sample.locator(`.pl-box[data-state="${state}"]`);
   }
 
+  firstHighlightIn(state: 'match' | 'strict' | 'target'): Locator {
+    return this.highlightsIn(state).first();
+  }
+
   challenge(title: string, options: { exact?: boolean } = {}): Locator {
     return this.page.getByRole('button', { name: title, ...options });
   }
@@ -137,7 +141,7 @@ export class PlaygroundPage extends SitePage {
    */
   highlightColor(highlight: Locator, token: string): Promise<{ drawn: string; token: string }> {
     return highlight.evaluate((node, name) => {
-      const read = (element: Element, property: string) =>
+      const read = (element: Element, property: string): string =>
         getComputedStyle(element).getPropertyValue(property).trim();
       return { drawn: read(node, '--pl-color'), token: read(node.ownerDocument.documentElement, name) };
     }, token);
@@ -151,7 +155,7 @@ export class PlaygroundPage extends SitePage {
    */
   async selectBeforeEditorNotices(): Promise<{ release: () => Promise<void> }> {
     await this.editorContent.evaluate((content) => {
-      const hold = (event: Event) => event.stopImmediatePropagation();
+      const hold = (event: Event): void => event.stopImmediatePropagation();
       document.addEventListener('selectionchange', hold, { capture: true });
       (window as Window & { releaseSelection?: () => void }).releaseSelection = () => {
         document.removeEventListener('selectionchange', hold, { capture: true });

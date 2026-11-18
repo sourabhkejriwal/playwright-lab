@@ -14,7 +14,7 @@ This project is built across many short sessions. Context lives in files, not in
 
 1. Read `ROADMAP.md` and pick the **first unchecked task** (or the one the user names).
 2. Do only that task. Keep the diff focused.
-3. Run `pnpm check && pnpm format && pnpm test`; all must pass.
+3. Run `pnpm check && pnpm lint && pnpm format && pnpm test`; all must pass.
 4. Tick the task in `ROADMAP.md` (add notes or new follow-up tasks if you found any).
 5. Commit with a message like `feat(playground): …`, `content(ch05): …`, `test: …`.
 6. If you made a decision future sessions need (a library, a convention, a gotcha), add it to this file.
@@ -31,6 +31,7 @@ Never read the whole PDF. Chapter text is pre-extracted (see "Content workflow")
 | `pnpm check`            | `astro check` type-checking (needs TypeScript 6, see gotchas) |
 | `pnpm test`             | Playwright: e2e + a11y on desktop, mobile, Firefox and WebKit |
 | `pnpm test:ui`          | Playwright UI mode                                            |
+| `pnpm lint`             | ESLint on the test code, with no warnings allowed             |
 | `pnpm format`           | Prettier (incl. `.astro`)                                     |
 | `pnpm extract:chapters` | Re-extract `source/chapters/*.txt` from the PDF               |
 | `pnpm og:image`         | Re-render the committed `public/og-image.png`                 |
@@ -41,7 +42,7 @@ Never read the whole PDF. Chapter text is pre-extracted (see "Content workflow")
 ## Unattended roadmap runs
 
 `pnpm roadmap` (`scripts/run-roadmap.mjs`) starts a fresh Claude session for each open task, then runs
-`pnpm check`, `pnpm format:check` and `pnpm test` itself before starting the next one. It stops at the first
+`pnpm check`, `pnpm lint`, `pnpm format:check` and `pnpm test` itself before starting the next one. It stops at the first
 failure or blocked task. Options: `--max N`, `--model NAME` (default `opus`), `--dry-run`. To stop after the current task: `touch .roadmap/stop`.
 Logs go to `.roadmap/logs/`. Work is committed to local `main` and pushing is disabled for these sessions.
 
@@ -154,6 +155,8 @@ The site looks like a Playwright test run in a dark terminal.
   `waitForTimeout`, no XPath, no `any`. Every new page gets a smoke test and an entry in `test-data/static/app/a11y-pages.ts`.
 - Tags: every test has exactly one tag in its options, `{ tag: '@smoke' }` or `{ tag: '@regression' }`, never on `test.describe()`.
   Run one group with `pnpm test:smoke` or `pnpm test:regression`.
+- Lint: `eslint.config.mjs` covers the test code, not `src/`. Positional locators (`first()`, `nth()`) and raw CSS belong in page objects. An
+  `eslint-disable-next-line` needs a `-- reason`.
 - Page objects: specs import `test` and `expect` from `fixtures/pom/test-options.ts` and never call `new` on a page object. A new page gets a
   `pages/app/<name>.page.ts` class and a fixture in `fixtures/pom/page-object-fixture.ts`. Locators are `get` accessors (or methods when they take
   arguments) with no JSDoc; actions have explicit return types and JSDoc. The checks a test exists to make stay in the spec, and the only `expect`

@@ -12,7 +12,7 @@ import {
 
 const SHORT_TIMEOUT = 500;
 
-const act = (page: Page, scenario: Scenario, timeout: number) => {
+const act = (page: Page, scenario: Scenario, timeout: number): Promise<void> => {
   const target = page.locator(scenario.selector);
   return scenario.action === 'click' ? target.click({ timeout }) : target.fill('Ada', { timeout });
 };
@@ -31,16 +31,17 @@ test.describe('the explainer matches real Playwright', () => {
     }
 
     if (scenario.releaseAt !== null) {
+      const releaseAt = scenario.blocker ? scenario.releaseAt : 0;
+
       test(
         `"${scenario.label}" acts only after the app is ready`,
         { tag: '@regression' },
         async ({ page }) => {
-          const releaseAt = scenario.blocker ? scenario.releaseAt! : 0;
           await page.setContent(scenario.html);
           await page.evaluate(
             ({ release, delay }) => {
               const state = window as unknown as { actedAt?: number; releasedAt?: number };
-              const acted = () => (state.actedAt ??= performance.now());
+              const acted = (): number => (state.actedAt ??= performance.now());
               document.addEventListener('click', acted);
               document.addEventListener('input', acted);
               setTimeout(() => {
@@ -97,8 +98,9 @@ test.describe('the explainer matches real Playwright', () => {
   };
 
   /** Breaks exactly one check on the element, leaving the others satisfied. */
-  const breakCheck = (html: string, check: CheckName) => {
-    const withAttribute = (attribute: string) => html.replace('id="target"', `id="target" ${attribute}`);
+  const breakCheck = (html: string, check: CheckName): string => {
+    const withAttribute = (attribute: string): string =>
+      html.replace('id="target"', `id="target" ${attribute}`);
     if (check === 'visible') return withAttribute('style="display: none"');
     if (check === 'enabled') return withAttribute('disabled');
     if (check === 'editable') return withAttribute('readonly');
@@ -107,15 +109,18 @@ test.describe('the explainer matches real Playwright', () => {
 #target { animation: slide 0.2s linear infinite alternate }</style>${html}`;
   };
 
+  // Only text inputs can be read-only.
+  const checksFor = (html: string): typeof CHECKS =>
+    CHECKS.filter(({ name: check }) => check !== 'editable' || html === input);
+
   for (const { name, checks } of ACTIONS) {
     test(`${name} waits for exactly the checks in the table`, { tag: '@regression' }, async ({ page }) => {
       const runner = runners[name];
       expect(runner, `add a runner for ${name}`).toBeDefined();
 
-      for (const { name: check } of CHECKS) {
-        // Only text inputs can be read-only.
-        if (check === 'editable' && runner.html !== input) continue;
+      for (const { name: check } of checksFor(runner.html)) {
         await page.setContent(breakCheck(runner.html, check));
+        // eslint-disable-next-line playwright/no-raw-locators -- getByRole can't find the hidden element this test needs
         const waited = await runner.run(page.locator('#target'), SHORT_TIMEOUT).then(
           () => false,
           (error: Error) => {

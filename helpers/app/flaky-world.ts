@@ -8,7 +8,7 @@ import { test as base, expect, type Locator, type Page, type Route } from '@play
 const hostile = process.env.FLAKY_TIMING === 'hostile';
 const orders = new Set<string>();
 
-const html = (body: string, script = '') =>
+const html = (body: string, script = ''): string =>
   `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>shop</title></head><body>${body}<script>${script}</script></body></html>`;
 
 const pages: Record<string, () => string> = {
@@ -53,7 +53,7 @@ const pages: Record<string, () => string> = {
   },
   '/checkout': () => html('<h1>Checkout</h1>'),
   '/invoices': () => {
-    const item = (id: number) => `<li><a href="/invoices/${id}">Invoice ${id}</a></li>`;
+    const item = (id: number): string => `<li><a href="/invoices/${id}">Invoice ${id}</a></li>`;
     if (!hostile) return html(`<ul>${item(1042)}${item(1041)}</ul>`);
     return html(
       `<ul>${item(1041)}${item(1042)}</ul>`,
@@ -69,7 +69,7 @@ const pages: Record<string, () => string> = {
     ),
 };
 
-async function respond(route: Route) {
+async function respond(route: Route): Promise<void> {
   const request = route.request();
   const path = new URL(request.url()).pathname;
 
@@ -103,7 +103,7 @@ async function respond(route: Route) {
 let clicksPatched = false;
 
 /** Hostile timing for the cart: the banner lands after any earlier check, just as the first click starts. */
-function bannerArrivesOnFirstClick(page: Page) {
+function bannerArrivesOnFirstClick(page: Page): void {
   if (clicksPatched) return;
   clicksPatched = true;
   const locator = Object.getPrototypeOf(page.locator('body')) as Locator;

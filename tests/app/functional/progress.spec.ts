@@ -1,5 +1,9 @@
 import { test, expect } from '../../../fixtures/pom/test-options';
-import { createProgressStore, PROGRESS_STORAGE_KEY as KEY } from '../../../src/stores/progress';
+import {
+  createProgressStore,
+  PROGRESS_STORAGE_KEY as KEY,
+  type Progress,
+} from '../../../src/stores/progress';
 
 // These run in Node against an in-memory Storage. chapter-progress.spec.ts covers the UI.
 test.skip(
@@ -9,7 +13,11 @@ test.skip(
 
 const REVIEW = { grade: 'good', intervalDays: 3, dueAt: '2026-12-01T00:00:00.000Z' } as const;
 
-function fakeStorage(initial?: string) {
+function fakeStorage(initial?: string): {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => undefined;
+  removeItem: (key: string) => undefined;
+} {
   const items = new Map<string, string>(initial === undefined ? [] : [[KEY, initial]]);
   return {
     getItem: (key: string) => items.get(key) ?? null,
@@ -18,9 +26,10 @@ function fakeStorage(initial?: string) {
   };
 }
 
-const saved = (storage: ReturnType<typeof fakeStorage>) => JSON.parse(storage.getItem(KEY) ?? 'null');
+const saved = (storage: ReturnType<typeof fakeStorage>): Progress =>
+  JSON.parse(storage.getItem(KEY) ?? 'null');
 
-function storageEvent(key: string | null) {
+function storageEvent(key: string | null): Event & { key: string | null } {
   return Object.assign(new Event('storage'), { key });
 }
 

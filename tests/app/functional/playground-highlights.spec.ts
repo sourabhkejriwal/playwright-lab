@@ -19,7 +19,7 @@ interface ExpectedHighlights {
 }
 
 /** Checks every box on the sample page: its state, position, order and badge, and that no others exist. */
-async function expectHighlights(playground: PlaygroundPage, expected: ExpectedHighlights[]) {
+async function expectHighlights(playground: PlaygroundPage, expected: ExpectedHighlights[]): Promise<void> {
   await expect(async () => {
     for (const { state, on, count, badges } of expected) {
       const boxes = playground.highlightsIn(state);
@@ -37,10 +37,10 @@ async function expectHighlights(playground: PlaygroundPage, expected: ExpectedHi
       });
 
       const numbers = state === 'target' ? elements.map(() => '') : elements.map((_, index) => String(index));
-      expect(await boxes.allTextContents(), `${state} badges`).toEqual(badges ?? numbers);
+      await expect(boxes, `${state} badges`).toHaveText(badges ?? numbers);
     }
     const total = expected.reduce((sum, { count }) => sum + count, 0);
-    expect(await playground.highlights.count(), 'boxes on the page').toBe(total);
+    await expect(playground.highlights, 'boxes on the page').toHaveCount(total);
   }).toPass({ timeout: timeouts.highlightsSettle });
 }
 
@@ -85,7 +85,7 @@ test.describe('playground highlights', () => {
   });
 
   test('each state draws in its own color', { tag: '@regression' }, async ({ playground }) => {
-    const strict = await playground.highlightColor(playground.highlightsIn('strict').first(), '--term-fail');
+    const strict = await playground.highlightColor(playground.firstHighlightIn('strict'), '--term-fail');
     expect(strict.drawn).toBe(strict.token);
 
     await playground.enterLocator("page.locator('#email')");

@@ -23,7 +23,12 @@ const console = {
 `;
 
 /** Runs the files on the real Playwright CLI and returns what each worker printed. */
-function runPlaywright(files: Record<string, string>, workers: number, testInfo: TestInfo, label: string) {
+function runPlaywright(
+  files: Record<string, string>,
+  workers: number,
+  testInfo: TestInfo,
+  label: string,
+): { status: number | null; log: string; printed: string[][] } {
   const root = testInfo.outputPath(label);
   mkdirSync(root, { recursive: true });
   // Playwright puts test-results/ beside the nearest package.json and empties it, which must not be this repo's.
@@ -51,7 +56,8 @@ function runPlaywright(files: Record<string, string>, workers: number, testInfo:
 }
 
 // Parallel workers can start in either order, so compare them as a set.
-const unordered = (workers: string[][]) => workers.map((lines) => lines.join('\n')).toSorted();
+const unordered = (workers: string[][]): string[] =>
+  workers.map((lines): string => lines.join('\n')).toSorted();
 
 test.describe('the explainer matches real Playwright', () => {
   test.skip(

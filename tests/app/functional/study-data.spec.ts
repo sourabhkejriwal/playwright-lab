@@ -21,7 +21,7 @@ const question = {
 };
 const quiz = { chapter: 2, questions: [question] };
 
-const issues = (result: { error?: { issues: { message: string }[] } }) =>
+const issues = (result: { error?: { issues: { message: string }[] } }): string[] =>
   result.error?.issues.map((issue) => issue.message) ?? [];
 
 test.describe('flashcard schema', () => {
@@ -80,19 +80,21 @@ test.describe('quiz schema', () => {
   });
 });
 
-for (const [folder, schema] of [
-  ['flashcards', flashcardDeckSchema],
-  ['quizzes', quizSchema],
-] as const) {
-  test(`${folder} files are valid and named after their chapter`, { tag: '@regression' }, () => {
-    const dir = new URL(`../../../src/content/${folder}/`, import.meta.url);
-    const files = readdirSync(dir);
-    expect(files.length).toBeGreaterThan(0);
+test.describe('study data files', () => {
+  for (const [folder, schema] of [
+    ['flashcards', flashcardDeckSchema],
+    ['quizzes', quizSchema],
+  ] as const) {
+    test(`${folder} files are valid and named after their chapter`, { tag: '@regression' }, () => {
+      const dir = new URL(`../../../src/content/${folder}/`, import.meta.url);
+      const files = readdirSync(dir);
+      expect(files.length).toBeGreaterThan(0);
 
-    for (const file of files) {
-      const data = schema.parse(JSON.parse(readFileSync(new URL(file, dir), 'utf8')));
-      const chapter = chapters.find((meta) => meta.num === data.chapter);
-      expect(file).toBe(`${pad(data.chapter)}-${chapter?.slug}.json`);
-    }
-  });
-}
+      for (const file of files) {
+        const data = schema.parse(JSON.parse(readFileSync(new URL(file, dir), 'utf8')));
+        const chapter = chapters.find((meta) => meta.num === data.chapter);
+        expect(file).toBe(`${pad(data.chapter)}-${chapter?.slug}.json`);
+      }
+    });
+  }
+});
