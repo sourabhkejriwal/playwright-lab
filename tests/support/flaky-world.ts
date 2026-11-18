@@ -3,7 +3,7 @@
  * project. FLAKY_TIMING=kind makes every race fall the lucky way and FLAKY_TIMING=hostile the unlucky way.
  */
 import { setTimeout as sleep } from 'node:timers/promises';
-import { test as base, expect, type Page, type Route } from '@playwright/test';
+import { test as base, expect, type Locator, type Page, type Route } from '@playwright/test';
 
 const hostile = process.env.FLAKY_TIMING === 'hostile';
 const orders = new Set<string>();
@@ -41,10 +41,14 @@ const pages: Record<string, () => string> = {
     const link = '<a href="/checkout">Checkout</a>';
     const accept = `document.querySelector('[role=dialog] button').onclick = () => document.querySelector('[role=dialog]').remove();`;
     if (!hostile) return html(link + banner, accept);
+    // Shown by `bannerArrivesOnFirstClick`, not a timer: on a busy machine `isVisible()` could run after any fixed delay.
     return html(
-      '<main></main>',
-      `setTimeout(() => { document.body.insertAdjacentHTML('beforeend', ${JSON.stringify(banner)}); ${accept} }, 150);
-       setTimeout(() => { document.querySelector('main').innerHTML = ${JSON.stringify(link)}; }, 400);`,
+      link,
+      `window.showBanner = () => {
+         window.showBanner = () => {};
+         document.body.insertAdjacentHTML('beforeend', ${JSON.stringify(banner)});
+         ${accept}
+       };`,
     );
   },
   '/checkout': () => html('<h1>Checkout</h1>'),
@@ -96,8 +100,23 @@ async function respond(route: Route) {
   return route.fulfill({ status: 404, body: '' });
 }
 
+let clicksPatched = false;
+
+/** Hostile timing for the cart: the banner lands after any earlier check, just as the first click starts. */
+function bannerArrivesOnFirstClick(page: Page) {
+  if (clicksPatched) return;
+  clicksPatched = true;
+  const locator = Object.getPrototypeOf(page.locator('body')) as Locator;
+  const click = locator.click;
+  locator.click = async function (this: Locator, ...args: Parameters<Locator['click']>) {
+    await this.page().evaluate('window.showBanner?.()');
+    return click.apply(this, args);
+  };
+}
+
 export const test = base.extend({
   page: async ({ page }, use) => {
+    if (hostile) bannerArrivesOnFirstClick(page);
     // The time of day the run happens to start at: the greeting challenge depends on it.
     await page.clock.setFixedTime(new Date(`2026-03-02T${hostile ? '15' : '09'}:00:00`));
     await page.route('**/*', (route) => respond(route).catch(() => {}));

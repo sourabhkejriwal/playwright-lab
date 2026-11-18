@@ -205,3 +205,6 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   unattended session was not permitted to run a scratch project, so **the chapter's snippets were not executed**: claims were checked by reading the
   installed source and type docs. Worth running them once, especially the CDP throttling and `requestfinished` examples. Chapter 7 is now the
   "unwritten chapter" example in the smoke, quiz, search, SEO, a11y and progress tests, so whoever writes chapter 7 must move those to chapter 8.
+- 2026-11-18: The flaky challenges' hostile cart shows its cookie banner on the first click, not after a timer, because a busy
+  machine could reach `isVisible()` after any fixed delay and make the flaky code pass. Nested runs have a 20 second test timeout
+  so a slow machine can't replace the timeout message a challenge expects.
