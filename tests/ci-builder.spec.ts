@@ -385,7 +385,6 @@ test.describe('ci builder page', () => {
   });
 
   test.describe('accessibility', () => {
-    test.skip(({ browserName }) => browserName === 'firefox', 'axe crashes the Firefox page on this island');
     test.use({ reducedMotion: 'reduce' });
 
     for (const theme of ['dark', 'light'] as const) {

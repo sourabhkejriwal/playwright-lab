@@ -95,7 +95,25 @@ export class SitePage {
     );
   }
 
+  /**
+   * axe reads these properties for ARIA attributes, and on our hydrated islands that segfaults Firefox's page process
+   * (`ariaLabelledByElements` on the generators' inputs, for one). Without them axe still checks the attributes.
+   */
+  private async removeFirefoxAriaElementProperties() {
+    if (this.page.context().browser()?.browserType().name() !== 'firefox') return;
+    await Promise.all(
+      this.page.frames().map((frame) =>
+        frame.evaluate(() => {
+          for (const name of Object.getOwnPropertyNames(Element.prototype)) {
+            if (/^aria\w+Elements?$/.test(name)) Reflect.deleteProperty(Element.prototype, name);
+          }
+        }),
+      ),
+    );
+  }
+
   async a11yViolations({ tags = DEFAULT_A11Y_TAGS, include }: { tags?: string[]; include?: string } = {}) {
+    await this.removeFirefoxAriaElementProperties();
     const builder = new AxeBuilder({ page: this.page }).withTags(tags);
     if (include) builder.include(include);
     return (await builder.analyze()).violations;
