@@ -13,4 +13,12 @@ for (const path of pages) {
     const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
     expect(results.violations).toEqual([]);
   });
+
+  test(`no detectable a11y violations on ${path} in the light theme`, async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('playwright-lab:theme', 'light'));
+    await page.goto(path);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    expect(results.violations).toEqual([]);
+  });
 }

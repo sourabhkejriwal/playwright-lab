@@ -60,7 +60,7 @@ src/
   lib/chapters.ts        getChapters(): joins the list with MDX entries → status passed/pending
   lib/url.ts             url(): base-path-aware internal links
   content/chapters/      NN-slug.mdx chapter notes (content collection, schema in content.config.ts)
-  components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef
+  components/            .astro UI: Sidebar, TableOfContents, CodeCopy, TerminalWindow, StatusMark, TopBar, Footer, TestRunHero, ComingSoon, Callout, Kbd, ApiRef, ThemeToggle
   islands/               (planned) React interactive components: Playground, Flashcards, Quiz, …
   layouts/BaseLayout.astro
   pages/                 routes; chapters/[slug].astro renders MDX or a "pending" placeholder
@@ -78,7 +78,9 @@ The site looks like a Playwright test run in a dark terminal.
 - **Colors**: use only the token utilities: `bg-bg`, `bg-surface`, `bg-raised`, `border-line`,
   `border-line-strong`, `text-text`, `text-bright`, `text-muted`, `text-dim`, `text-pass`, `text-pending`,
   `text-fail`, `text-info`, `text-purple`. Never write hex in components. New colors go in `tokens.css`
-  and must reach **≥4.5:1 contrast on `--term-raised`** (the a11y tests enforce this).
+  and must reach **≥4.5:1 contrast on `--term-raised`** (the a11y tests enforce this) in both themes.
+- **Themes**: dark is the default. `:root[data-theme='light']` in `tokens.css` overrides the color tokens, so a new
+  color token needs a light value too. `ThemeToggle` saves the choice; an inline script in `BaseLayout` applies it before first paint.
 - **Semantics**: pass/green = done or primary action; pending/amber = in progress; fail/red = errors;
   info/blue = links. Status glyphs via `<StatusMark status="passed|pending|failed|skipped" />`.
 - **Type**: JetBrains Mono for UI and headings; Inter (`font-prose`, `.prose-term`) for long-form reading.

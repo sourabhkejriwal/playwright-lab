@@ -1,0 +1,58 @@
+---
+// Switches between the default dark theme and the opt-in light theme. BaseLayout's head script sets
+// data-theme before first paint, so without JavaScript the attribute is missing and the button stays hidden.
+---
+
+<button
+  type="button"
+  aria-label="light theme"
+  aria-pressed="false"
+  data-theme-toggle
+  class="hidden cursor-pointer gap-1 rounded-term py-0.5 text-muted hover:text-bright in-data-[theme]:inline-flex"
+>
+  <span aria-hidden="true" class="whitespace-nowrap">
+    [<span class="invisible text-pass in-data-[theme=light]:visible">x</span>]
+  </span>
+  light
+</button>
+
+<script>
+  type Theme = 'dark' | 'light';
+
+  // Namespaced because every project site on the same github.io origin shares localStorage.
+  const STORAGE_KEY = 'playwright-lab:theme';
+  const root = document.documentElement;
+  const button = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+  const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+
+  function storedTheme(): Theme {
+    try {
+      return localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark';
+    } catch {
+      return 'dark';
+    }
+  }
+
+  function applyTheme(theme: Theme) {
+    root.dataset.theme = theme;
+    button?.setAttribute('aria-pressed', String(theme === 'light'));
+    themeColor?.setAttribute('content', getComputedStyle(root).getPropertyValue('--term-bg').trim());
+  }
+
+  applyTheme(storedTheme());
+
+  button?.addEventListener('click', () => {
+    const theme: Theme = root.dataset.theme === 'light' ? 'dark' : 'light';
+    applyTheme(theme);
+    try {
+      localStorage.setItem(STORAGE_KEY, theme);
+    } catch {
+      // Storage can be blocked: the theme still applies to this page.
+    }
+  });
+
+  // A page restored from the back/forward cache skips the head script and may hold an older choice.
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) applyTheme(storedTheme());
+  });
+</script>

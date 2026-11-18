@@ -25,7 +25,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - [x] MDX components: `<Callout type="tip|warn|gotcha">`, `<Kbd>`, `<ApiRef name="…">`
 - [x] SEO: Open Graph image (terminal-style), meta per page, `robots.txt`
 - [x] Custom favicon (terminal `$_` mark)
-- [ ] Optional light theme (override tokens under `[data-theme='light']`) and toggle
+- [x] Optional light theme (override tokens under `[data-theme='light']`) and toggle
 
 ## Phase 3 · Progress and learning engine
 
@@ -84,3 +84,5 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 - 2026-11-18: Favicon `$_` is drawn with SVG paths (no font dependency) on a dark tile so it reads on light and dark
   browser tabs. `favicon.ico` (16, 32, 48) is generated from the SVG and linked explicitly, because browsers only
   auto-discover `/favicon.ico` at the domain root and Pages serves the site under `/playwright-lab/`.
+- 2026-11-18: Light theme is opt-in. Dark stays the default whatever the OS prefers, because the terminal look is the
+  site's identity; the choice is saved in `localStorage` (`playwright-lab:theme`). Without JavaScript the toggle is hidden.

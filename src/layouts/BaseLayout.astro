@@ -36,6 +36,18 @@ const currentChapter = chapters.find(
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Inline and render-blocking so a saved light theme never flashes dark first. -->
+    <script is:inline>
+      (() => {
+        let theme = 'dark';
+        try {
+          if (localStorage.getItem('playwright-lab:theme') === 'light') theme = 'light';
+        } catch {
+          // Storage can be blocked: keep the default theme.
+        }
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
     <meta name="description" content={description} />
     {noindex ? <meta name="robots" content="noindex" /> : <link rel="canonical" href={canonical} />}
     <meta property="og:site_name" content="playwright-lab" />

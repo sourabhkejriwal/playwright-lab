@@ -1,7 +1,7 @@
 /*
  * Design A — "Terminal dev". Single source of truth for colors, fonts, and spacing.
  * Components use the Tailwind utilities mapped in global.css (bg-bg, text-muted, border-line…),
- * never raw hex. A light theme can be added later by overriding these vars under [data-theme='light'].
+ * never raw hex. Dark is the default; the light theme below overrides the color vars.
  */
 :root {
   /* surfaces, darkest → lightest */
@@ -44,4 +44,34 @@
   --font-prose: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
 
   color-scheme: dark;
+}
+
+/* Opt-in via ThemeToggle. Every text color keeps ≥4.5:1 on --term-raised, as in the dark theme. */
+:root[data-theme='light'] {
+  --term-bg: #f7f8fa;
+  --term-surface: #ffffff;
+  --term-raised: #eef1f5;
+  --term-line: #d5dbe3;
+  --term-line-strong: #b4bdc9;
+
+  --term-text: #27303b;
+  --term-bright: #0f141a;
+  --term-muted: #4f5966;
+  --term-dim: #5a6471;
+
+  --term-pass: #116329;
+  --term-pending: #7a4b00;
+  --term-fail: #b3261e;
+  --term-info: #0550ae;
+  --term-purple: #6639ba;
+
+  --astro-code-token-keyword: #a40e26;
+  --astro-code-token-string: #0a3069;
+  --astro-code-token-string-expression: #0a3069;
+  --astro-code-token-constant: #0550ae;
+  --astro-code-token-function: #6639ba;
+  --astro-code-token-parameter: #8a3300;
+  --term-code-highlight: #dcefe1;
+
+  color-scheme: light;
 }
