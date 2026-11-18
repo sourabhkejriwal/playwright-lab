@@ -1,0 +1,60 @@
+{
+  "chapter": 1,
+  "questions": [
+    {
+      "question": "You need a nightly script that saves screenshots of a few pages, with no test reports. Which package fits best?",
+      "options": [
+        "`@playwright/test`, because it is the only one that can take screenshots",
+        "`playwright`, the automation library",
+        "`@axe-core/playwright`",
+        "`create-playwright`, run once per night"
+      ],
+      "answer": 1,
+      "explanation": "The library gives you browser automation without a test runner, which is all a standalone script needs."
+    },
+    {
+      "question": "After `npm install --save-dev @playwright/test`, a run says a browser executable doesn't exist. What is missing?",
+      "options": [
+        "A `playwright.config.ts` file",
+        "The `--headed` flag",
+        "The browsers, installed with `npx playwright install`",
+        "A global install of the package"
+      ],
+      "answer": 2,
+      "explanation": "The npm package doesn't include the browsers. `npx playwright install` downloads them."
+    },
+    {
+      "question": "A config doesn't set `testDir`. Where does Playwright look for tests?",
+      "options": [
+        "In the folder that holds the config file, including subfolders",
+        "Only in `./tests`",
+        "Only in `./e2e`",
+        "Nowhere, because `testDir` is required"
+      ],
+      "answer": 0,
+      "explanation": "`testDir` defaults to the config file's folder. The `./tests` value you often see is written into the config by the init command."
+    },
+    {
+      "question": "With the default settings, how do two tests in the same file run?",
+      "options": [
+        "At the same time, in two workers",
+        "In random order, in one worker",
+        "In two separate browser contexts that share cookies",
+        "In order, in the same worker"
+      ],
+      "answer": 3,
+      "explanation": "Files run in parallel by default, but tests in one file stay in order in one worker unless `fullyParallel` is on."
+    },
+    {
+      "question": "Why might a `test.beforeAll` hook run several times in one test run?",
+      "options": [
+        "It runs before every test in the file",
+        "It runs once per worker, and a failed test restarts the worker",
+        "It runs once per assertion",
+        "It retries until the hook times out"
+      ],
+      "answer": 1,
+      "explanation": "Each worker runs the hook for itself. A new worker replaces one that hit a failure, so the hook runs again there."
+    }
+  ]
+}

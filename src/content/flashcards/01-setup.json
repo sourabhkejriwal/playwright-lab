@@ -1,0 +1,65 @@
+{
+  "chapter": 1,
+  "cards": [
+    {
+      "id": "setup/test-vs-library",
+      "front": "When do you choose `@playwright/test` over `playwright`?",
+      "back": "Use `@playwright/test` to test an application, because it brings the runner, assertions, fixtures, and reports. Use `playwright` for automation scripts or alongside another test runner."
+    },
+    {
+      "id": "setup/install-browsers",
+      "front": "What does installing the npm package leave out?",
+      "back": "The browsers. Download them with `npx playwright install`."
+    },
+    {
+      "id": "setup/init",
+      "front": "What does `npm init playwright@latest` set up?",
+      "back": "It adds `@playwright/test`, writes a config file and an example test, and offers to install the browsers."
+    },
+    {
+      "id": "setup/default-test-dir",
+      "front": "What is the default value of `testDir`?",
+      "back": "The folder that holds the config file. The init command is what writes `./tests` into a new config."
+    },
+    {
+      "id": "setup/default-timeouts",
+      "front": "What are the default test and assertion timeouts?",
+      "back": "30 seconds per test and 5 seconds per web-first assertion. Actions have no timeout of their own unless you set `actionTimeout`."
+    },
+    {
+      "id": "setup/default-workers",
+      "front": "How many workers does Playwright use by default?",
+      "back": "Half of the logical CPU cores. Set `workers` to a number or a percentage to change it."
+    },
+    {
+      "id": "setup/fully-parallel",
+      "front": "What does `fullyParallel: true` change?",
+      "back": "Tests inside one file can also run across different workers. Without it, only files run in parallel and a file's tests stay in order."
+    },
+    {
+      "id": "setup/isolation",
+      "front": "How does Playwright keep tests isolated from each other?",
+      "back": "Each test gets a new browser context with its own cookies and storage."
+    },
+    {
+      "id": "setup/before-all",
+      "front": "How often does `test.beforeAll` run?",
+      "back": "Once per worker. It runs again when a failed test causes the worker to be replaced."
+    },
+    {
+      "id": "setup/devices",
+      "front": "How do you emulate an iPhone in a project?",
+      "back": "Spread its descriptor into `use`: `use: { ...devices['iPhone 15'] }`. There is no `device` option."
+    },
+    {
+      "id": "setup/debug-flag",
+      "front": "What does `--debug` change about a run?",
+      "back": "It opens the inspector in a headed browser, uses one worker, removes the test timeout, and stops at the first failure."
+    },
+    {
+      "id": "setup/fixtures",
+      "front": "How does a test ask for a fixture?",
+      "back": "By naming it in the test's arguments, as in `async ({ page, request }) => {}`. Only the fixtures a test names are set up."
+    }
+  ]
+}

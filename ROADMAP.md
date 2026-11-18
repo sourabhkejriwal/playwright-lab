@@ -52,7 +52,7 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
 
 ## Phase 5 · Chapter notes (each ⇉ independent; source in `source/chapters/`)
 
-- [ ] ⇉ 01 Quick setup refresher
+- [x] ⇉ 01 Quick setup refresher
 - [~] ⇉ 02 Advanced selectors: sample written; still needs dialogs, iframes, shadow DOM, custom waits
 - [ ] ⇉ 03 Cross-browser testing
 - [ ] ⇉ 04 AI-powered test generation
@@ -168,3 +168,9 @@ Tasks marked ⇉ are independent of their siblings and can run in parallel sessi
   can still open in a new tab. On a Mac only Cmd+K opens search, because Ctrl+K deletes to the end of the line in text fields. Pagefind's
   excerpts are split into text pieces instead of being rendered as HTML. The unattended session could not run a build under
   `/playwright-lab/`, so check search on the live site after the next deploy: `url()` sets Pagefind's `baseUrl` for that path.
+- 2026-11-18: Chapter 1 notes follow the installed Playwright (1.65) where the reference PDF differs: `testDir` defaults to the config's
+  folder, workers default to half the logical cores, and devices are spread from `devices[...]` because `use` has no `device` option.
+  Check a chapter's claims against `node_modules` the same way. Each chapter can add a flashcard deck as well as its quiz:
+  `tests/flashcards.spec.ts` now reads every deck, so new decks need no test changes. Each newly written chapter still has to update
+  the ready and pending counts in `tests/chapter-progress.spec.ts`. Watch for flakiness: the playground's "explains invalid input" failed
+  on mobile again in one full run, with the previous input still showing in the alert. It then passed 30 repeats and a full run.

@@ -9,7 +9,7 @@ test.describe('home', () => {
     const run = page.getByRole('list', { name: 'Chapter progress' });
     await expect(run.getByRole('listitem')).toHaveCount(16);
     await expect(run.getByRole('link', { name: 'Chapter 2, Selectors: ready' })).toBeVisible();
-    await expect(page.getByText(/next up/)).toContainText('ch02');
+    await expect(page.getByText(/next up/)).toContainText('ch01');
   });
 
   test('chapter sidebar lists every chapter and marks the current one', async ({ page, isMobile }) => {
@@ -50,6 +50,14 @@ test.describe('chapters', () => {
       page.getByRole('heading', { level: 2, name: 'Start with user-facing locators' }),
     ).toBeVisible();
     await expect(page.locator('pre').first()).toContainText('getByRole');
+  });
+
+  test('the setup chapter renders its notes and quiz', async ({ page }) => {
+    await page.goto('/chapters/01-setup');
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Quick setup refresher');
+    await expect(page.getByRole('heading', { level: 2, name: 'Configure the run' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'playwright.config.ts' })).toContainText('defineConfig');
+    await expect(page.getByRole('region', { name: 'Chapter quiz' })).toBeAttached();
   });
 
   test('code blocks show a title bar and highlighted lines', async ({ page }) => {

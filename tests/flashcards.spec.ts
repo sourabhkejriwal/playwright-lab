@@ -1,6 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { chapters, pad } from '../src/data/chapters';
 import {
   ALL_CHAPTERS,
   buildQueue,
@@ -13,11 +14,24 @@ import {
 } from '../src/lib/flashcards';
 import { PROGRESS_STORAGE_KEY as KEY, type FlashcardProgress } from '../src/stores/progress';
 
-const deck: { cards: { id: string; front: string; back: string }[] } = JSON.parse(
-  readFileSync(new URL('../src/content/flashcards/02-selectors.json', import.meta.url), 'utf8'),
-);
+interface Deck {
+  chapter: number;
+  cards: { id: string; front: string; back: string }[];
+}
+
+// Every chapter's deck in chapter order, which is the order "all chapters" studies them in.
+const deckDir = new URL('../src/content/flashcards/', import.meta.url);
+const decks: Deck[] = readdirSync(deckDir)
+  .toSorted()
+  .map((file) => JSON.parse(readFileSync(new URL(file, deckDir), 'utf8')));
+const deck = { cards: decks.flatMap(({ cards }) => cards) };
 const [first, second] = deck.cards;
 const total = deck.cards.length;
+
+const deckOption = ({ chapter, cards }: Deck) => {
+  const short = chapters.find(({ num }) => num === chapter)?.short.toLowerCase();
+  return `ch${pad(chapter)} ${short} (${cards.length})`;
+};
 
 const PAST = '2026-01-01T00:00:00.000Z';
 const FUTURE = '2999-01-01T00:00:00.000Z';
@@ -109,9 +123,8 @@ test.describe('flashcards page', () => {
   test('code in backticks renders as code', async ({ page }) => {
     await page.goto('/flashcards');
     await reveal(page).click();
-    await expect(page.getByRole('group', { name: 'Answer' }).locator('code').first()).toHaveText(
-      'getByRole()',
-    );
+    const code = first.back.match(/`([^`]+)`/)?.[1] ?? '';
+    await expect(page.getByRole('group', { name: 'Answer' }).locator('code').first()).toHaveText(code);
   });
 
   test('a graded card is saved and stays away after a reload', async ({ page }) => {
@@ -170,12 +183,12 @@ test.describe('flashcards page', () => {
     const chapter = page.getByRole('combobox', { name: 'chapter' });
     await expect(chapter.getByRole('option')).toHaveText([
       `all chapters (${total})`,
-      `ch02 selectors (${total})`,
+      ...decks.map(deckOption),
     ]);
 
     await reveal(page).click();
     await chapter.focus();
-    await chapter.selectOption({ label: `ch02 selectors (${total})` });
+    await chapter.selectOption({ label: deckOption(decks[decks.length - 1]) });
     await expect(reveal(page)).toBeVisible();
     await expect(page.getByRole('group', { name: 'Answer' })).toBeHidden();
     await expect(chapter).toBeFocused();

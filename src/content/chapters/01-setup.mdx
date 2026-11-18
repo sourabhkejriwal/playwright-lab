@@ -1,0 +1,211 @@
+---
+chapter: 1
+title: Quick setup refresher
+summary: Pick the right package, scaffold a project, run a first test, and learn the config defaults that shape every run.
+readingMinutes: 7
+---
+
+## Playwright Test or the library
+
+Playwright ships as two packages that drive browsers with the same API. The difference is who runs the show.
+
+- **`@playwright/test`** is the full test framework: runner, assertions, fixtures, parallel workers, retries,
+  and reports. Choose it when the goal is testing an application.
+- **`playwright`** is the automation library on its own. Choose it for scripts such as scraping, generating
+  screenshots, or adding browser steps to a tool that already has its own runner.
+
+With the library, launching and closing the browser is your job:
+
+```ts title="screenshot.ts"
+import { chromium } from 'playwright';
+
+const browser = await chromium.launch();
+const page = await browser.newPage();
+await page.goto('https://playwright.dev');
+await page.screenshot({ path: 'home.png' });
+await browser.close();
+```
+
+## Install it
+
+Use a current LTS release of Node.js. For a new project, the init command does nearly everything:
+
+```bash title="terminal"
+npm init playwright@latest
+```
+
+It adds `@playwright/test`, writes a `playwright.config.ts` and an example test, and offers to download the
+browsers. To add Playwright to an existing project by hand, install the two pieces separately:
+
+```bash title="terminal"
+npm install --save-dev @playwright/test
+npx playwright install
+```
+
+<Callout type="gotcha" title="the package is not the browsers">
+  Installing the npm package doesn't download Chromium, Firefox, or WebKit. If a run complains that an
+  executable doesn't exist, run `npx playwright install`.
+</Callout>
+
+## Write and run a first test
+
+```ts title="tests/home.spec.ts" {5}
+import { test, expect } from '@playwright/test';
+
+test('home page has the product name in its title', async ({ page }) => {
+  await page.goto('https://playwright.dev');
+  await expect(page).toHaveTitle(/Playwright/);
+});
+```
+
+<ApiRef name="expect(page).toHaveTitle()" /> retries until the title matches or the assertion times out.
+Reading the value once with `page.title()` and comparing it has no such patience, so it can fail while the
+page is still loading.
+
+The commands you'll use most:
+
+```bash title="terminal"
+npx playwright test                       # everything
+npx playwright test tests/home.spec.ts    # one file
+npx playwright test --project=chromium    # one project from the config
+npx playwright test --headed              # show the browser
+npx playwright test --ui                  # interactive UI mode
+npx playwright test --debug               # step through with the inspector
+npx playwright show-report                # open the last HTML report
+```
+
+Tests run headless unless you ask otherwise. `--debug` also changes the run itself: it opens a headed browser,
+uses one worker, removes the test timeout, and stops at the first failure.
+
+<Callout type="warn" title="--project matches names, not browsers">
+  The value must be the `name` of a project in your config. `--project=webkit` only works if a project is
+  called `webkit`.
+</Callout>
+
+## Configure the run
+
+`playwright.config.ts` holds the settings for every run. Start small and add an option when you have a
+reason for it.
+
+```ts title="playwright.config.ts"
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  fullyParallel: true,
+  retries: process.env.CI ? 2 : 0,
+  reporter: [['list'], ['html', { open: 'never' }]],
+  use: {
+    baseURL: 'http://localhost:3000',
+    trace: 'on-first-retry',
+  },
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'mobile-safari', use: { ...devices['iPhone 15'] } },
+  ],
+});
+```
+
+Knowing what you get when an option is left out saves a lot of guessing:
+
+| Option           | Default                            | Controls                           |
+| ---------------- | ---------------------------------- | ---------------------------------- |
+| `testDir`        | the folder holding the config file | where test files are searched for  |
+| `testMatch`      | `.spec` and `.test` JS or TS files | which files count as tests         |
+| `timeout`        | 30 seconds                         | one test and its per-test hooks    |
+| `expect.timeout` | 5 seconds                          | one web-first assertion            |
+| `actionTimeout`  | none, so the test timeout applies  | one action such as `click()`       |
+| `globalTimeout`  | none                               | the whole run                      |
+| `workers`        | half of the logical CPU cores      | how many tests run at once         |
+| `fullyParallel`  | `false`                            | whether tests in one file split up |
+| `retries`        | 0                                  | extra attempts for a failed test   |
+| `maxFailures`    | none                               | failures allowed before stopping   |
+| `reporter`       | `list` locally, `dot` on CI        | how results are reported           |
+
+<Callout type="gotcha" title="devices are spread, not named">
+  There is no `device` option under `use`. A device is a bundle of settings, so spread it into `use` as the
+  `mobile-safari` project above does.
+</Callout>
+
+The HTML reporter opens the report after a failed run when it's started from an interactive terminal. Setting
+`open: 'never'` makes the behaviour explicit, which is what you want on CI.
+
+## Organise the project
+
+No layout is required, but separating these concerns pays off as a suite grows:
+
+```text title="project layout"
+tests/                specs, grouped by feature or by logged-in state
+pages/                page objects
+fixtures/             custom fixtures and test data
+playwright.config.ts
+test-results/         traces, screenshots and videos from the last run
+playwright-report/    the HTML report
+```
+
+Add `test-results/`, `playwright-report/`, and any saved login state to `.gitignore`. Playwright empties
+`test-results/` at the start of each run, so don't keep anything there.
+
+## How the runner works
+
+### Workers and isolation
+
+The runner starts several worker processes and hands them test files. By default, files run in parallel, while
+the tests inside one file run in order in the same worker. `fullyParallel: true` lets those tests spread across
+workers too.
+
+Each test gets a new **browser context**, which works like a fresh browser profile with its own cookies and
+storage. A test that logs in can't leak that session into the next one, and creating a context is cheap
+enough to do for every test.
+
+### Hooks
+
+Hooks run code around your tests:
+
+```ts title="tests/search.spec.ts" {3-5}
+import { test, expect } from '@playwright/test';
+
+test.beforeEach(async ({ page }) => {
+  await page.goto('https://playwright.dev/docs/intro');
+});
+
+test('the docs page has a main heading', async ({ page }) => {
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+});
+```
+
+<ApiRef name="test.beforeEach()" /> and <ApiRef name="test.afterEach()" /> wrap every test.
+<ApiRef name="test.beforeAll()" /> and <ApiRef name="test.afterAll()" /> run once **per worker**.
+
+<Callout type="gotcha" title="beforeAll can run more than once">
+  A failed test restarts its worker, and `beforeAll` then runs again in the new one. Several workers also each
+  run it. Setup that must happen exactly once for the whole run belongs in a global setup project.
+</Callout>
+
+### Fixtures
+
+A fixture is a resource that the runner prepares for a test and cleans up afterwards. You ask for one by naming
+it in the test's arguments, and only the fixtures a test names are set up.
+
+```ts title="tests/health.spec.ts" {3}
+import { test, expect } from '@playwright/test';
+
+test('the API is healthy', async ({ request }) => {
+  const response = await request.get('https://api.example.com/health');
+  await expect(response).toBeOK();
+});
+```
+
+Here <ApiRef name="request.get()" /> sends HTTP without opening a page. The built-in fixtures you'll meet most are
+`page`, `context`, `browser`, `browserName`, and `request`.
+
+## Interview angle
+
+- **Library or test runner?** Use `@playwright/test` for testing. Use `playwright` for automation scripts or
+  when another runner is already in place.
+- **How does Playwright isolate tests?** With a new browser context per test, so cookies and storage are never
+  shared.
+- **Hook or fixture?** A hook suits setup local to one file. A fixture is reusable, keeps setup and cleanup
+  together, and runs only for the tests that ask for it.
+- **What runs in parallel by default?** Test files. Tests in one file stay in order until `fullyParallel` is on.
