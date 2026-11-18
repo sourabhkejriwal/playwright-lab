@@ -34,13 +34,21 @@
     }
   }
 
+  function syncThemeColor() {
+    const color = getComputedStyle(root).getPropertyValue('--term-bg').trim();
+    if (color) themeColor?.setAttribute('content', color);
+  }
+
   function applyTheme(theme: Theme) {
     root.dataset.theme = theme;
     button?.setAttribute('aria-pressed', String(theme === 'light'));
-    themeColor?.setAttribute('content', getComputedStyle(root).getPropertyValue('--term-bg').trim());
+    syncThemeColor();
   }
 
   applyTheme(storedTheme());
+
+  // WebKit can run this script before the stylesheet applies, when --term-bg is still empty.
+  if (document.readyState !== 'complete') window.addEventListener('load', syncThemeColor, { once: true });
 
   button?.addEventListener('click', () => {
     const theme: Theme = root.dataset.theme === 'light' ? 'dark' : 'light';

@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Check and test
+  checks:
+    name: Format and types
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -28,18 +28,42 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
       - run: pnpm check
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test
+
+  test:
+    name: Test on ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # Let every browser finish, so one failure doesn't hide the others.
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium
+            projects: --project=desktop --project=mobile
+          - browser: firefox
+            projects: --project=firefox
+          - browser: webkit
+            projects: --project=webkit
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+      - run: pnpm test ${{ matrix.projects }}
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}
           path: playwright-report/
           retention-days: 14
 
   deploy:
     name: Deploy to GitHub Pages
-    needs: test
+    needs: [checks, test]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

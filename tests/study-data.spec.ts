@@ -4,7 +4,10 @@ import { chapters, pad } from '../src/data/chapters';
 import { flashcardDeckSchema, quizSchema } from '../src/lib/study-schema';
 
 // These run in Node against the schemas and the committed JSON files.
-test.skip(({ isMobile }) => isMobile, 'no browser involved, so one project is enough');
+test.skip(
+  ({ isMobile, browserName }) => isMobile || browserName !== 'chromium',
+  'no browser involved, so one project is enough',
+);
 
 const deck = {
   chapter: 2,

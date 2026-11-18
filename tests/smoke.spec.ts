@@ -220,7 +220,8 @@ test.describe('chapters', () => {
     await expect(chapter.highlightedLines(untitled)).toContainText('brittle');
   });
 
-  test('the copy button copies the code block', async ({ chapter, page, context }) => {
+  test('the copy button copies the code block', async ({ chapter, page, context, browserName }) => {
+    test.skip(browserName !== 'chromium', 'only Chromium lets a test grant clipboard access');
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await chapter.goto('02-selectors');
 

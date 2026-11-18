@@ -78,7 +78,9 @@ test.describe('site search', () => {
   });
 
   test('escape closes the dialog and returns focus to the button', async ({ site, page }) => {
-    await site.search.button.click();
+    // Opened from the keyboard, because Safari doesn't focus a button that is clicked.
+    await site.search.button.focus();
+    await page.keyboard.press('Enter');
     await expect(site.search.input).toBeFocused();
 
     await page.keyboard.press('Escape');

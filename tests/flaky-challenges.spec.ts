@@ -49,7 +49,10 @@ async function execute(root: string, file: string, timing: 'kind' | 'hostile', a
 }
 
 test.describe('every challenge behaves that way on real Playwright', () => {
-  test.skip(({ isMobile }) => isMobile, 'the nested runs are the same on every project');
+  test.skip(
+    ({ isMobile, browserName }) => isMobile || browserName !== 'chromium',
+    'the nested runs are the same on every project',
+  );
   test.setTimeout(120_000);
 
   for (const challenge of CHALLENGES) {
@@ -73,7 +76,10 @@ test.describe('every challenge behaves that way on real Playwright', () => {
 });
 
 test.describe('challenge data', () => {
-  test.skip(({ isMobile }) => isMobile, 'no browser involved, so one project is enough');
+  test.skip(
+    ({ isMobile, browserName }) => isMobile || browserName !== 'chromium',
+    'no browser involved, so one project is enough',
+  );
 
   test('ids are unique, and answers and culprit lines exist', () => {
     expect(new Set(CHALLENGES.map(({ id }) => id)).size).toBe(CHALLENGES.length);

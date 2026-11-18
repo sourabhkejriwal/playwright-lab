@@ -29,7 +29,7 @@ Never read the whole PDF. Chapter text is pre-extracted (see "Content workflow")
 | `pnpm build`            | Static build to `dist/`, then the Pagefind search index       |
 | `pnpm preview`          | Build, then serve `dist/` on :4322 (foreground)               |
 | `pnpm check`            | `astro check` type-checking (needs TypeScript 6, see gotchas) |
-| `pnpm test`             | Playwright: e2e + a11y, desktop and mobile projects           |
+| `pnpm test`             | Playwright: e2e + a11y on desktop, mobile, Firefox and WebKit |
 | `pnpm test:ui`          | Playwright UI mode                                            |
 | `pnpm format`           | Prettier (incl. `.astro`)                                     |
 | `pnpm extract:chapters` | Re-extract `source/chapters/*.txt` from the PDF               |
@@ -159,6 +159,8 @@ Repo setting needed once: Settings → Pages → Source: **GitHub Actions**.
 
 ## Gotchas
 
+- **Tests run on four projects.** A test with no browser involved skips with `({ isMobile, browserName }) => isMobile || browserName !== 'chromium'`, so it runs once.
+  Firefox and WebKit can't be granted clipboard permissions, and Safari doesn't focus a clicked button, so test focus return from the keyboard.
 - **Don't import `url` by that name in an MDX chapter.** Astro's MDX output already exports a `url`, so the build fails with a parse error.
   Use `import { url as siteUrl } from '../../lib/url';` for internal links.
 - **Search only works on a build.** Pagefind indexes `dist/` after `astro build`, so under `pnpm dev` the dialog says search isn't

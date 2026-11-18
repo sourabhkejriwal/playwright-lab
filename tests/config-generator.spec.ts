@@ -88,7 +88,10 @@ function runConfig(code: string, testInfo: TestInfo, label: string, ci: boolean)
 }
 
 test.describe('generated config', () => {
-  test.skip(({ isMobile }) => isMobile, 'no browser involved, so one project is enough');
+  test.skip(
+    ({ isMobile, browserName }) => isMobile || browserName !== 'chromium',
+    'no browser involved, so one project is enough',
+  );
 
   test('every offered device exists in Playwright', () => {
     for (const { device } of BROWSERS) expect(devices[device], device).toBeDefined();
@@ -235,7 +238,8 @@ test.describe('config generator page', () => {
     await expect(notes).toBeHidden();
   });
 
-  test('copies the config to the clipboard', async ({ configGenerator, page, context }) => {
+  test('copies the config to the clipboard', async ({ configGenerator, page, context, browserName }) => {
+    test.skip(browserName !== 'chromium', 'only Chromium lets a test grant clipboard access');
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await configGenerator.copyButton.click();
     await expect(configGenerator.status).toHaveText('config copied to clipboard');
@@ -257,6 +261,7 @@ test.describe('config generator page', () => {
   });
 
   test.describe('accessibility', () => {
+    test.skip(({ browserName }) => browserName === 'firefox', 'axe crashes the Firefox page on this island');
     test.use({ reducedMotion: 'reduce' });
 
     for (const theme of ['dark', 'light'] as const) {

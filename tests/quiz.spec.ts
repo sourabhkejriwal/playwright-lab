@@ -14,7 +14,10 @@ const rightOption = (question: QuizQuestion) => plain(question.options[question.
 const wrongOption = (question: QuizQuestion) => plain(question.options[question.answer === 0 ? 1 : 0]);
 
 test.describe('option shuffling', () => {
-  test.skip(({ isMobile }) => isMobile, 'no browser involved, so one project is enough');
+  test.skip(
+    ({ isMobile, browserName }) => isMobile || browserName !== 'chromium',
+    'no browser involved, so one project is enough',
+  );
 
   test('the answer follows its option wherever it lands', () => {
     for (const value of [0, 0.2, 0.4, 0.6, 0.8, 0.99]) {
@@ -167,6 +170,7 @@ test.describe('chapter quiz', () => {
   });
 
   test.describe('accessibility', () => {
+    test.skip(({ browserName }) => browserName === 'firefox', 'axe crashes the Firefox page on this island');
     test.use({ reducedMotion: 'reduce' });
 
     for (const theme of ['dark', 'light']) {

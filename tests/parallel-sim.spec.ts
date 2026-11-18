@@ -76,7 +76,10 @@ function execute(root: string, args: string[]) {
 const suiteById = (id: string) => SUITES.find((suite) => suite.id === id)!;
 
 test.describe('the simulator matches real Playwright', () => {
-  test.skip(({ isMobile }) => isMobile, 'no browser involved, so one project is enough');
+  test.skip(
+    ({ isMobile, browserName }) => isMobile || browserName !== 'chromium',
+    'no browser involved, so one project is enough',
+  );
   test.setTimeout(120_000);
 
   for (const suite of SUITES) {
@@ -143,7 +146,10 @@ test.describe('the simulator matches real Playwright', () => {
 });
 
 test.describe('the simulator model', () => {
-  test.skip(({ isMobile }) => isMobile, 'no browser involved, so one project is enough');
+  test.skip(
+    ({ isMobile, browserName }) => isMobile || browserName !== 'chromium',
+    'no browser involved, so one project is enough',
+  );
 
   test('every test runs exactly once and workers never overlap', () => {
     for (const suite of SUITES) {

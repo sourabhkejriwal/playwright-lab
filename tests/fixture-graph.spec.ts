@@ -54,7 +54,10 @@ function runPlaywright(files: Record<string, string>, workers: number, testInfo:
 const unordered = (workers: string[][]) => workers.map((lines) => lines.join('\n')).toSorted();
 
 test.describe('the explainer matches real Playwright', () => {
-  test.skip(({ isMobile }) => isMobile, 'no browser involved, so one project is enough');
+  test.skip(
+    ({ isMobile, browserName }) => isMobile || browserName !== 'chromium',
+    'no browser involved, so one project is enough',
+  );
 
   for (const scenario of SCENARIOS) {
     test(`"${scenario.label}" prints what the explainer shows`, ({}, testInfo) => {

@@ -2,7 +2,10 @@ import { test, expect } from '@playwright/test';
 import { createProgressStore, PROGRESS_STORAGE_KEY as KEY } from '../src/stores/progress';
 
 // These run in Node against an in-memory Storage. chapter-progress.spec.ts covers the UI.
-test.skip(({ isMobile }) => isMobile, 'no browser involved, so one project is enough');
+test.skip(
+  ({ isMobile, browserName }) => isMobile || browserName !== 'chromium',
+  'no browser involved, so one project is enough',
+);
 
 const REVIEW = { grade: 'good', intervalDays: 3, dueAt: '2026-12-01T00:00:00.000Z' } as const;
 

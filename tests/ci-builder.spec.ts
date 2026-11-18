@@ -161,7 +161,10 @@ const everyTest = (projects: string[]) =>
   projects.flatMap((name) => [1, 2, 3, 4, 5, 6].map((index) => `${name}: case ${index}`)).toSorted();
 
 test.describe('generated workflow', () => {
-  test.skip(({ isMobile }) => isMobile, 'no browser involved, so one project is enough');
+  test.skip(
+    ({ isMobile, browserName }) => isMobile || browserName !== 'chromium',
+    'no browser involved, so one project is enough',
+  );
 
   test('the output is already formatted', async () => {
     for (const options of samples) {
@@ -358,7 +361,8 @@ test.describe('ci builder page', () => {
     await expect(notes).toBeHidden();
   });
 
-  test('copies the workflow to the clipboard', async ({ ciBuilder, page, context }) => {
+  test('copies the workflow to the clipboard', async ({ ciBuilder, page, context, browserName }) => {
+    test.skip(browserName !== 'chromium', 'only Chromium lets a test grant clipboard access');
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await ciBuilder.copyButton.click();
     await expect(ciBuilder.status).toHaveText('workflow copied to clipboard');
@@ -381,6 +385,7 @@ test.describe('ci builder page', () => {
   });
 
   test.describe('accessibility', () => {
+    test.skip(({ browserName }) => browserName === 'firefox', 'axe crashes the Firefox page on this island');
     test.use({ reducedMotion: 'reduce' });
 
     for (const theme of ['dark', 'light'] as const) {

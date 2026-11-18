@@ -45,7 +45,10 @@ const savedCard = (dueAt: string, intervalDays = 3): FlashcardProgress => ({
 });
 
 test.describe('scheduler', () => {
-  test.skip(({ isMobile }) => isMobile, 'no browser involved, so one project is enough');
+  test.skip(
+    ({ isMobile, browserName }) => isMobile || browserName !== 'chromium',
+    'no browser involved, so one project is enough',
+  );
 
   const card = (id: string) => ({ id, front: 'Question?', back: 'Answer.' });
   const now = new Date(2026, 5, 15, 21, 30);
