@@ -76,18 +76,26 @@ const { headings } = Astro.props;
       if (!section) return;
       pinned = section;
       pinnedY = undefined;
-      // The browser has finished the jump by the next frame.
+      // The browser has finished the jump by the next frame, unless a hash change already said where it landed.
       requestAnimationFrame(() => {
-        pinnedY = scrollY;
+        pinnedY ??= scrollY;
         update();
       });
     };
-    const pinFromHash = () => pin(sections.find(({ link }) => link.hash === location.hash));
+    const sectionFromHash = () => sections.find(({ link }) => link.hash === location.hash);
+    const pinFromHash = () => pin(sectionFromHash());
 
     for (const section of sections) {
       section.link.addEventListener('click', () => pin(section));
     }
-    addEventListener('hashchange', pinFromHash);
+    // The jump is done when this fires, so a scroll right after it can't be mistaken for the landing spot.
+    addEventListener('hashchange', () => {
+      const section = sectionFromHash();
+      if (!section) return;
+      pinned = section;
+      pinnedY = scrollY;
+      update();
+    });
     addEventListener('scroll', queueUpdate, { passive: true });
     addEventListener('resize', queueUpdate);
     pinFromHash();

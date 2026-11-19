@@ -266,6 +266,27 @@ test.describe('chapters', () => {
     },
   );
 
+  test(
+    'table of contents lets go of a section when the reader scrolls during the jump',
+    { tag: '@regression' },
+    async ({ chapter, page, isMobile }) => {
+      test.skip(isMobile, 'the table of contents only shows on xl screens');
+      await page.setViewportSize({ width: 1280, height: 1000 });
+      await chapter.goto('02-selectors');
+
+      const link = chapter.tocLink('Fall back deliberately');
+      await link.click();
+      await expect(link).toHaveAttribute('aria-current', 'location');
+
+      // The hash change can arrive after the click has pinned the section, just as the reader scrolls.
+      await page.evaluate(() => {
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+        window.scrollTo(0, 0);
+      });
+      await expect(link).not.toHaveAttribute('aria-current', 'location');
+    },
+  );
+
   test('table of contents is hidden on small screens', { tag: '@smoke' }, async ({ chapter, isMobile }) => {
     test.skip(!isMobile, 'covers the mobile layout only');
     await chapter.goto('02-selectors');
