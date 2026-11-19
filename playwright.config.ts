@@ -19,7 +19,9 @@ export default defineConfig({
   forbidOnly: isCI,
   failOnFlakyTests: isCI,
   retries: isCI ? 2 : 0,
-  workers: isCI ? 2 : undefined,
+  // Locally, 75% of cores: Playwright's default of half took 8.5 minutes where this takes about 7.
+  // At 100% two timing-sensitive tests (playground highlight colors, Firefox download) failed under load.
+  workers: isCI ? 2 : '75%',
   reporter: isCI
     ? [['github'], ['list'], ['html', { open: 'never' }]]
     : [['list'], ['html', { open: 'never' }]],
