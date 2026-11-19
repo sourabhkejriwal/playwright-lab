@@ -22,10 +22,7 @@ export const timeouts = {
   browserLaunch: 60_000,
   /** Building the site and waiting for the server to answer. */
   webServer: 120_000,
-  /**
-   * The whole run on CI. Keep it under the test step's `timeout-minutes` in
-   * .github/workflows/deploy.yml, so Playwright stops first and still writes its report.
-   */
+  /** The whole run on CI, so a stuck run stops and still writes its report. */
   ciRun: 25 * 60_000,
   /** A spec that starts the real Playwright CLI several times. */
   nestedRun: 120_000,
