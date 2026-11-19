@@ -202,19 +202,6 @@ export class SitePage {
   }
 
   /**
-   * Waits for the web fonts and then two painted frames, so the page has its final layout.
-   * Scanned mid font swap, WebKit on CI reported every text node as black on the page background.
-   *
-   * @returns Resolves when the page has settled.
-   */
-  private async settleLayout(): Promise<void> {
-    await this.page.evaluate(async () => {
-      await document.fonts.ready;
-      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    });
-  }
-
-  /**
    * Scans the page with axe.
    *
    * @param options - The axe tags to run and, optionally, the only part of the page to scan.
@@ -225,7 +212,6 @@ export class SitePage {
     include,
   }: { tags?: readonly string[]; include?: string } = {}): Promise<A11yViolations> {
     await this.removeFirefoxAriaElementProperties();
-    await this.settleLayout();
     const builder = new AxeBuilder({ page: this.page }).withTags([...tags]);
     if (include) builder.include(include);
     return (await builder.analyze()).violations;
