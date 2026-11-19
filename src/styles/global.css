@@ -138,6 +138,61 @@
     background: var(--term-code-highlight);
     box-shadow: inset 2px 0 0 var(--term-pass);
   }
+  /* Markdown tables: a bordered grid so columns and rows read apart, a raised header row, and a
+     bright first column, since most tables label their rows there. The scroll region around each
+     one (TableScroll.astro) carries the frame, so a phone scrolls a wide table sideways. */
+  .prose-term .table-scroll {
+    margin: 0 0 1.4rem;
+    overflow-x: auto;
+    border: 1px solid var(--term-line-strong);
+    border-radius: var(--term-radius);
+  }
+  .prose-term .table-scroll:focus-visible {
+    outline: 2px solid var(--term-info);
+    outline-offset: 2px;
+  }
+  .prose-term table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  .prose-term :where(th, td) {
+    padding: 0.55rem 0.8rem;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--term-line);
+    border-left: 1px solid var(--term-line);
+    /* Columns stay readable on a phone; the scroll region takes the overflow. */
+    min-width: 7.5rem;
+  }
+  /* Code in a cell stays whole, so `change` never splits into `chang` / `e`. */
+  .prose-term :where(th, td) :not(pre) > code,
+  .prose-term :where(th, td) > code {
+    white-space: nowrap;
+    overflow-wrap: normal;
+  }
+  .prose-term :where(th, td):first-child {
+    border-left: 0;
+  }
+  .prose-term tr:last-child > td {
+    border-bottom: 0;
+  }
+  .prose-term thead th {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: var(--term-bright);
+    background: var(--term-raised);
+    border-bottom-color: var(--term-line-strong);
+  }
+  .prose-term tbody tr:nth-child(even) {
+    background: var(--term-surface);
+  }
+  .prose-term tbody td:first-child {
+    color: var(--term-bright);
+    font-weight: 500;
+  }
   .prose-term blockquote {
     border-left: 3px solid var(--term-pending);
     padding-left: 1rem;
