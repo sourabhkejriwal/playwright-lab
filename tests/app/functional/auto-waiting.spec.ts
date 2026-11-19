@@ -105,8 +105,9 @@ test.describe('the explainer matches real Playwright', () => {
     if (check === 'enabled') return withAttribute('disabled');
     if (check === 'editable') return withAttribute('readonly');
     if (check === 'receives events') return `${html}<div style="position: fixed; inset: 0"></div>`;
-    return `<style>@keyframes slide { from { margin-left: 0 } to { margin-left: 200px } }
-#target { animation: slide 0.2s linear infinite alternate }</style>${html}`;
+    // One way only: an element sliding back and forth can be in the same place on two slow frames.
+    return `<style>@keyframes slide { from { margin-left: 0 } to { margin-left: 2000px } }
+#target { animation: slide 20s linear }</style>${html}`;
   };
 
   // Only text inputs can be read-only.

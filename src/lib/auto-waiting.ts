@@ -113,8 +113,9 @@ export const SCENARIOS: Scenario[] = [
     startPage: 'moving',
     resolvedTag: BUTTON,
     change: 'The slide-in animation ends and the button stops moving.',
-    html: `<style>@keyframes slide { from { margin-left: 0 } to { margin-left: 200px } }
-#save { animation: slide 0.2s linear infinite alternate }</style>${BUTTON}`,
+    // One way only: a button sliding back and forth can be in the same place on two slow frames, which reads as stable.
+    html: `<style>@keyframes slide { from { margin-left: 0 } to { margin-left: 2000px } }
+#save { animation: slide 20s linear }</style>${BUTTON}`,
     release: `${save}.style.animation = 'none';`,
   },
   {
