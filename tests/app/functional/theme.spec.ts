@@ -1,4 +1,4 @@
-import { test, expect } from '../../../fixtures/pom/test-options';
+import { test, expect } from '../../fixtures/pom/test-options';
 
 const DARK_BG = 'rgb(11, 14, 20)';
 const LIGHT_BG = 'rgb(247, 248, 250)';

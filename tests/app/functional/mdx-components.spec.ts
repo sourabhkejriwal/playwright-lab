@@ -1,4 +1,4 @@
-import { test, expect } from '../../../fixtures/pom/test-options';
+import { test, expect } from '../../fixtures/pom/test-options';
 import { apiRefHref } from '../../../src/lib/api-ref';
 
 test.describe('chapter MDX components', () => {

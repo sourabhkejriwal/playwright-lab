@@ -1,6 +1,6 @@
-import { test, expect } from '../../../fixtures/pom/test-options';
-import { statusMark } from '../../../pages/app/site.page';
-import { savedProgress } from '../../../helpers/app/saved-progress';
+import { test, expect } from '../../fixtures/pom/test-options';
+import { statusMark } from '../../pages/app/site.page';
+import { savedProgress } from '../../helpers/app/saved-progress';
 
 const readAt = '2026-11-01T00:00:00.000Z';
 const chaptersRead = (...slugs: string[]): string =>

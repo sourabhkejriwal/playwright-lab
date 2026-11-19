@@ -1,4 +1,4 @@
-import { test, expect } from '../../../fixtures/pom/test-options';
+import { test, expect } from '../../fixtures/pom/test-options';
 import {
   createProgressStore,
   PROGRESS_STORAGE_KEY as KEY,

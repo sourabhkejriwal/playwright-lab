@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { devices, type TestInfo } from '@playwright/test';
-import { test, expect } from '../../../fixtures/pom/test-options';
+import { test, expect } from '../../fixtures/pom/test-options';
 import * as prettier from 'prettier';
 import {
   BROWSERS,

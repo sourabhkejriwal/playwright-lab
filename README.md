@@ -86,12 +86,13 @@ src/
   islands/     interactive React components
   lib/         pure logic: locator engine, generators, simulators, spaced repetition
   stores/      saved visitor progress
-tests/app/functional/  the suite
-fixtures/pom/          the test object, with page objects as fixtures
-pages/                 page objects and shared components
-enums/, config/        routes, storage keys, UI text and time limits
-test-data/static/      curated sets the specs loop over
-helpers/               progress seeding and the app behind the flaky challenges
+tests/
+  app/functional/   the suite
+  fixtures/pom/     the test object, with page objects as fixtures
+  pages/            page objects and shared components
+  enums/, config/   routes, storage keys, UI text and time limits
+  test-data/static/ curated sets the specs loop over
+  helpers/          progress seeding and the app behind the flaky challenges
 ```
 
 ## Test strategy
@@ -113,7 +114,7 @@ disagree, the test fails.
 
 Conventions the suite follows:
 
-- **Page objects as fixtures.** Specs get page objects from `fixtures/pom/test-options.ts`. Page objects return locators,
+- **Page objects as fixtures.** Specs get page objects from `tests/fixtures/pom/test-options.ts`. Page objects return locators,
   and the assertions stay in the spec.
 - **One tag per test.** Every test is `@smoke` or `@regression`, so `pnpm test:smoke` runs the critical paths on their own.
 - **User-facing locators and web-first assertions.** Tests find elements by role, label, and text, and never use

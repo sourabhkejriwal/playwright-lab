@@ -1,4 +1,4 @@
-import { test, expect } from '../../../fixtures/pom/test-options';
+import { test, expect } from '../../fixtures/pom/test-options';
 import { excerptParts, toHits } from '../../../src/lib/search';
 
 test.describe('search results', () => {

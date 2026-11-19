@@ -1,5 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
-import { appConfig, timeouts } from './config/app';
+import { appConfig, timeouts } from './tests/config/app';
 
 const isCI = !!process.env.CI;
 const serve = `node scripts/serve-dist.mjs ${appConfig.port}`;

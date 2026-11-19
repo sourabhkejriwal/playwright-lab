@@ -4,8 +4,8 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
 import type { TestInfo } from '@playwright/test';
-import { timeouts } from '../../../config/app';
-import { test, expect } from '../../../fixtures/pom/test-options';
+import { timeouts } from '../../config/app';
+import { test, expect } from '../../fixtures/pom/test-options';
 import { CHALLENGES, fixedLines, grade, type FlakyChallenge } from '../../../src/lib/flaky-challenges';
 
 const run = promisify(execFile);
@@ -22,7 +22,7 @@ function writeProject(challenge: FlakyChallenge, testInfo: TestInfo): string {
   mkdirSync(root, { recursive: true });
   // Playwright puts test-results/ beside the nearest package.json and empties it, which must not be this repo's.
   writeFileSync(join(root, 'package.json'), '{}');
-  copyFileSync(join(import.meta.dirname, '../../../helpers/app/flaky-world.ts'), join(root, 'world.ts'));
+  copyFileSync(join(import.meta.dirname, '../../helpers/app/flaky-world.ts'), join(root, 'world.ts'));
   writeFileSync(
     join(root, 'playwright.config.ts'),
     `export default { timeout: 20000, expect: { timeout: 1500 }, workers: 1, use: { baseURL: 'http://shop.test', actionTimeout: 2000 } };\n`,

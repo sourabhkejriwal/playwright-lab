@@ -1,5 +1,5 @@
-import { test, expect } from '../../../fixtures/pom/test-options';
-import { SEO_PAGES } from '../../../test-data/static/app/seo-pages';
+import { test, expect } from '../../fixtures/pom/test-options';
+import { SEO_PAGES } from '../../test-data/static/app/seo-pages';
 
 test.describe('seo', () => {
   for (const { path, title, type } of SEO_PAGES) {

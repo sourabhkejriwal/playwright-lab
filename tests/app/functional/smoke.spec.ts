@@ -1,4 +1,4 @@
-import { test, expect } from '../../../fixtures/pom/test-options';
+import { test, expect } from '../../fixtures/pom/test-options';
 
 test.describe('home', () => {
   test('shows the hero and the chapter test run', { tag: '@smoke' }, async ({ home, page }) => {

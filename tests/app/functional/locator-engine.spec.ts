@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { Locator, Page } from '@playwright/test';
-import { test, expect } from '../../../fixtures/pom/test-options';
-import { LOCATOR_EXPRESSIONS } from '../../../test-data/static/app/locator-expressions';
+import { test, expect } from '../../fixtures/pom/test-options';
+import { LOCATOR_EXPRESSIONS } from '../../test-data/static/app/locator-expressions';
 import { buildSync } from 'esbuild';
 import { CHALLENGES } from '../../../src/data/playground-challenges';
 import { buildSamplePage } from '../../../src/data/playground-sample';

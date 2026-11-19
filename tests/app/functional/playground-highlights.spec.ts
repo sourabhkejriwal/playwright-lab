@@ -1,7 +1,7 @@
-import { timeouts } from '../../../config/app';
-import { test, expect } from '../../../fixtures/pom/test-options';
-import { HIGHLIGHT_LOCATOR_CASES, CHALLENGE_TARGETS } from '../../../test-data/static/app/highlight-cases';
-import type { PlaygroundPage } from '../../../pages/app/playground.page';
+import { timeouts } from '../../config/app';
+import { test, expect } from '../../fixtures/pom/test-options';
+import { HIGHLIGHT_LOCATOR_CASES, CHALLENGE_TARGETS } from '../../test-data/static/app/highlight-cases';
+import type { PlaygroundPage } from '../../pages/app/playground.page';
 import { CHALLENGES } from '../../../src/data/playground-challenges';
 
 /** Boxes are drawn this many pixels outside the element they mark. */

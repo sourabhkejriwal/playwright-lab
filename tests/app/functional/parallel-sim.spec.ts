@@ -4,8 +4,8 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { promisify } from 'node:util';
 import type { TestInfo } from '@playwright/test';
-import { timeouts } from '../../../config/app';
-import { test, expect } from '../../../fixtures/pom/test-options';
+import { timeouts } from '../../config/app';
+import { test, expect } from '../../fixtures/pom/test-options';
 import {
   SUITES,
   buildJobs,

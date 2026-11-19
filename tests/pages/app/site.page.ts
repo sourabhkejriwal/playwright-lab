@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import type { Locator, Page, Response } from '@playwright/test';
 import { appConfig } from '../../config/app';
 import { StorageKeys } from '../../enums/app/app';
-import { PROGRESS_STORAGE_KEY, type Progress } from '../../src/stores/progress';
+import { PROGRESS_STORAGE_KEY, type Progress } from '../../../src/stores/progress';
 import { SearchDialogComponent } from '../components/search-dialog.component';
 import { SidebarComponent } from '../components/sidebar.component';
 import { TopBarComponent } from '../components/top-bar.component';

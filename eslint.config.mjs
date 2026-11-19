@@ -3,16 +3,7 @@ import playwright from 'eslint-plugin-playwright';
 import tseslint from 'typescript-eslint';
 
 // Lints the test code only. The site's own code in src/ is checked by `astro check`.
-const testCode = [
-  'tests/**/*.ts',
-  'pages/**/*.ts',
-  'fixtures/**/*.ts',
-  'helpers/**/*.ts',
-  'enums/**/*.ts',
-  'config/**/*.ts',
-  'test-data/**/*.ts',
-  'playwright.config.ts',
-];
+const testCode = ['tests/**/*.ts', 'playwright.config.ts'];
 
 export default tseslint.config(
   {
@@ -43,7 +34,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['tests/**/*.ts'],
+    files: ['tests/**/*.spec.ts'],
     extends: [playwright.configs['flat/recommended']],
     rules: {
       'playwright/expect-expect': ['error', { assertFunctionNames: ['expectHighlights'] }],

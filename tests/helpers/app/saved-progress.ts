@@ -1,4 +1,4 @@
-import type { FlashcardProgress, QuizProgress } from '../../src/stores/progress';
+import type { FlashcardProgress, QuizProgress } from '../../../src/stores/progress';
 
 interface SavedParts {
   chapters?: Record<string, { readAt: string }>;

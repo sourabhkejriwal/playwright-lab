@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { test, expect } from '../../../fixtures/pom/test-options';
-import type { FlashcardsPage } from '../../../pages/app/flashcards.page';
-import { savedProgress } from '../../../helpers/app/saved-progress';
+import { test, expect } from '../../fixtures/pom/test-options';
+import type { FlashcardsPage } from '../../pages/app/flashcards.page';
+import { savedProgress } from '../../helpers/app/saved-progress';
 import { chapters, pad } from '../../../src/data/chapters';
 import {
   ALL_CHAPTERS,

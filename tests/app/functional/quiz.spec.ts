@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
-import { test, expect } from '../../../fixtures/pom/test-options';
-import type { ChapterPage } from '../../../pages/app/chapter.page';
-import type { QuizPanelComponent as QuizPanel } from '../../../pages/components/quiz-panel.component';
-import { savedProgress } from '../../../helpers/app/saved-progress';
+import { test, expect } from '../../fixtures/pom/test-options';
+import type { ChapterPage } from '../../pages/app/chapter.page';
+import type { QuizPanelComponent as QuizPanel } from '../../pages/components/quiz-panel.component';
+import { savedProgress } from '../../helpers/app/saved-progress';
 import { shuffleOptions, type QuizQuestion } from '../../../src/lib/quiz';
 import type { QuizProgress } from '../../../src/stores/progress';
 

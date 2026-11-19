@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { test, expect } from '../../../fixtures/pom/test-options';
+import { test, expect } from '../../fixtures/pom/test-options';
 import { chapters, pad } from '../../../src/data/chapters';
 import { flashcardDeckSchema, quizSchema } from '../../../src/lib/study-schema';
 

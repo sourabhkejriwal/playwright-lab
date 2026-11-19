@@ -1,4 +1,4 @@
-import { test, expect } from '../../../fixtures/pom/test-options';
+import { test, expect } from '../../fixtures/pom/test-options';
 import { CHALLENGES } from '../../../src/data/playground-challenges';
 
 test.describe('locator playground', () => {

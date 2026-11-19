@@ -3,7 +3,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import type { TestInfo } from '@playwright/test';
-import { test, expect } from '../../../fixtures/pom/test-options';
+import { test, expect } from '../../fixtures/pom/test-options';
 import * as prettier from 'prettier';
 import { parse } from 'yaml';
 import {
