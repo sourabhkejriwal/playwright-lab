@@ -85,18 +85,26 @@ test.describe('playground highlights', () => {
   });
 
   test('each state draws in its own color', { tag: '@regression' }, async ({ playground }) => {
-    const strict = await playground.highlightColor(playground.firstHighlightIn('strict'), '--term-fail');
-    expect(strict.drawn).toBe(strict.token);
+    // Retried: the overlay can be redrawn between finding a box and reading its color, and a replaced box reads as no color.
+    const expectDrawnIn = async (
+      highlight: Parameters<PlaygroundPage['highlightColor']>[0],
+      token: string,
+    ): Promise<void> => {
+      await expect(async () => {
+        const color = await playground.highlightColor(highlight, token);
+        expect(color.drawn).toBe(color.token);
+      }).toPass();
+    };
+
+    await expectDrawnIn(playground.firstHighlightIn('strict'), '--term-fail');
 
     await playground.enterLocator("page.locator('#email')");
     await expect(playground.highlightsIn('match')).toHaveCount(1);
-    const match = await playground.highlightColor(playground.highlightsIn('match'), '--term-pass');
-    expect(match.drawn).toBe(match.token);
+    await expectDrawnIn(playground.highlightsIn('match'), '--term-pass');
 
     await playground.challenge('form label').click();
     await expect(playground.highlightsIn('target')).toHaveCount(1);
-    const target = await playground.highlightColor(playground.highlightsIn('target'), '--term-purple');
-    expect(target.drawn).toBe(target.token);
+    await expectDrawnIn(playground.highlightsIn('target'), '--term-purple');
     await expect(playground.highlightsIn('target')).toHaveCSS('border-top-style', 'dashed');
   });
 
